@@ -1,2 +1,43 @@
 # torchtitan-npu
 
+### 执行命令
+
+
+```shell
+# 安装torchtitan以及torchtitan-npu
+pip install torchtitan==0.2.0
+pip install -e /path/to/torchtitan-npu
+
+# 示例执行，2层（1moe，1dense）裁剪模型（请提前配置toml文件中相关地址）
+chmod +x ./torchtitan-npu/run_train.sh
+NGPU=4 CONFIG_FILE="./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml" ./torchtitan-npu/run_train.sh
+
+```
+
+### 特性
+
+#### 融合算子替换
+
+- 配置文件的 [model] 中配置 `converters` 使能，支持基础算子`npu_rms_norm`、`npu_rope`、`npu_permute`、`npu_gmm` 和 DeepSeekV3.2 `npu_dsa`
+- 可以配置多种替换 如: `converters = ["npu_rms_norm", "npu_rope", "npu_permute"]`
+
+#### 权重加载：当前支持deepseek_v32
+
+- 支持离线权重转换，根据配置项`use_grouped_mm`进行转换
+  - 如果`use_grouped_mm=True` 那么则将普通HF权重转化为gmm titan权重
+  - 反之`use_grouped_mm=False` 转化为普通权重
+  - ```
+    python torchtitan/scripts/checkpoint_conversion/convert_from_hf.py \ 
+    /path/to/input/ \
+    /path/to/output/step-0/ \
+    --model_name deepseek_v32
+    --model_flavor debugmodel
+    ```
+- 支持直接使用HF权重（自动适配gmm），也支持直接使用titan dcp权重
+- 支持自定义设置导出权重
+  - ```
+    save_format = "dcp", 保存文件类型（"dcp"/"hf"）
+    save_expert_format = "standard", 保存expert类型("gmm"/"standard")
+    hf_save_dir = "/path/to/output/",
+    save_patch_enabled = True, (如果=False，则正常输出权重)
+    ```
