@@ -7,7 +7,7 @@
 NGPU=${NGPU:-"8"}
 export LOG_RANK=${LOG_RANK:-0}
 CONFIG_FILE=${CONFIG_FILE:-"./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml"}
-TRAIN_FILE=${TRAIN_FILE:-"torchtitan_npu.train"}
+TRAIN_FILE=${TRAIN_FILE:-"torchtitan_npu.entry"}
 
 TORCHFT_LIGHTHOUSE=${TORCHFT_LIGHTHOUSE:-"http://localhost:29510"}
 

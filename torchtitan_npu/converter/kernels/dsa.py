@@ -235,7 +235,7 @@ def dsa_forward(
 class DSAKernel(BaseKernel):
 
     kernel_type = KernelType.DSA
-    MODEL_PACKAGE = "torchtitan.models.deepseek_v32"
+    MODEL_PACKAGE = "torchtitan_npu.models.deepseek_v32"
 
     @classmethod
     def apply(cls, model: nn.Module, **kwargs) -> nn.Module:

@@ -10,7 +10,7 @@ pip install -e /path/to/torchtitan-npu
 
 # 示例执行，2层（1moe，1dense）裁剪模型（请提前配置toml文件中相关地址）
 chmod +x ./torchtitan-npu/run_train.sh
-NGPU=4 CONFIG_FILE="./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml" ./torchtitan-npu/run_train.sh
+NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml" ./torchtitan-npu/run_train.sh
 
 ```
 
