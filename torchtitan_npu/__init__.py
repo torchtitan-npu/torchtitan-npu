@@ -33,12 +33,12 @@ def _apply_patches():
     titan_models._supported_models = frozenset(new_set)
     
     # module injection
-    from torchtitan_npu.models import deepseek_v32
+    from .models import deepseek_v32
     _inject_module("torchtitan.models.deepseek_v32", deepseek_v32)
     
     # patching model_converter
     from .converter import kernel_converter
-    
+
 
 def _inject_module(module_path: str, replacement_module):
     """ add/replace modules into sys.modules"""

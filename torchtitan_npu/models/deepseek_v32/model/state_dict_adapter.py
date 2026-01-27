@@ -79,7 +79,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
     def _setup_checkpoint_patch(self, model_args):
         ''' setup checkpoint save patch '''
         try:
-            from torchtitan.patches.tools import checkpoint_patch
+            from ....tools import checkpoint_patch
 
             checkpoint_patch.configure_from_model_args(model_args, adapter=self)
 
