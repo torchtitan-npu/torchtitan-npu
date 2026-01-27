@@ -16,26 +16,30 @@ def _apply_patches():
     if _initialized:
         return
     _initialized = True
-        
+
     # patching tools
     from .tools import profiling
-    
+
     # patching torch
     from .patches.torch import fsdp
-    from .patches.torch import pipelining 
-    
+    from .patches.torch import pipelining
+    # patching optimizer
+    from .patches.optimizer import swap_optimizer
+    # patching context_parallel utils
+    from .patches.distributed import context_parallel_utils
+
     # patching models
     from .models import deepseek_v3
-    
+
     import torchtitan.models as titan_models
     new_set = set(titan_models._supported_models)
     new_set.add("deepseek_v32")
     titan_models._supported_models = frozenset(new_set)
-    
+
     # module injection
     from .models import deepseek_v32
     _inject_module("torchtitan.models.deepseek_v32", deepseek_v32)
-    
+
     # patching model_converter
     from .converter import kernel_converter
 

@@ -5,8 +5,8 @@
 
 from dataclasses import dataclass
 from torchtitan.config.job_config import (
-    JobConfig as BaseJobConfig, 
-    Optimizer as BaseOptimizer, 
+    JobConfig as BaseJobConfig,
+    Optimizer as BaseOptimizer,
     Parallelism as BaseParallelism
     )
 
@@ -15,17 +15,17 @@ from torchtitan.config.job_config import (
 class Optimizer(BaseOptimizer):
     swap_optimizer: bool = False
     """
-    Whether to apply swap optimizer. 
+    Whether to apply swap optimizer.
     This feature will offload the optimizer states to the host (CPU) during the forward and backward passes.
-    During the optimizer.step(), it will load, update, and offload these states in slices. 
-    This pipelined approach significantly reduces GPU memory pressure during the optimizer step, 
+    During the optimizer.step(), it will load, update, and offload these states in slices.
+    This pipelined approach significantly reduces GPU memory pressure during the optimizer step,
     making it highly beneficial for memory-intensive scenarios.
     More info (in Chinese): https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md
     """
 
     swap_optimizer_times: int = 16
     """
-    Specifies the number of slices for the pipelined swap_optimizer update. 
+    Specifies the number of slices for the pipelined swap_optimizer update.
     A higher value creates more, smaller slices, further reducing peak memory usage during the optimizer step.
     """
 
@@ -42,10 +42,10 @@ class Parallelism(BaseParallelism):
     """
     The path to custom context parallel context manager class.
     - The string must adhere to the format 'package.module.ClassName'.
-    - The recommended custom class is a subclass of 
-    'torchtitan.distributed.custom_context_parallel.CustomContextParallel'
-    
-    Example string: 'torchtitan.models.deepseek_v32.infra.context_parallel.DSAContextParallel'
+    - The recommended custom class is a subclass of
+    'torchtitan_npu.patches.distributed.custom_context_parallel.CustomContextParallelContext'
+
+    Example string: 'torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext'
     """
 
 

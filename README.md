@@ -27,7 +27,7 @@ NGPU=4 CONFIG_FILE="./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_
   - 如果`use_grouped_mm=True` 那么则将普通HF权重转化为gmm titan权重
   - 反之`use_grouped_mm=False` 转化为普通权重
   - ```
-    python torchtitan/scripts/checkpoint_conversion/convert_from_hf.py \ 
+    python torchtitan/scripts/checkpoint_conversion/convert_from_hf.py \
     /path/to/input/ \
     /path/to/output/step-0/ \
     --model_name deepseek_v32
@@ -41,3 +41,13 @@ NGPU=4 CONFIG_FILE="./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_
     hf_save_dir = "/path/to/output/",
     save_patch_enabled = True, (如果=False，则正常输出权重)
     ```
+
+#### Swap optimizer
+该特性将在模型前反向计算时将优化器卸载至host侧节省device内存，优化器更新时分片执行 “load -> update -> offload” 以降低优化器更新时的内存峰值。详细信息可参考[该文档](https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md)。
+- 配置文件的 [optimizer] 中配置`swap_optimizer = true`使能该特性。
+- 配置文件的 [optimizer] 中配置`swap_optimizer_times = 16`可设定分块swap的次数，更精细控制优化器更新时的内存峰值。
+
+#### 自定义 Context Parallel
+同时修改以下两个配置，可使用自定义的 Context Parallel 上下文环境，执行自定义的CP逻辑。
+- 配置文件的 [parallelism] 中配置`enable_custom_context_parallel = true`使能自定义CP。
+- 配置文件的 [parallelism] 中配置`custom_context_parallel_path`为自定义的CP上下文环境类的路径以真正使能自定义CP。例如：`custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"`。
