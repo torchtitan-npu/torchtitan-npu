@@ -1,6 +1,6 @@
 # Adapted from
 # https://gitcode.com/Ascend/MindSpeed/blob/master/mindspeed/core/optimizer/swap_optimizer/swap_optimizer.py
-# Copyright (c) 2026, Huawei Technologies Co., Ltd. All rights reserved
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

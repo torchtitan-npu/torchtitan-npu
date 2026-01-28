@@ -1,6 +1,6 @@
 # Adapted from
 # https://github.com/pytorch/pytorch/blob/v2.9.0/torch/distributed/tensor/experimental/_attention.py
-# Copyright (c) 2026, Huawei Technologies Co., Ltd. All rights reserved
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) Meta Platforms, Inc. and affiliates
 #
 # This source code is licensed under the BSD-style license found in the

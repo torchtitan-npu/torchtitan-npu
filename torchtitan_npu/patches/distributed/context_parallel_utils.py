@@ -1,6 +1,6 @@
 # Adapted from
 # https://github.com/pytorch/torchtitan/blob/v0.2.0/torchtitan/distributed/utils.py
-# Copyright (c) 2026, Huawei Technologies Co., Ltd. All rights reserved
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 #
