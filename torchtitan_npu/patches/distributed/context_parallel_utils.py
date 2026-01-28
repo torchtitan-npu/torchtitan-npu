@@ -21,7 +21,7 @@ from torchtitan_npu.patches.tools.utils import load_class_from_string
 
 _patch_context = threading.local()  # ceate a thread-safe context manager for monkey patching
 _original_create_cp_ctx = dist_utils.create_context_parallel_ctx
-_original_build_class = builtins.__build_class__
+_original_step_method = Trainer.forward_backward_step
 
 
 @functools.wraps(_original_create_cp_ctx)
@@ -52,34 +52,18 @@ def _create_cp_ctx_wrapper(
     return _original_create_cp_ctx(cp_mesh, cp_buffers, cp_seq_dims, cp_no_restore_buffers, cp_rotate_method)
 
 
-def _create_step_wrapper(original_step):
-    @functools.wraps(original_step)
-    def _step_wrapper(self, *args, **kwargs):
-        # before step, inject the config variable into the patch context
-        _patch_context.current_parallel_config = self.job_config.parallelism
-        try:
-            # original step func
-            return original_step(self, *args, **kwargs)
-        finally:
-            # clear the patch context
-            _patch_context.current_parallel_config = None
-    return _step_wrapper
+@functools.wraps(_original_step_method)
+def _step_wrapper(self, *args, **kwargs):
+    # before step, inject the config variable into the patch context
+    _patch_context.current_parallel_config = self.job_config.parallelism
+    try:
+        # original step func
+        return _original_step_method(self, *args, **kwargs)
+    finally:
+        # clear the patch context
+        _patch_context.current_parallel_config = None
 
 
-# patch the cp context creation
+# patch for the cp context creation
 dist_utils.create_context_parallel_ctx = _create_cp_ctx_wrapper
-
-
-def _patched_build_class(func, name, *args, **kwargs):
-    new_class = _original_build_class(func, name, *args, **kwargs)
-
-    # catch and patch Trainer.forward_backward_step
-    if name == "Trainer" and hasattr(new_class, "forward_backward_step"):
-        original_step_method = new_class.forward_backward_step
-        new_class.forward_backward_step = _create_step_wrapper(original_step_method)
-
-    return new_class
-
-
-# patch forward_backward_step of Trainer
-builtins.__build_class__ = _patched_build_class
+Trainer.forward_backward_step = _step_wrapper
