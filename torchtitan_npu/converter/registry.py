@@ -23,6 +23,7 @@ class KernelType(Enum):
     PERMUTE = auto()
     GMM = auto()
     DSA = auto()
+    FUSIONATTEN = auto()
 
 
 class KernelRegistry:

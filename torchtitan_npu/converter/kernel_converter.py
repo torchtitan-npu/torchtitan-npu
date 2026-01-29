@@ -21,6 +21,7 @@ def _ensure_kernels_loaded() -> None:
         "permute",
         "gmm",
         "dsa",
+        "fusion_attention",
     ]
 
     import importlib
@@ -67,6 +68,12 @@ class NPUGMMConverter(BaseNPUConverter):
     kernel_name = "Gmm"
 
 
+class NPUFusionAttentionConverter(BaseNPUConverter):
+    """FusionAttention NPU Converter"""
+    kernel_type = KernelType.FUSIONATTEN
+    kernel_name = "FusionAtten"
+
+
 _registered = False
 
 
@@ -91,7 +98,8 @@ def register_npu_converters() -> None:
         (NPURoPEConverter, "npu_rope"),
         (NPUPermuteConverter, "npu_permute"),
         (NPUGMMConverter, "npu_gmm"),
-        (NPUDSAConverter, "npu_dsa")
+        (NPUDSAConverter, "npu_dsa"),
+        (NPUFusionAttentionConverter, "npu_fusion_attention"),
     ]
 
     for converter_cls, name in _converters:

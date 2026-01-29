@@ -18,8 +18,9 @@ NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_co
 
 #### 融合算子替换
 
-- 配置文件的 [model] 中配置 `converters` 使能，支持基础算子`npu_rms_norm`、`npu_rope`、`npu_permute`、`npu_gmm` 和 DeepSeekV3.2 `npu_dsa`
+- 配置文件的 [model] 中配置 `converters` 使能，支持基础算子`npu_rms_norm`、`npu_rope`、`npu_permute`、`npu_gmm`、`npu_fusion_attention` 和 DeepSeekV3.2 `npu_dsa`
 - 可以配置多种替换 如: `converters = ["npu_rms_norm", "npu_rope", "npu_permute"]`
+- 注：当前的npu_fusion_attention替换仅为配置sync参数，解决inductor后端使用reduce_overhead的attention算子的多流问题，性能精度均与之前一致。
 
 #### 权重加载：当前支持deepseek_v32
 

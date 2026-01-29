@@ -11,6 +11,7 @@
             <policy name="projectPolicy" desc="">
                 <!--policyitem type="compatibility" name="GPL-2.0+" path="abc/.*" desc="Process that runs independently, invoked by the X process."/-->
                 <policyitem type="license" name="BSD License" path=".*" desc=""/>
+                <policyitem type="license" name="BSD meta License" path=".*" desc=""/>
             </policy>
         </policylist>
         <licensematcherlist>
