@@ -33,17 +33,20 @@ def _prepare_cos_sin_from_cache(rope_cache: torch.Tensor, x: torch.Tensor):
 
 
 def npu_apply_rotary_emb_deepseek(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True) -> torch.Tensor:
+    dtype = x.dtype
     shape = x.shape
+
+    x = x.float()
     if not interleaved:
         x = x.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous().view(*shape)
 
     cos, sin = _prepare_cos_sin_from_complex(freqs_cis, x.dtype)
-    y = torch_npu.npu_rotary_mul(x, cos, sin)
+    y = torch_npu.npu_rotary_mul(x, cos, sin, rotary_mode='interleave')
 
     if not interleaved:
         y = torch.cat([y[..., 0::2], y[..., 1::2]], dim=-1)
 
-    return y
+    return y.to(dtype)
 
 
 def npu_apply_rotary_emb_llama(xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor) -> Tuple[
