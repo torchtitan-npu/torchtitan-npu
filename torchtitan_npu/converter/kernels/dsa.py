@@ -18,8 +18,12 @@ from ..registry import (
 logger = logging.getLogger(__name__)
 
 
-# mindspeed_llm/tasks/models/transformer/dsa_indexer.py
-def fused_sparse_lightning_indexer_kl_loss(
+class SparseLightningIndexerKLLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(
+        self,
         query,
         key,
         query_indexer,
@@ -38,13 +42,13 @@ def fused_sparse_lightning_indexer_kl_loss(
         sparse_mode=3,
         pre_tokens=65536,
         next_tokens=65536,
-):
-    """NPU Sparse Lightning Indexer KL Divergence Loss Function"""
-    sq = query.shape[1]
-    loss = LILossTrain.apply(query, key, query_indexer, key_indexer, weights, topk_indices, softmax_max, softmax_sum,
-                             scale_value, query_rope, key_rope, actual_seq_qlen, actual_seq_klen, layout, sparse_mode,
-                             pre_tokens, next_tokens, )
-    return loss / sq
+    ):
+        """NPU Sparse Lightning Indexer KL Divergence Loss Function"""
+        sq = query.shape[1]
+        loss = LILossTrain.apply(query, key, query_indexer, key_indexer, weights, topk_indices, softmax_max,
+                                 softmax_sum, scale_value, query_rope, key_rope, actual_seq_qlen, actual_seq_klen,
+                                 layout, sparse_mode, pre_tokens, next_tokens, )
+        return loss / sq
 
 
 class LILossTrain(torch.autograd.Function):
@@ -59,24 +63,24 @@ class LILossTrain(torch.autograd.Function):
 
     @staticmethod
     def forward(
-            ctx,
-            query,
-            key,
-            query_indexer,
-            key_indexer,
-            weights,
-            sparse_indices,
-            softmax_max,
-            softmax_sum,
-            scale_value=1,
-            query_rope=None,
-            key_rope=None,
-            actual_seq_qlen=None,
-            actual_seq_klen=None,
-            layout='BSND',
-            sparse_mode=3,
-            pre_tokens=65536,
-            next_tokens=65536,
+        ctx,
+        query,
+        key,
+        query_indexer,
+        key_indexer,
+        weights,
+        sparse_indices,
+        softmax_max,
+        softmax_sum,
+        scale_value=1,
+        query_rope=None,
+        key_rope=None,
+        actual_seq_qlen=None,
+        actual_seq_klen=None,
+        layout='BSND',
+        sparse_mode=3,
+        pre_tokens=65536,
+        next_tokens=65536,
     ):
         """
         Forward pass: compute the total loss by processing hidden states in chunks.
@@ -155,21 +159,24 @@ class LILossTrain(torch.autograd.Function):
 
 
 def dsa_forward(
-        self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-        attn_mask: torch.Tensor | None = None,
-        scale: float | None = None,
-        q_indexer: torch.Tensor | None = None,
-        k_indexer: torch.Tensor | None = None,
-        weights: torch.Tensor | None = None,
-        end_pos: torch.Tensor | None = None,
-        index_topk: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    self,
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    attn_mask: torch.Tensor | None = None,
+    scale: float | None = None,
+    q_indexer: torch.Tensor | None = None,
+    k_indexer: torch.Tensor | None = None,
+    weights: torch.Tensor | None = None,
+    end_pos: torch.Tensor | None = None,
+    index_topk: torch.Tensor | None = None,
+) -> torch.Tensor:
     """
     Forward pass of the dsa module.
-    """    
+    """
+    if k.shape[1] != 1 or v.shape[1] != 1:
+        raise NotImplementedError("Only support num_head_kv == 1 in dsa forward under absorb mode.")
+
     # Fuse LILossTrain includes LIG
     topk_indices, _ = torch_npu.npu_lightning_indexer(
         q_indexer,
@@ -184,9 +191,10 @@ def dsa_forward(
         return_value=True,
     )
 
+    # To BSND
     q = q.transpose(1, 2)
-    k = k.transpose(1, 2)[:, :, 0:1, :]
-    v = v.transpose(1, 2)[:, :, 0:1, :]
+    k = k.transpose(1, 2)
+    v = v.transpose(1, 2)
 
     # Split q_nope / q_pe
     q_nope, q_pe = torch.split(q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
@@ -198,21 +206,24 @@ def dsa_forward(
     output, softmax_max, softmax_sum, *_ = torch_npu.npu_sparse_flash_attention(
         q_nope, k_nope, v,
         sparse_indices=topk_indices.to(torch.int32),
-        block_table=None,           
+        block_table=None,
         actual_seq_lengths_query=actual_seq_len,
         actual_seq_lengths_kv=actual_seq_len,
         query_rope=q_pe,
         key_rope=k_pe,
         scale_value=scale,
         sparse_block_size=1,
-        layout_query='BSND',  
-        layout_kv='BSND',     
-        sparse_mode=3,      
+        layout_query='BSND',
+        layout_kv='BSND',
+        sparse_mode=3,
         attention_mode=2,            # 0: GQA/MHA, 1: MLA-naive, 2: MLA-absorb
         return_softmax_lse=True,     # it must be True in training mode
     )
 
-    loss = fused_sparse_lightning_indexer_kl_loss(
+    # The loss is actually computed by SparseLightningIndexerKLLoss.forward
+    # If tp is enabled, inner_attention.compute_dsa_indexer_loss is patched in deepseek_v32_parallelize.py
+    # Otherwise, inner_attention.compute_dsa_indexer_loss is patched in this file
+    loss = self.compute_dsa_indexer_loss(
         q_nope,
         k_nope,
         q_indexer,
@@ -244,4 +255,11 @@ class DSAKernel(BaseKernel):
         count = replace_methods("DSV32_SDPA", "forward", dsa_forward, package=pkg)
         logger.info(f"  [DSV32_SDPA forward] Applied {count} replacement(s)")
         logger.info(f"  Only matrix absorb mode is supported, and LI Loss is enabled by default.")
+
+        # If tp is no enabled, then the indexer_loss patch in deepseek_v32_parallelize.py won't be applied
+        # The patch is applied here as a supplement
+        for transformer_block in model.layers.values():
+            inner_attention = transformer_block.attention.inner_attention
+            if not isinstance(inner_attention.compute_dsa_indexer_loss, SparseLightningIndexerKLLoss):
+                inner_attention.compute_dsa_indexer_loss = SparseLightningIndexerKLLoss()
         return model

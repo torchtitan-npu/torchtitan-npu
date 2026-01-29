@@ -10,7 +10,8 @@ import torch.distributed as dist
 from torch.distributed._tensor import DTensor, Replicate, Shard, Partial
 import torch_npu
 
-from torchtitan_npu.converter.kernels.dsa import fused_sparse_lightning_indexer_kl_loss, LILossTrain
+from torchtitan_npu.converter.kernels.dsa import SparseLightningIndexerKLLoss, LILossTrain
+from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
 from torchtitan_npu.patches.distributed.custom_context_parallel import CustomContextParallelContext
 
 
@@ -94,22 +95,25 @@ def allgather_sequence(tensor, mesh):
 
 
 def dsa_forward_with_cp(
-        self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-        attn_mask: torch.Tensor | None = None,
-        scale: float | None = None,
-        q_indexer: torch.Tensor | None = None,
-        k_indexer: torch.Tensor | None = None,
-        weights: torch.Tensor | None = None,
-        end_pos: torch.Tensor | None = None,
-        index_topk: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    self,
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    attn_mask: torch.Tensor | None = None,
+    scale: float | None = None,
+    q_indexer: torch.Tensor | None = None,
+    k_indexer: torch.Tensor | None = None,
+    weights: torch.Tensor | None = None,
+    end_pos: torch.Tensor | None = None,
+    index_topk: torch.Tensor | None = None,
+) -> torch.Tensor:
     """
     Forward pass of the dsa module with context parallel, based on torchtitan_npu.converter.kernels.dsa.dsa_forward
     Out context parallel strategy for DSA is to simply allgather KV tensors because these tensors are relatively small
     """
+    if k.shape[1] != 1 or v.shape[1] != 1:
+        raise NotImplementedError("Only support num_head_kv == 1 in dsa forward under absorb mode.")
+
     # get complete k_indexer in cp_group by allgather
     k_indexer_global = allgather_sequence(k_indexer, self.cp_mesh)
 
@@ -131,9 +135,10 @@ def dsa_forward_with_cp(
         return_value=True,
     )
 
+    # To BSND
     q = q.transpose(1, 2)
-    k = k.transpose(1, 2)[:, :, 0:1, :]
-    v = v.transpose(1, 2)[:, :, 0:1, :]
+    k = k.transpose(1, 2)
+    v = v.transpose(1, 2)
 
     # Split q_nope / q_pe
     q_nope, q_pe = torch.split(q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
@@ -165,7 +170,7 @@ def dsa_forward_with_cp(
     )
 
     # to ensure causal attn in npu_sparse_lightning_indexer_grad_kl_loss, should slice the key tensors
-    loss = fused_sparse_lightning_indexer_kl_loss(
+    loss = self.compute_dsa_indexer_loss(
         q_nope,
         k_nope_global[:, : slice_end, :, :],
         q_indexer,
@@ -206,6 +211,20 @@ def patch_indexer_grad(scale_factor):
     LILossTrain.backward = staticmethod(wrapped_backward)
 
 
+def patch_dsa_forward_check():
+    @functools.wraps(dsa_forward_with_cp)
+    def _forward_wrapper(self, *args, **kwargs):
+        # check if need to patch the indexer loss computation module
+        current_loss_impl = getattr(self, "compute_dsa_indexer_loss", None)
+        if not isinstance(current_loss_impl, SparseLightningIndexerKLLoss):
+            self.compute_dsa_indexer_loss = SparseLightningIndexerKLLoss()
+
+        return dsa_forward_with_cp(self, *args, **kwargs)
+
+    # patch the forward with dsa cp version
+    DSV32_SDPA.forward = _forward_wrapper
+
+
 class AscendDSAContextParallelContext(CustomContextParallelContext):
     """Context parallel context manager for DSA on Ascend NPU hardware."""
 
@@ -215,10 +234,9 @@ class AscendDSAContextParallelContext(CustomContextParallelContext):
         super().__enter__()
 
     def apply_patches(self):
-        from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
         DSV32_SDPA.cp_mesh = self.mesh
         # inner_attention forward will be patched with the CP version
-        DSV32_SDPA.forward = dsa_forward_with_cp
+        patch_dsa_forward_check()
 
         # scale the grad to ensure the accuracy
         cp_size = self.mesh.size()
