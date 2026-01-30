@@ -16,6 +16,14 @@ from ..registry import BaseKernel, KernelType, replace_methods, replace_function
 
 logger = logging.getLogger(__name__)
 
+# Calculate the number of experts and EP degree, which are used as parameters
+# when invoking operators during Hifloat8 low-precision training.
+group_size_params = {
+    'num_experts': None,
+    'expert_model_parallel_size': None,
+    'g_size': None
+}
+
 
 class GMMFunction(torch.autograd.Function):
     @staticmethod
@@ -103,8 +111,18 @@ def npu_grouped_experts_forward(
         or "ep" not in self.w2.device_mesh.mesh_dim_names
     ):
         run_experts_fn = indices_padding_wrapper(_run_experts_grouped_mm)
+        group_size_params['expert_model_parallel_size'] = 1
     else:
         run_experts_fn = _run_experts_grouped_mm
+        ep_dim_index = self.w2.device_mesh.mesh_dim_names.index("ep")
+        group_size_params['expert_model_parallel_size'] = self.w2.device_mesh.shape[ep_dim_index]
+    
+    if group_size_params['g_size'] is None:
+        group_size_params['num_experts'] = self.num_experts
+        group_size_params['g_size'] = (
+            group_size_params['num_experts'] // group_size_params['expert_model_parallel_size']
+        )
+
     return run_experts_fn(w13, w2, None, x, num_tokens_per_expert)
 
 

@@ -52,3 +52,21 @@ NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_co
 同时修改以下两个配置，可使用自定义的 Context Parallel 上下文环境，执行自定义的CP逻辑。
 - 配置文件的 [parallelism] 中配置`enable_custom_context_parallel = true`使能自定义CP。
 - 配置文件的 [parallelism] 中配置`custom_context_parallel_path`为自定义的CP上下文环境类的路径以真正使能自定义CP。例如：`custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"`。
+#### MXFP8/HiF8
+ 	 
+- 配置文件的 [model] 中配置 `converters` 使能，分别配置"quantize.linear.mx"，"quantize.grouped_mm.mx"用来使能线性层和MoE的低精度训练。
+- 配置recipe_name，用来指定是MXFP8低精度还是HiFloat8低精度，recipe_name可选项："mxfp8"、"hif8"。
+- filter_fqns用来指定不进行低精度替换的线性层。
+```shell
+## 配置举例：使能线性层的MXFP8低精度训练，量化方式使用MXFP8，模型层output和router.gate不进行低精度替换
+converters = ["quantize.linear.mx"]
+[quantize.linear.mx]
+recipe_name = "mxfp8"
+filter_fqns = ["output", "router.gate"]
+ 	 
+## 配置举例：配置"quantize.grouped_mm.mx"使能MoE层低精度训练，MoE低精度功能依赖"npu_gmm"，在converter配置时"npu_gmm"需要在前，"quantize.grouped_mm.mx"在后。
+converters = ["npu_gmm", "quantize.grouped_mm.mx"]
+[quantize.grouped_mm.mx]
+recipe_name = "mxfp8"
+fqns = ["experts"]
+```
