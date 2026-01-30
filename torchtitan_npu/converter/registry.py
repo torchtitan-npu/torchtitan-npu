@@ -24,6 +24,7 @@ class KernelType(Enum):
     GMM = auto()
     DSA = auto()
     FUSIONATTEN = auto()
+    BypassTritionCodegen = auto()
 
 
 class KernelRegistry:

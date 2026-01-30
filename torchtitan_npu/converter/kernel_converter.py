@@ -24,12 +24,22 @@ def _ensure_kernels_loaded() -> None:
         "fusion_attention",
     ]
 
+    features_modules = [
+        "bypass_triton_codegen"
+    ]
+
     import importlib
     for name in kernel_modules:
         try:
             importlib.import_module(f".kernels.{name}", package=__package__)
         except ImportError as e:
             logger.error(f"Kernel module {name} not available: {e}")
+
+    for name in features_modules:
+        try:
+            importlib.import_module(f".features.{name}", package=__package__)
+        except ImportError as e:
+            logger.error(f"Feature module {name} not available: {e}")
 
 
 class NPUKernelsConverter(BaseNPUConverter):
@@ -66,6 +76,15 @@ class NPUGMMConverter(BaseNPUConverter):
     """PERMUTE NPU Converter"""
     kernel_type = KernelType.GMM
     kernel_name = "Gmm"
+    
+
+class NPUBypassTritionCodegenConverter(BaseNPUConverter):
+    """
+    apply compile NPU converter
+    disable triton fusion
+    """
+    kernel_type = KernelType.BypassTritionCodegen
+    kernel_name = "BypassTritionCodegen"
 
 
 class NPUFusionAttentionConverter(BaseNPUConverter):
@@ -100,6 +119,7 @@ def register_npu_converters() -> None:
         (NPUGMMConverter, "npu_gmm"),
         (NPUDSAConverter, "npu_dsa"),
         (NPUFusionAttentionConverter, "npu_fusion_attention"),
+        (NPUBypassTritionCodegenConverter, "npu_bypass_triton_codegen")
     ]
 
     for converter_cls, name in _converters:

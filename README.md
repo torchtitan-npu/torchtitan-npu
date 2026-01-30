@@ -43,6 +43,7 @@ NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_co
     save_patch_enabled = True, (如果=False，则正常输出权重)
     ```
 
+
 #### Swap optimizer
 该特性将在模型前反向计算时将优化器卸载至host侧节省device内存，优化器更新时分片执行 “load -> update -> offload” 以降低优化器更新时的内存峰值。详细信息可参考[该文档](https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md)。
 - 配置文件的 [optimizer] 中配置`swap_optimizer = true`使能该特性。
@@ -52,6 +53,7 @@ NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_co
 同时修改以下两个配置，可使用自定义的 Context Parallel 上下文环境，执行自定义的CP逻辑。
 - 配置文件的 [parallelism] 中配置`enable_custom_context_parallel = true`使能自定义CP。
 - 配置文件的 [parallelism] 中配置`custom_context_parallel_path`为自定义的CP上下文环境类的路径以真正使能自定义CP。例如：`custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"`。
+
 #### MXFP8/HiF8
  	 
 - 配置文件的 [model] 中配置 `converters` 使能，分别配置"quantize.linear.mx"，"quantize.grouped_mm.mx"用来使能线性层和MoE的低精度训练。
@@ -70,3 +72,8 @@ converters = ["npu_gmm", "quantize.grouped_mm.mx"]
 recipe_name = "mxfp8"
 fqns = ["experts"]
 ```
+
+#### FSDP2 inductor后端编译不使用triton融合算子
+- 配置训练配置toml文件的 [model] `converters` ，配置`npu_bypass_triton_codegen`
+- 修改训练配置toml文件的 [compile] `enable=True`, `components=["model", "loss"]`
+- 配置环境变量 `TORCHINDUCTOR_SIZE_ASSERTS=0`
