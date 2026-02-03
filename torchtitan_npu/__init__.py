@@ -27,6 +27,8 @@ def _apply_patches():
     from .patches.optimizer import swap_optimizer
     # patching context_parallel utils
     from .patches.distributed import context_parallel_utils
+    # patching torch_npu
+    from .patches.torch_npu import custom_shardings
 
     # patching models
     from .models import deepseek_v3
