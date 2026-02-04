@@ -24,12 +24,12 @@ from torch.distributed.tensor.parallel import (
 from torchtitan.config import JobConfig, TORCH_DTYPE_MAP
 from torchtitan.distributed import NoParallel, ParallelDims
 from torchtitan.distributed.activation_checkpoint import apply_ac
+from torchtitan.distributed.expert_parallel import ExpertParallel, TensorParallel
 from torchtitan.distributed.tensor_parallel import maybe_enable_async_tp
 from torchtitan.models.llama3.infra.parallelize import apply_ddp
 from torchtitan.models.llama4.infra.parallelize import (
     apply_compile,
     apply_fsdp,
-    apply_moe_ep_tp,
 )
 
 from torchtitan_npu.converter.kernels.dsa import SparseLightningIndexerKLLoss
@@ -333,3 +333,71 @@ def apply_non_moe_tp(
         f"Applied {'Float8 tensorwise ' if enable_float8_tensorwise_tp else ''}"
         "Tensor Parallelism to the model"
     )
+
+
+def apply_moe_ep_tp(
+    model: nn.Module,
+    tp_mesh: DeviceMesh | None,
+    ep_mesh: DeviceMesh | None,
+    ep_tp_mesh: DeviceMesh | None,
+    etp_enabled: bool,
+):
+    assert (
+        tp_mesh is not None or ep_mesh is not None
+    ), f"""
+        At least one of Tensor Parallel mesh (tp_mesh) or Expert Parallel mesh (ep_mesh) must be provided.
+        Current status: tp_mesh={tp_mesh}, ep_mesh={ep_mesh}
+        """
+
+    for transformer_block in model.layers.values():
+        if not transformer_block.moe_enabled:
+            continue
+
+        if tp_mesh is not None:
+            moe_layer_plan = {
+                # input / output sharding on the seqlen dim
+                "moe": PrepareModuleInputOutput(
+                    input_layouts=(Shard(1),),
+                    desired_input_layouts=(Shard(1),),
+                    use_local_input=True,
+                    output_layouts=(Shard(1),),
+                    desired_output_layouts=(Shard(1),),
+                ),
+                "moe.router.gate": SequenceParallel(sequence_dim=0, use_local_output=True),
+            }
+            if transformer_block.moe.shared_experts is not None:
+                # input: sharded on fused batch-seq dimension (dim=0)
+                # all-gather for input, reduce-scatter for output
+                moe_layer_plan.update(
+                    {
+                        "moe.shared_experts": PrepareModuleInput(
+                            input_layouts=(Shard(0),),
+                            desired_input_layouts=(Replicate(),),
+                        ),
+                        "moe.shared_experts.w1": ColwiseParallel(),
+                        "moe.shared_experts.w2": RowwiseParallel(output_layouts=Shard(0)),
+                        "moe.shared_experts.w3": ColwiseParallel(),
+                    }
+                )
+            parallelize_module(
+                module=transformer_block,
+                device_mesh=tp_mesh,
+                parallelize_plan=moe_layer_plan,
+            )
+
+        # Currently only TP and TP extend EP are supported
+        experts_mesh, experts_plan = None, None
+        if ep_mesh is None:
+            experts_mesh = tp_mesh
+            experts_plan = TensorParallel()
+        elif tp_mesh is None or not etp_enabled:
+            experts_mesh = ep_mesh
+            experts_plan = ExpertParallel()
+        else:
+            raise NotImplementedError("ETP is not supported currently")
+
+        parallelize_module(
+            module=transformer_block.moe.experts,
+            device_mesh=experts_mesh,
+            parallelize_plan=experts_plan,
+        )
