@@ -21,6 +21,7 @@ from typing import Any, TypeVar
 
 import torch
 import torch.nn as nn
+from torch.distributed.tensor import DTensor
 from torch.optim import Optimizer
 from torch.optim.optimizer import _use_grad_for_differentiable
 import torchtitan
@@ -38,6 +39,13 @@ _original_build_optimizers = torchtitan.components.optimizer.build_optimizers
 def get_torch_device():
     # get torch.device
     return get_device_info()[1]
+
+
+def unwrap_dtensor(tensor):
+    """ get normal tensor """
+    if isinstance(tensor, DTensor):
+        return tensor.to_local()
+    return tensor
 
 
 class SwapOptimizersContainer(OptimizersContainer):
@@ -82,7 +90,7 @@ class SwapOptimizersContainer(OptimizersContainer):
                 for p in group['params']:
                     optim.param_to_group_map[p] = group
                     SwapOptimizersContainer.param_state_initialization(p, optim)
-            swap_num = sum([sum([p.to_local().numel() for p in group['params']]) for group in optim.param_groups])
+            swap_num = sum([sum([unwrap_dtensor(p).numel() for p in group['params']]) for group in optim.param_groups])
             optim.swap_numel = swap_num // swap_optimizer_times
             logger.info(f"Swap param numel for optimizer_{idx}: {optim.swap_numel} / {swap_num}\n")
 
@@ -105,8 +113,8 @@ class SwapOptimizersContainer(OptimizersContainer):
                 cpu_state[key] = None
             else:
                 device_state[key] = torch.zeros_like(param, memory_format=torch.contiguous_format)
-                device_state[key].to_local().untyped_storage().resize_(0)   # offload device states
-                cpu_state[key] = torch.zeros_like(param.to_local(), pin_memory=True, device='cpu')
+                unwrap_dtensor(device_state[key]).untyped_storage().resize_(0)   # offload device states
+                cpu_state[key] = torch.zeros_like(unwrap_dtensor(param), pin_memory=True, device='cpu')
 
     @classmethod
     def swap_states_to_device(cls, param):
@@ -118,7 +126,7 @@ class SwapOptimizersContainer(OptimizersContainer):
         for key in cls.state_keys:
             if key not in cpu_state or cpu_state[key] is None:
                 continue
-            local_state = device_state[key].to_local()
+            local_state = unwrap_dtensor(device_state[key])
             if local_state.untyped_storage().size() == 0:
                 local_state.untyped_storage().resize_(cpu_state[key].untyped_storage().size())
                 local_state.copy_(cpu_state[key], non_blocking=True)
@@ -135,7 +143,7 @@ class SwapOptimizersContainer(OptimizersContainer):
         for key in cls.state_keys:
             if key not in device_state or device_state[key] is None:
                 continue
-            local_state = device_state[key].to_local()
+            local_state = unwrap_dtensor(device_state[key])
             if local_state.untyped_storage().size() != 0:
                 cpu_state[key].copy_(local_state, non_blocking=True)
                 local_state.untyped_storage().resize_(0)
@@ -186,7 +194,7 @@ def pipeline_load_param(swap_numel, params_list, start_index, current_swap_count
 
         idx = start_index
         while idx < len(params_list):
-            param_local = params_list[idx].to_local()
+            param_local = unwrap_dtensor(params_list[idx])
             if params_list[idx].grad is None:
                 idx += 1
                 continue    # skip no grad param
@@ -251,7 +259,7 @@ def swap_optimizer_step(self, closure=None):
         # offload
         with get_torch_device().stream(SwapOptimizersContainer.swap_to_host_stream):
             SwapOptimizersContainer.wait_param_update_event(param)
-            swap_count -= param.to_local().numel()
+            swap_count -= unwrap_dtensor(param).numel()
             SwapOptimizersContainer.swap_states_to_host(param)
 
     return loss
