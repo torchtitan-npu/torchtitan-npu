@@ -22,36 +22,32 @@ logger = logging.getLogger(__name__)
 def _npu_moe_forward(self, x):
     bs, slen, dim = x.shape
     x = x.view(-1, dim)
-    num_tokens = x.shape[0]
-    top_scores, selected_experts_indices, num_tokens_per_expert = self.router(x, self.expert_bias)
+
+    (
+        top_scores,
+        selected_experts_indices,
+        num_tokens_per_expert
+    ) = self.router(x, self.expert_bias)
 
     with torch.no_grad():
         self.tokens_per_expert.add_(num_tokens_per_expert)
 
-    if selected_experts_indices.dim() == 1:
-        expert_indices_2d = selected_experts_indices.view(num_tokens, -1)
-        top_scores_2d = top_scores.view(num_tokens, -1)
-    else:
-        expert_indices_2d = selected_experts_indices
-        top_scores_2d = top_scores
-
-    routed_input, sorted_indices = torch_npu.npu_moe_token_permute(
-        x, expert_indices_2d.to(torch.int32)
-    )
-    top_scores_sorted = top_scores_2d.flatten()[sorted_indices]
-
-    if self.score_before_experts:
-        routed_input = (routed_input.float() * top_scores_sorted.reshape(-1, 1)).to(x.dtype)
+    indices = selected_experts_indices.view(-1, self.reorderer.top_k)
+    routed_input, sorted_indices = torch_npu.npu_moe_token_permute(x, indices)
 
     routed_output = self.experts(routed_input, num_tokens_per_expert)
-    out = self.shared_experts(x) if self.shared_experts is not None else torch.zeros_like(x)
 
-    if not self.score_before_experts:
-        routed_output = (routed_output.float() * top_scores_sorted.reshape(-1, 1)).to(x.dtype)
+    if self.shared_experts is not None:
+        out = self.shared_experts(x)
+    else:
+        out = torch.zeros_like(x)
 
-    probs = torch.ones(num_tokens, top_scores_2d.shape[1], device=x.device, dtype=routed_output.dtype)
     unpermuted = torch_npu.npu_moe_token_unpermute(
-        routed_output, sorted_indices.to(torch.int32), probs
+        routed_output, sorted_indices,
+        # Mixing FP32 `topk_score` and BF16 `routed_output` causes
+        # MoeTokenUnpermuteGrad to return NaN values. Cast the FP32
+        # part to BF16 as a temporary workaround.
+        top_scores.to(x.dtype)
     )
     return (out + unpermuted).reshape(bs, slen, dim)
 
