@@ -23,6 +23,7 @@ def _apply_patches():
     # patching torch
     from .patches.torch import fsdp
     from .patches.torch import pipelining
+    from .patches.torch import hf_datasets
     # patching optimizer
     from .patches.optimizer import swap_optimizer
     # patching context_parallel utils

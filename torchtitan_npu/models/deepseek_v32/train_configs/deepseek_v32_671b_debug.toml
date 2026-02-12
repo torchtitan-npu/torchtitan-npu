@@ -41,8 +41,8 @@ local_batch_size = 4
 seq_len = 2048
 max_norm = 1.0  # grad norm clipping
 steps = 10_000
-dataset = "c4_test"  # supported datasets: c4_test (2K), c4 (177M)
-dataset_path = "./tests/assets/c4_test"
+dataset = "enwiki-eod"
+dataset_path = "./tests/assets/enwiki"
 
 [parallelism]
 data_parallel_replicate_degree = 1
