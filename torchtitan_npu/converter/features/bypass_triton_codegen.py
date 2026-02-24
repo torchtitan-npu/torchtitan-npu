@@ -5,13 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-
 from functools import wraps
+
 import torch
 import torch.nn as nn
 from torch._inductor.decomposition import decompositions
 from torch._inductor.lowering import lowerings
-
 from torchtitan.config.job_config import Compile as CompileConfig
 from torchtitan_npu.patches.torch._inductor.graph import graphlowering_call_function
 from torchtitan_npu.patches.torch_npu._inductor.lowering import fix_npu_inductor
@@ -32,10 +31,10 @@ def compile_bypass_fusion(func):
     """
 
     @wraps(func)
-    def wrapper(model: nn.Module, compile_config: CompileConfig):
+    def wrapper(model: nn.Module, compile_config: CompileConfig, ep_enabled: bool):
         lowerings.clear()
         decompositions.clear()
-        return func(model, compile_config)
+        return func(model, compile_config, ep_enabled)
     
     return wrapper
 

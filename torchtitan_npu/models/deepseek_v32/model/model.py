@@ -4,17 +4,20 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-import math
-from typing import Optional, ClassVar
 import logging
+import math
+from typing import ClassVar, Optional
+
 import torch
-from torch import nn
-from einops import rearrange
 import torch.nn.functional as F
-from torch.nn.attention import sdpa_kernel, SDPBackend
+from einops import rearrange
 from scipy.linalg import hadamard
-from torchtitan.protocols.model import AttentionMasksType
+from torch import nn
+from torch.distributed.tensor import DTensor
+from torch.nn.attention import sdpa_kernel, SDPBackend
 from torchtitan.models.deepseek_v3.model.model import DeepSeekV3Model, TransformerBlock
+from torchtitan.protocols.model import AttentionMasksType
+
 from .args import DeepSeekV32ModelArgs
 
 logger = logging.getLogger()
@@ -218,7 +221,7 @@ class DSAIndexerLossLoggingHelper:
         tracker = DSAIndexerLossLoggingHelper.tracker
         if "values" not in tracker:
             tracker["values"] = torch.zeros(num_layers, device=loss.device)
-        tracker["values"][layer_number - 1] += loss.detach()
+        tracker["values"][layer_number - 1] += loss.to_local().detach() if isinstance(loss, DTensor) else loss.detach()
 
     @staticmethod
     def clean_loss_in_tracker():
@@ -422,7 +425,6 @@ class Attention(nn.Module):
             mscale = 0.1 * model_args.mscale * math.log(model_args.rope_factor) + 1.0
             self.softmax_scale = self.softmax_scale * mscale * mscale
         self.indexer = Indexer(model_args)
-        self.use_flex_attn = model_args.use_flex_attn
         self.inner_attention = DSV32_SDPA(model_args)
 
     def forward(
@@ -431,6 +433,7 @@ class Attention(nn.Module):
         freqs_cis: torch.Tensor,
         attention_masks: AttentionMasksType | None,
         layer_id,
+        positions: torch.Tensor | None = None,
     ):
         """
         Forward pass for the Multi-Head Latent Attention (MLA) Layer.
@@ -549,6 +552,7 @@ class TransformerBlockV32(TransformerBlock):
         x: torch.Tensor,
         freqs_cis: torch.Tensor,
         attention_masks: AttentionMasksType | None,
+        positions: torch.Tensor | None = None,
     ):
         """
         Forward pass for the Transformer block.
@@ -560,7 +564,7 @@ class TransformerBlockV32(TransformerBlock):
         Returns:
             torch.Tensor: Output tensor with the same shape as the input.
         """
-        x = x + self.attention(self.attention_norm(x), freqs_cis, attention_masks, self.layer_id)
+        x = x + self.attention(self.attention_norm(x), freqs_cis, attention_masks, self.layer_id, positions)
         if self.moe_enabled:
             x = x + self.moe(self.ffn_norm(x))
         else:

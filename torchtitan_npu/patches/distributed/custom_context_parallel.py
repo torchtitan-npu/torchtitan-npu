@@ -2,16 +2,14 @@
 # https://github.com/pytorch/pytorch/blob/v2.9.0/torch/distributed/tensor/experimental/_attention.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) Meta Platforms, Inc. and affiliates
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+# Developed by Huawei Technologies Co., Ltd. based on Meta Platforms, Inc. and affiliates TorchTitan
 
 from typing import Optional, List, Set, Generator
 
 import torch
 import torch.nn as nn
 from torch.distributed.device_mesh import DeviceMesh
-from torch.distributed.tensor.experimental._attention import _context_parallel_buffers
+from torch.distributed.tensor.experimental._context_parallel._attention import _context_parallel_buffers
 import torchtitan
 
 

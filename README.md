@@ -5,7 +5,7 @@
 
 ```shell
 # 安装torchtitan以及torchtitan-npu
-pip install torchtitan==0.2.0
+pip install torchtitan==0.2.1
 pip install -e /path/to/torchtitan-npu
 
 # 示例执行，2层（1moe，1dense）裁剪模型（请提前配置toml文件中相关地址）

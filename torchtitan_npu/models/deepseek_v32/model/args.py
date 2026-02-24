@@ -21,3 +21,4 @@ class DeepSeekV32ModelArgs(DeepSeekV3ModelArgs):
     save_expert_format: Optional[str] = None
     hf_save_dir: Optional[str] = None
     save_patch_enabled: bool = False
+    moe_impl: str = "standard"

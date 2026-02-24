@@ -15,7 +15,7 @@ from torchtitan.components.loss import build_cross_entropy_loss
 from torchtitan.components.lr_scheduler import build_lr_schedulers
 from torchtitan.components.optimizer import build_optimizers_with_moe_load_balancing
 from torchtitan.components.tokenizer import build_hf_tokenizer
-from torchtitan.datasets.hf_datasets import build_hf_dataloader
+from torchtitan.hf_datasets.text_datasets import build_text_dataloader
 from torchtitan.distributed.pipeline_parallel import pipeline_llm
 from torchtitan.models.moe import MoEArgs
 from torchtitan.protocols.train_spec import TrainSpec
@@ -44,15 +44,11 @@ deepseekv32_args = {
             score_before_experts=False,
             use_grouped_mm=False,
         ),
-        n_expert_groups=8,
-        n_limited_groups=1,
         q_lora_rank=1536,
         kv_lora_rank=512,
         qk_nope_head_dim=128,
         qk_rope_head_dim=64,
         v_head_dim=128,
-        use_flex_attn=False,
-        attn_mask_type="block_casual",
         index_n_heads=64,
         index_head_dim=128,
         index_topk=2048,
@@ -73,7 +69,7 @@ def get_train_spec() -> TrainSpec:
         pipelining_fn=pipeline_llm,
         build_optimizers_fn=build_optimizers_with_moe_load_balancing,
         build_lr_schedulers_fn=build_lr_schedulers,
-        build_dataloader_fn=build_hf_dataloader,
+        build_dataloader_fn=build_text_dataloader,
         build_tokenizer_fn=build_hf_tokenizer,
         build_loss_fn=build_cross_entropy_loss,
         state_dict_adapter=DeepSeekV32StateDictAdapter,
