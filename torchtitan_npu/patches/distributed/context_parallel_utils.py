@@ -35,6 +35,17 @@ def _create_cp_ctx_wrapper(
     # get parallel_config from the patch context
     parallel_config = getattr(_patch_context, 'current_parallel_config', None)
 
+    # verify tp + cp availability
+    tp_degree = getattr(parallel_config, 'tensor_parallel_degree', None)
+    if tp_degree:
+        cp_degree = cp_mesh.size()
+        model_args = getattr(_patch_context, 'model_args', None)
+        n_heads = getattr(model_args, 'n_heads', None)
+        if n_heads % (cp_degree * tp_degree) != 0:
+            raise ValueError(f"The combined CP ({cp_degree}) and TP ({tp_degree}) "
+             f"degree does not divide the number of heads ({n_heads}).")
+
+
     # use custom cp context
     if parallel_config and getattr(parallel_config, "enable_custom_context_parallel", False):
         custom_cp_path = getattr(parallel_config, "custom_context_parallel_path", "")
@@ -56,12 +67,14 @@ def _create_cp_ctx_wrapper(
 def _step_wrapper(self, *args, **kwargs):
     # before step, inject the config variable into the patch context
     _patch_context.current_parallel_config = self.job_config.parallelism
+    _patch_context.model_args = self.model_args
     try:
         # original step func
         return _original_step_method(self, *args, **kwargs)
     finally:
         # clear the patch context
         _patch_context.current_parallel_config = None
+        _patch_context.model_args = None
 
 
 # patch for the cp context creation

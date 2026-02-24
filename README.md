@@ -77,3 +77,9 @@ fqns = ["experts"]
 - 配置训练配置toml文件的 [model] `converters` ，配置`npu_bypass_triton_codegen`
 - 修改训练配置toml文件的 [compile] `enable=True`, `components=["model", "loss"]`
 - 配置环境变量 `TORCHINDUCTOR_SIZE_ASSERTS=0`
+
+#### SDPA 注意力支持 Ulysses CP
+在训练配置toml文件的[parallelism]部分中配置：
+context_parallel_degree = 2 # 或任意适当的值
+enable_custom_context_parallel = true
+custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.ulysses_cp.UlyssesContextParallelContext"
