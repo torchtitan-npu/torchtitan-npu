@@ -32,7 +32,7 @@ def _apply_patches():
     from .patches.torch_npu import custom_shardings
 
     # patching models
-    from .models import deepseek_v3
+    from .models import deepseek_v3, llama3
 
     # patching mxfp8/hif8
     from .converter import quant_converter
