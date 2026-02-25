@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets import load_dataset
-from torchtitan.datasets.hf_datasets import DATASETS, DatasetConfig, _process_c4_text
+from torchtitan.hf_datasets.text_datasets import DATASETS, DatasetConfig, _process_c4_text
 
 from torchtitan.tools.logging import init_logger, logger
 
