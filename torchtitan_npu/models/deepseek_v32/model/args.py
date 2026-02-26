@@ -12,6 +12,7 @@ from torchtitan.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
 @dataclass
 class DeepSeekV32ModelArgs(DeepSeekV3ModelArgs):
 
+    norm_eps: float = 1e-6
     index_n_heads: int = 64
     index_head_dim: int = 128
     index_topk: int = 2048

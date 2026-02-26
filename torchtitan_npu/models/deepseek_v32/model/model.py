@@ -44,6 +44,26 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool
     return y.to(dtype)
 
 
+class RMSNorm(nn.Module):
+    
+    def __init__(self, dim: int, eps: float = 1e-6):
+        super().__init__()
+        self.dim = dim
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim, dtype=torch.float32))
+    
+    def forward(self, x: torch.Tensor):
+        dtype = x.dtype
+        x = x.float()
+        var = x.pow(2).mean(-1, keepdim=True)
+        x = x * torch.rsqrt(var + self.eps)
+        return (self.weight * x).to(dtype)
+    
+    def reset_parameters(self):
+        if self.weight is not None:
+            nn.init.ones_(self.weight)
+
+
 def hadamard_transform_ref(x, scale=1.0):
     """
     Eager implementation of the Hadamard transform
@@ -266,8 +286,8 @@ class DSAIndexerLoss(torch.nn.Module):
         index_score = F.softmax(index_score, dim=-1, dtype=torch.float32)
         # considering only the selected token
         selected_main_attn_dist = F.normalize(selected_main_attn_dist, p=1, dim=-1)
-        loss = F.kl_div((index_score + 1e-10).log(),
-                        selected_main_attn_dist + 1e-10,
+        loss = F.kl_div((index_score + 1e-8).log(),
+                        selected_main_attn_dist + 1e-8,
                         reduction='none',
                         ).sum(dim=-1).mean()
         loss *= loss_scale
@@ -278,15 +298,9 @@ def get_attn_scores(
         query,
         key,
         attention_mask,
-        num_attn_head_per_group,
         attn_scale,
 ):
     """aggregate the main attention scores"""
-    if num_attn_head_per_group > 1:
-        key = key.repeat_interleave(
-            num_attn_head_per_group, dim=1
-        )
-
     num_head_q = query.shape[1]
     num_head_k = key.shape[1]
     if num_head_q != num_head_k and num_head_k != 1:
@@ -295,7 +309,7 @@ def get_attn_scores(
             f"Current {num_head_q=}, {num_head_k=}."
         )
 
-    attn = torch.einsum('bnqd, bmkd -> bnqk', query, key) * attn_scale
+    attn = (query @ key.transpose(-1, -2)) * attn_scale
 
     if attention_mask is not None:
         attn.masked_fill_(attention_mask, float('-inf'))
@@ -368,14 +382,7 @@ class DSV32_SDPA(torch.nn.Module):
             output = F.scaled_dot_product_attention(q, k, v, attn_mask=~attention_masks, scale=scale, is_causal=False)
 
         # compute sparse lightning_indexer loss
-        num_attn_head_per_group = 1
-        main_attn_dist = get_attn_scores(
-                                        q.detach(),
-                                        k.detach(),
-                                        attention_masks,
-                                        num_attn_head_per_group,
-                                        1.0,
-                                    )
+        main_attn_dist = get_attn_scores(q.detach(), k.detach(), attention_masks, scale)
         selected_main_attn_dist = torch.gather(main_attn_dist, dim=-1, index=topk_indices)
         loss = self.compute_dsa_indexer_loss(
             selected_main_attn_dist,
@@ -470,7 +477,12 @@ class Attention(nn.Module):
             k = k.transpose(1, 2)  # (bsz, n_heads, seqlen, qk_head_dim)
             v = v.transpose(1, 2)  # (bsz, n_heads, seqlen, v_head_dim)
 
-            q_indexer, weights, k_indexer, end_pos = self.indexer(x, qr, 0, freqs_cis, attention_masks)
+            q_indexer, weights, k_indexer, end_pos = self.indexer(x.detach(),
+                                                                  qr.detach(),
+                                                                  0,
+                                                                  freqs_cis,
+                                                                  attention_masks
+                                                                  )
 
             loss, output = self.inner_attention(q,
                                                 k,
@@ -501,7 +513,12 @@ class Attention(nn.Module):
             k = k.transpose(1, 2)  # (bsz, n_heads, 1, qk_head_dim)
             v = v.transpose(1, 2)  # (bsz, n_heads, 1, v_head_dim)
 
-            q_indexer, weights, k_indexer, end_pos = self.indexer(x, qr, 0, freqs_cis, attention_masks)
+            q_indexer, weights, k_indexer, end_pos = self.indexer(x.detach(),
+                                                                  qr.detach(),
+                                                                  0,
+                                                                  freqs_cis,
+                                                                  attention_masks
+                                                                  )
 
             loss, output = self.inner_attention(q,
                                                 k,
@@ -550,6 +567,7 @@ class TransformerBlockV32(TransformerBlock):
     def forward(
         self,
         x: torch.Tensor,
+        residual: torch.Tensor,
         freqs_cis: torch.Tensor,
         attention_masks: AttentionMasksType | None,
         positions: torch.Tensor | None = None,
@@ -564,12 +582,21 @@ class TransformerBlockV32(TransformerBlock):
         Returns:
             torch.Tensor: Output tensor with the same shape as the input.
         """
-        x = x + self.attention(self.attention_norm(x), freqs_cis, attention_masks, self.layer_id, positions)
-        if self.moe_enabled:
-            x = x + self.moe(self.ffn_norm(x))
+        if residual is None:
+            x, residual = self.attention_norm(x), x
         else:
-            x = x + self.feed_forward(self.ffn_norm(x))
-        return x
+            x = x + residual
+            residual = x
+            x = self.attention_norm(x)
+        x = self.attention(x, freqs_cis, attention_masks, self.layer_id)
+        x = x + residual
+        residual = x
+        x = self.ffn_norm(x)
+        if self.moe_enabled:
+            x = self.moe(x)
+        else:
+            x = self.feed_forward(x)
+        return x, residual
 
 
 class DeepSeekV32Model(DeepSeekV3Model):
@@ -582,3 +609,32 @@ class DeepSeekV32Model(DeepSeekV3Model):
         for layer_id in range(model_args.n_layers):
             self.layers[str(layer_id)] = TransformerBlockV32(layer_id, model_args)
         self.model_args = model_args
+        self.norm = RMSNorm(model_args.dim)
+    
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        attention_masks: AttentionMasksType | None = None,
+    ):
+        """
+        Forward pass for the Transformer model.
+
+        Args:
+            tokens (torch.Tensor): Input token indices if pipeline parallelism is not enabled.
+                If pipeline parallelism is enabled, this will be the input token indices
+                for the ranks on the first pipeline stage. This will be the activation of the
+                previous pipeline stage if the current rank is not on the first stage.
+
+        Returns:
+            torch.Tensor: Logits tensor of shape (batch_size, vocab_size).
+        """
+
+        h = self.tok_embeddings(tokens) if self.tok_embeddings is not None else tokens
+        residual = None
+        for layer in self.layers.values():
+            h, residual = layer(h, residual, self.freqs_cis, attention_masks)
+        if residual is not None:
+            h = h + residual
+        h = self.norm(h) if self.norm is not None else h
+        output = self.output(h.float()) if self.output is not None else h
+        return output
