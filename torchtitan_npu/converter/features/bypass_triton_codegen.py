@@ -31,10 +31,10 @@ def compile_bypass_fusion(func):
     """
 
     @wraps(func)
-    def wrapper(model: nn.Module, compile_config: CompileConfig, ep_enabled: bool):
+    def wrapper(*args, **kwargs):
         lowerings.clear()
         decompositions.clear()
-        return func(model, compile_config, ep_enabled)
+        return func(*args, **kwargs)
     
     return wrapper
 
@@ -46,7 +46,9 @@ class BypassTritionCodegenKernel(BaseKernel):
     def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
         target = "apply_compile"
         pkg = "torchtitan.models"
+        pkg_npu = "torchtitan_npu.models"
         matches = find_functions(target, package=pkg)
+        matches.extend(find_functions(target, package=pkg_npu))
         if not matches:
             logger.info(f"  No matched function apply_compile for this model, continue without patching")
             return model

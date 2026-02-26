@@ -153,13 +153,15 @@ def dsa_forward_with_cp(
     k_pe_global = allgather_sequence(k_pe, self.cp_mesh)
 
     output, softmax_max, softmax_sum, *_ = torch_npu.npu_sparse_flash_attention(
-        q_nope, k_nope_global, v_global,
+        q_nope, 
+        k_nope_global[:, : slice_end, :, :], 
+        v_global[:, : slice_end, :, :],
         sparse_indices=topk_indices.to(torch.int32),
         block_table=None,
         actual_seq_lengths_query=actual_seq_len,
         actual_seq_lengths_kv=actual_seq_len * self.cp_mesh.size(),
         query_rope=q_pe,
-        key_rope=k_pe_global,
+        key_rope=k_pe_global[:, : slice_end, :, :],
         scale_value=scale,
         sparse_block_size=1,
         layout_query='BSND',

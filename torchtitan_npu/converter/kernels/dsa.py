@@ -44,11 +44,12 @@ class SparseLightningIndexerKLLoss(nn.Module):
         next_tokens=65536,
     ):
         """NPU Sparse Lightning Indexer KL Divergence Loss Function"""
+        bsz = query.shape[0]
         sq = query.shape[1]
         loss = LILossTrain.apply(query, key, query_indexer, key_indexer, weights, topk_indices, softmax_max,
                                  softmax_sum, scale_value, query_rope, key_rope, actual_seq_qlen, actual_seq_klen,
                                  layout, sparse_mode, pre_tokens, next_tokens, )
-        return loss / sq
+        return loss / (bsz * sq)
 
 
 class LILossTrain(torch.autograd.Function):

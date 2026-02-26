@@ -169,7 +169,7 @@ def matmul_backward_sharding(op_schema: OpSchema, fallback_handler: Callable) ->
         if shape_dy[2] != shape_w[1]:
             raise NotImplementedError(f"Input shapes are not 'bmk'(dy) and 'nk'(w): {shape_dy=}, {shape_w=}.")
         equation_dx = "bmk,nk->bmn"
-        op_schema_dx = copy.deepcopy(op_schema)
+        op_schema_dx = copy.copy(op_schema)
         op_schema_dx.args_schema = (op_schema_dx.args_schema[0], op_schema_dx.args_schema[2])
         strategy_dx = _mm_like_strategy(equation_dx, mesh, op_schema_dx)
 
@@ -177,7 +177,7 @@ def matmul_backward_sharding(op_schema: OpSchema, fallback_handler: Callable) ->
         if shape_dy[0] != shape_x[0] or shape_dy[1] != shape_x[1]:
             raise NotImplementedError(f"Input shapes are not 'bmn'(x) and 'bmk'(dy): {shape_x=}, {shape_dy=}.")
         equation_dw = "bmn,bmk->nk"
-        op_schema_dw = copy.deepcopy(op_schema)
+        op_schema_dw = copy.copy(op_schema)
         op_schema_dw.args_schema = (op_schema_dw.args_schema[1], op_schema_dw.args_schema[0])
         strategy_dw = _mm_like_strategy(equation_dw, mesh, op_schema_dw)
 
