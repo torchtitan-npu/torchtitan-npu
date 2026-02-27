@@ -9,11 +9,9 @@ import torch
 import torch_npu
 import torch.nn as nn
 
-from ..registry import (
-    BaseKernel,
-    KernelType,
-    replace_methods,
-)
+from ..base_converter import BaseConverter
+from ..convert_utils import replace_methods
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -244,13 +242,14 @@ def dsa_forward(
     return loss, output
 
 
-class DSAKernel(BaseKernel):
+@register_npu_converter("npu_dsa")
+class DSAKernel(BaseConverter):
 
-    kernel_type = KernelType.DSA
     MODEL_PACKAGE = "torchtitan_npu.models.deepseek_v32"
+    SUPPORTED_MODELS = {"deepseek_v32"}
 
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         pkg = cls.MODEL_PACKAGE
 
         count = replace_methods("DSV32_SDPA", "forward", dsa_forward, package=pkg)
@@ -263,4 +262,4 @@ class DSAKernel(BaseKernel):
             inner_attention = transformer_block.attention.inner_attention
             if not isinstance(inner_attention.compute_dsa_indexer_loss, SparseLightningIndexerKLLoss):
                 inner_attention.compute_dsa_indexer_loss = SparseLightningIndexerKLLoss()
-        return model
+        return count

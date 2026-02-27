@@ -10,7 +10,7 @@ import torch.distributed as dist
 from torch.distributed._tensor import DTensor, Replicate, Shard, Partial
 import torch_npu
 
-from torchtitan_npu.converter.kernels.dsa import SparseLightningIndexerKLLoss, LILossTrain
+from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss, LILossTrain
 from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
 from torchtitan_npu.patches.distributed.custom_context_parallel import CustomContextParallelContext
 

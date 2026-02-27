@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import torch_npu
 
-from ..registry import BaseKernel, KernelType, find_functions, replace_functions
+from ..base_converter import BaseConverter
+from ..convert_utils import find_functions, replace_functions
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -61,33 +63,25 @@ def npu_apply_rotary_emb_qwen(xq: torch.Tensor, xk: torch.Tensor, rope_cache: to
     return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(xk, cos.to(xk.dtype), sin.to(xk.dtype))
 
 
-class RoPEKernel(BaseKernel):
-    kernel_type = KernelType.ROPE
+@register_npu_converter("npu_rope")
+class RoPEKernel(BaseConverter):
 
+    MODEL_IMPL = {
+        "deepseek_v3": npu_apply_rotary_emb_deepseek,
+        "deepseek_v32": npu_apply_rotary_emb_deepseek,
+        "qwen3": npu_apply_rotary_emb_qwen,
+        "default": npu_apply_rotary_emb_llama,
+    }
+    
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         target = "apply_rotary_emb"
         matches = find_functions(target, model=model)
         if not matches:
             return model
+        
+        impl = cls.get_impl_cls(model_name)
 
-        # Get model name
-        name = ""
-        if hasattr(model, "config"):
-            name = getattr(model.config, "model_type", "") or getattr(model.config, "_name_or_path", "")
-        name = (name or model.__class__.__name__).lower()
+        count = replace_functions(target, impl, model=model)
 
-        if "deepseek" in name:
-            impl, style = npu_apply_rotary_emb_deepseek, "deepseek"
-        elif "llama" in name:
-            impl, style = npu_apply_rotary_emb_llama, "llama"
-        elif "qwen" in name:
-            impl, style = npu_apply_rotary_emb_qwen, "qwen"
-        else:
-            logger.info(f"  No matched style Rope for this model, continue without patching")
-            return model
-
-        replace_functions(target, impl, model=model)
-
-        logger.info(f"  Replaced: {len(matches)} RoPE functions ({style} style)")
-        return model
+        return count

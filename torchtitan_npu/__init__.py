@@ -35,7 +35,7 @@ def _apply_patches():
     from .models import deepseek_v3, llama3
 
     # patching mxfp8/hif8
-    from .converter import quant_converter
+    from .converters import quant_converter
 
     import torchtitan.models as titan_models
     new_set = set(titan_models._supported_models)
@@ -47,7 +47,7 @@ def _apply_patches():
     _inject_module("torchtitan.models.deepseek_v32", deepseek_v32)
 
     # patching model_converter
-    from .converter import kernel_converter
+    from . import converters
 
 
 def _inject_module(module_path: str, replacement_module):

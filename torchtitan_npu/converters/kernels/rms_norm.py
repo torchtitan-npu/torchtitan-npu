@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import torch_npu
 
-from ..registry import BaseKernel, KernelType, replace_modules
+from ..base_converter import BaseConverter
+from ..convert_utils import replace_modules
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +53,10 @@ def _create_npu_rms_norm(old: nn.Module) -> nn.Module:
     return new
 
 
-class RMSNormKernel(BaseKernel):
-    kernel_type = KernelType.RMS_NORM
+@register_npu_converter("npu_rms_norm")
+class RMSNormKernel(BaseConverter):
 
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         count = replace_modules(model, r"RMSNorm", _create_npu_rms_norm)
-        logger.info(f"  Replaced {count} RMSNorm module(s)")
-        return model
+        return count

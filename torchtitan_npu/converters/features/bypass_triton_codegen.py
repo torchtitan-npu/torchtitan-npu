@@ -16,11 +16,9 @@ from torchtitan_npu.patches.torch._inductor.graph import graphlowering_call_func
 from torchtitan_npu.patches.torch_npu._inductor.lowering import fix_npu_inductor
 from torchtitan_npu.patches.torch_npu._meta_registrations import npu_fusion_attention_forward
 
-from ..registry import (
-    BaseKernel,
-    KernelType,
-    find_functions,
-)
+from ..base_converter import BaseConverter
+from ..convert_utils import find_functions
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +37,13 @@ def compile_bypass_fusion(func):
     return wrapper
 
 
-class BypassTritionCodegenKernel(BaseKernel):
-    kernel_type = KernelType.BypassTritionCodegen
+@register_npu_converter("npu_bypass_triton_codegen")
+class BypassTritionCodegenKernel(BaseConverter):
+    
+    SUPPORTED_MODELS = {"deepseek_v3"}
 
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         target = "apply_compile"
         pkg = "torchtitan.models"
         pkg_npu = "torchtitan_npu.models"
@@ -59,10 +59,8 @@ class BypassTritionCodegenKernel(BaseKernel):
         from torch_npu.op_plugin.meta._meta_registrations import npu_fusion_attention_forward as original_meta_func
         # MLA performs shape inference according to the value tensor
         original_meta_func.__code__ = npu_fusion_attention_forward.__code__
-        logger.info("[Patching] npu_fusion_attention patch applied successfully.")
 
         torch._inductor.graph.GraphLowering.call_function = graphlowering_call_function
         fix_npu_inductor()
 
-        logger.info(f"  Replaced: {len(matches)} apply compile functions to disable fusion triton codegen.")
-        return model
+        return len(matches)

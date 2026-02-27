@@ -19,9 +19,9 @@ from typing import OrderedDict as OrderedDictType
 import torch
 import torch.nn as nn
 import torch.nn.utils.parametrize as parametrize
-from torchtitan_npu.converter.kernels.quant_linear import MXLinear
-from torchtitan_npu.converter.registry import BaseKernel, KernelType, replace_functions
-from torchtitan_npu.converter.kernels.quant_gmm import npu_grouped_mxfp8_mm, npu_grouped_hif8_mm
+from torchtitan_npu.converters.kernels.quant_linear import MXLinear
+from torchtitan_npu.converters.convert_utils import replace_functions
+from torchtitan_npu.converters.kernels.quant_gmm import npu_grouped_mxfp8_mm, npu_grouped_hif8_mm
 from .quant_config import MXLinearConfig, MoEGroupedRecipeName
 
 logger = logging.getLogger(__name__)

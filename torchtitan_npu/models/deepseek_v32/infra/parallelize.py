@@ -39,7 +39,7 @@ from torchtitan.models.llama4.infra.parallelize import (
     apply_fsdp,
 )
 
-from torchtitan_npu.converter.kernels.dsa import SparseLightningIndexerKLLoss
+from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
 
 
 logger = logging.getLogger(__name__)

@@ -10,11 +10,9 @@ import torch
 import torch.nn as nn
 import torch_npu
 
-from ..registry import (
-    BaseKernel,
-    KernelType,
-    replace_methods,
-)
+from ..base_converter import BaseConverter
+from ..convert_utils import replace_methods
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +50,15 @@ def _npu_moe_forward(self, x):
     return (out + unpermuted).reshape(bs, slen, dim)
 
 
-class PermuteKernel(BaseKernel):
+@register_npu_converter("npu_permute")
+class PermuteKernel(BaseConverter):
 
-    kernel_type = KernelType.PERMUTE
     MOE_PACKAGE = "torchtitan.models.moe"
 
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         pkg = cls.MOE_PACKAGE
 
         count = replace_methods("MoE", "forward", _npu_moe_forward, package=pkg)
 
-        logger.info(f"  [Permute] Applied {count} replacement(s)")
-        return model
+        return count

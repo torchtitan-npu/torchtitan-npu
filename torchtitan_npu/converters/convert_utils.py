@@ -7,78 +7,12 @@ import logging
 import re
 import inspect
 import sys
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import Optional, Callable, Type, List
 
 import torch.nn as nn
 
 logger = logging.getLogger(__name__)
-
-
-class KernelType(Enum):
-    RMS_NORM = auto()
-    ROPE = auto()
-    PERMUTE = auto()
-    GMM = auto()
-    DSA = auto()
-    FUSIONATTEN = auto()
-    BypassTritionCodegen = auto()
-
-
-class KernelRegistry:
-    """Kernel registration"""
-    _instance: Optional["KernelRegistry"] = None
-    _initialized: bool = False
-
-    def __new__(cls) -> "KernelRegistry":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        if self._initialized:
-            return
-        self._registry: dict[KernelType, Type["BaseKernel"]] = {}
-        self._initialized = True
-
-    def register(self, kernel_type: KernelType, kernel_cls: Type["BaseKernel"]) -> None:
-        if kernel_type in self._registry:
-            logger.warning(f"Overwriting kernel: {kernel_type.name}")
-        self._registry[kernel_type] = kernel_cls
-        logger.info(f"Registered: {kernel_type.name} -> {kernel_cls.__name__}")
-
-    def get(self, kernel_type: KernelType) -> Optional[Type["BaseKernel"]]:
-        return self._registry.get(kernel_type)
-
-    def get_all(self) -> list[Type["BaseKernel"]]:
-        return list(self._registry.values())
-
-    def clear(self) -> None:
-        self._registry.clear()
-
-
-KERNEL_REGISTRY = KernelRegistry()
-
-
-class BaseKernel(ABC):
-    """
-    Kernel Base Class
-
-    When a subclass defines kernel_type, it is automatically registered to KERNEL_REGISTRY.
-    """
-    kernel_type: Optional[KernelType] = None
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        if cls.kernel_type is not None:
-            KERNEL_REGISTRY.register(cls.kernel_type, cls)
-
-    @classmethod
-    @abstractmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
-        raise NotImplementedError
 
 
 @dataclass

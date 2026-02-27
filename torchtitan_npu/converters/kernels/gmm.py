@@ -10,9 +10,11 @@ import torch
 import torch_npu
 from torch import nn
 from torch.distributed.tensor import DTensor
-
 from torchtitan.models.moe.moe import indices_padding_wrapper
-from ..registry import BaseKernel, KernelType, replace_methods, replace_functions
+
+from ..base_converter import BaseConverter
+from ..convert_utils import replace_methods, replace_functions
+from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
 
@@ -132,14 +134,14 @@ def npu_grouped_experts_init_weights(self, init_std: float):
             nn.init.normal_(w, mean=0.0, std=init_std)
 
 
-class GMMKernel(BaseKernel):
-    kernel_type = KernelType.GMM
+@register_npu_converter("npu_gmm")
+class GMMKernel(BaseConverter):
 
     TARGET_PACKAGE = "torchtitan.models.moe"
     TARGET_CLASS = "GroupedExperts"
 
     @classmethod
-    def apply(cls, model: nn.Module, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
 
         replacement_counts = 0
 
@@ -169,9 +171,7 @@ class GMMKernel(BaseKernel):
         # Initialize w13
         cls._change_existing_instances(model)
 
-        logger.info(f"  [GMM] Replaced {replacement_counts} GMM methods/functions.")
-
-        return model
+        return replacement_counts
 
     @classmethod
     def _change_existing_instances(cls, model: nn.Module):
