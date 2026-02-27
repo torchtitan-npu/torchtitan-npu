@@ -19,6 +19,7 @@ def _apply_patches():
 
     # patching tools
     from .tools import profiling
+    from .tools import flight_recorder
 
     # patching torch
     from .patches.torch import fsdp
