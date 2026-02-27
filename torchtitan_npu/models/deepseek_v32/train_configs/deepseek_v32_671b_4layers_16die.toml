@@ -86,3 +86,6 @@ filter_fqns = ["output", "router.gate"]
 
 [quantize.grouped_mm.float8]
 fqns = ["experts"]
+
+[comm]
+trace_buf_size = 0

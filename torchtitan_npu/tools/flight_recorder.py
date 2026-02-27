@@ -34,6 +34,7 @@ def init_distributed_with_hccl_flight_recorder(
         _warn_overwrite_env("TORCH_HCCL_ENABLE_MONITORING", "1")
         _warn_overwrite_env("TORCH_HCCL_DUMP_ON_TIMEOUT", "1")
 
+        base_folder = kwargs.get("base_folder", "")
         dump_dir = os.path.join(base_folder, comm_config.save_traces_folder)
         prefix = comm_config.save_traces_file_prefix
         os.makedirs(dump_dir, exist_ok=True)
