@@ -28,7 +28,7 @@ NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_co
   - 如果`use_grouped_mm=True` 那么则将普通HF权重转化为gmm titan权重
   - 反之`use_grouped_mm=False` 转化为普通权重
   - ```
-    python torchtitan/scripts/checkpoint_conversion/convert_from_hf.py \
+    python ./torchtitan-npu/scripts/checkpoint_conversion/convert_from_hf.py \
     /path/to/input/ \
     /path/to/output/step-0/ \
     --model_name deepseek_v32

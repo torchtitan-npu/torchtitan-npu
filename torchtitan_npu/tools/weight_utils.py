@@ -18,8 +18,10 @@ def convert_expert_format(state_dict: Dict, target_format: str) -> Dict:
     current_format = detect_expert_format(state_dict)
 
     if target_format == 'gmm' and current_format == "standard":
+        logger.info(f"Converting expert format for save: {current_format} -> {target_format}")
         return fuse_experts(state_dict)
     elif target_format == "standard" and current_format == "gmm":
+        logger.info(f"Converting expert format for save: {current_format} -> {target_format}")
         return split_fused_experts(state_dict)
     return state_dict
 
@@ -46,57 +48,31 @@ def detect_input_format_by_path(path: str) -> str:
 
 
 def fuse_experts(state_dict: Dict) -> Dict:
-    """ Standard -> GMM: w1 w3 to w13"""
-    result = state_dict
+    """ Standard -> GMM: w1 w3 to w13"""    
     
-    pending = {}
-    keys_to_delete = []
-    
+    pending = {}    
     sorted_keys = sorted(state_dict.keys())
     
     for key in sorted_keys:
-        value = state_dict[key]
         if ".moe.experts.w1" in key:
+            
             layer_key = key.replace(".w1", "")
-            if layer_key not in pending:
-                pending[layer_key] = {}
-            pending[layer_key]["w1"] = value
-            keys_to_delete.append(key)
+            pending[layer_key] = state_dict.pop(key)
         
         elif ".moe.experts.w3" in key:
             layer_key = key.replace(".w3", "")
-            if layer_key not in pending:
-                pending[layer_key] = {}
-            pending[layer_key]["w3"] = value
-            keys_to_delete.append(key)
-            
-            # fuse immediately
-            if "w1" in pending.get(layer_key, {}):
-                w1 = pending[layer_key]["w1"]
-                w3 = pending[layer_key]["w3"]
+            if layer_key in pending:
+                w1 = pending.pop(layer_key)
+                w3 = state_dict.pop(key)
                 
                 if isinstance(w1, DTensor):
-                    fused = _fuse_dtensor("w1")
+                    fused = _fuse_w1_w3_dtensor(w1, w3)
                 else:
-                    fused = torch.cat([w1, w3], dim=1)
+                    fused = _fuse_w1_w3_tensor(w1, w3)
                 
-                # delete keys and free caches
-                result[layer_key + ".w13"] = fused
-                w1_key = layer_key + ".w1"
-                w3_key = layer_key + ".w3"
-                if w1_key in state_dict:
-                    del state_dict[w1_key]
-                if w3_key in state_dict:
-                    del state_dict[w3_key]
-                if w1_key in keys_to_delete:
-                    keys_to_delete.remove(w1_key)
-                if w3_key in keys_to_delete:
-                    keys_to_delete.remove(w3_key)
-                
-                del w1, w3
-                gc.collect()
-                torch.npu.empty_cache()
-    return result
+                state_dict[layer_key + ".w13"] = fused
+
+    return state_dict
 
 
 def split_fused_experts(state_dict: Dict) -> Dict:
@@ -110,7 +86,7 @@ def split_fused_experts(state_dict: Dict) -> Dict:
         base_key = key.replace(".w13", "")
         
         if isinstance(value, DTensor):
-            w1, w3 = _split_dtensor(value)
+            w1, w3 = _split_w13_dtensor(value)
         else:
             chunks = torch.chunk(value, 2, dim=1)
             w1 = chunks[0].clone()
@@ -125,17 +101,78 @@ def split_fused_experts(state_dict: Dict) -> Dict:
     return result
 
 
-def _fuse_dtensor(w1: DTensor, w3: DTensor) -> DTensor:
-    """ fuse DTensor """
-    local_fused = torch.cat([w1.to_local(), w3.to_local()], dim=1)
+def _fuse_w1_w3_dtensor(w1: DTensor, w3: DTensor) -> DTensor:
+    """ fuse DTensor via cpu """
+    if w1.device_mesh != w3.device_mesh:
+        raise ValueError(
+            f"w1 and w3 must have the same device_mesh. "
+            f"Got w1: {w1.device_mesh}, w3: {w3.device_mesh}"
+        )
+    if w1.placements != w3.placements:
+        raise ValueError(
+            f"w1 and w3 must have the same placements. "
+            f"Got w1: {w1.placements}, w3: {w3.placements}"
+        )
+    device_mesh = w1.device_mesh
+    placements = w1.placements
+    
+    local_w1 = w1.to_local()
+    local_w3 = w3.to_local()
+    
+    device = local_w1.device
+    dtype = local_w1.dtype
+    
+    # w1, w3 to cpu and fuse
+    w1_cpu = local_w1.cpu()
+    del w1, local_w1
+    gc.collect()
+    torch.npu.empty_cache()
+
+    w3_cpu = local_w3.cpu()
+    del w3, local_w3
+    gc.collect()
+    torch.npu.empty_cache()
+    
+    fused_cpu = torch.cat([w1_cpu, w3_cpu], dim=1)
+    del w1_cpu, w3_cpu
+    gc.collect()  
+    
+    # back to npu
+    fused_local = fused_cpu.to(device=device, dtype=dtype)
+    del fused_cpu
+    
     return DTensor.from_local(
-        local_fused,
-        device_mesh=w1.device_mesh,
-        placements=w1.placements,
+        fused_local,
+        device_mesh=device_mesh,
+        placements=placements
     )
 
 
-def _split_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
+def _fuse_w1_w3_tensor(w1: torch.Tensor, w3: torch.Tensor) -> DTensor:
+    """ fuse DTensor """
+    device = w1.device
+    dtype = w1.dtype
+    
+    # to cpu
+    w1_cpu = w1.cpu()
+    del w1
+    gc.collect()
+    torch.npu.empty_cache()
+
+    w3_cpu = w3.cpu()
+    del w3
+    gc.collect()
+    torch.npu.empty_cache()
+    
+    # cpu fuse
+    fused_cpu = torch.cat([w1_cpu, w3_cpu], dim=1)
+    del w1_cpu, w3_cpu
+    gc.collect()
+    
+    return fused_cpu.to(device=device, dtype=dtype)
+
+
+def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
     """ split DTensor """
     local_tensor = w13.to_local()
     chunks = torch.chunk(local_tensor, 2, dim=1)
