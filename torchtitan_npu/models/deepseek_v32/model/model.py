@@ -588,7 +588,7 @@ class TransformerBlockV32(TransformerBlock):
             x = x + residual
             residual = x
             x = self.attention_norm(x)
-        x = self.attention(x, freqs_cis, attention_masks, self.layer_id)
+        x = self.attention(x, freqs_cis, attention_masks, self.layer_id, positions)
         x = x + residual
         residual = x
         x = self.ffn_norm(x)
