@@ -20,7 +20,8 @@ def _apply_patches():
     # patching tools
     from .tools import profiling
     from .tools import flight_recorder
-
+    # patching step timing
+    from .patches.tools import utils
     # patching torch
     from .patches.torch import pipelining
     from .patches.torch import hf_datasets
