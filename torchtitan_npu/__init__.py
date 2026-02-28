@@ -22,7 +22,6 @@ def _apply_patches():
     from .tools import flight_recorder
 
     # patching torch
-    from .patches.torch import fsdp
     from .patches.torch import pipelining
     from .patches.torch import hf_datasets
     # patching optimizer
