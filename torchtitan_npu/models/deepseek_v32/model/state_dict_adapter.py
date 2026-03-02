@@ -11,7 +11,7 @@ from torch.distributed.checkpoint import HuggingFaceStorageReader
 from torch.distributed.tensor import DTensor
 
 from torchtitan.models.deepseek_v3 import DeepSeekV3StateDictAdapter
-from torchtitan_npu.tools.weight_utils import convert_expert_format, detect_input_format_by_path
+from torchtitan_npu.tools.weight_utils import convert_expert_format, detect_input_format_by_path, _split_w13_for_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
         has_w13 = any('.moe.experts.w13' in k for k in state_dict.keys())
         if has_w13:
             # split w13 -> w1, w3 for load plan
-            working_state = self._split_w13_for_mapping(state_dict)
+            working_state = _split_w13_for_mapping(state_dict)
             return super().to_hf(working_state)
         else:
             return super().to_hf(state_dict)
@@ -110,36 +110,3 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
             "model.layers.{}.self_attn.indexer.k_norm.bias": "layers.{}.attention.indexer.k_norm.bias",
             "model.layers.{}.self_attn.indexer.weights_proj.weight": "layers.{}.attention.indexer.weights_proj.weight",
         })
-
-
-    def _split_w13_for_mapping(self, state_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """ Split w13 into w1 and w3 for HF mapping """
-        result = {}
-        
-        for key, value in state_dict.items():
-            if ".moe.experts.w13" in key:
-                base_key = key.replace('.w13', '')
-                
-                # Create placeholders w1 and w3
-                # For DTensor, the shape needs to be adjusted.
-                if isinstance(value, DTensor):
-                    self._w13_placements = value.placements
-                    self._w13_device_mesh = value.device_mesh
-                    
-                    shape = value.shape
-                    new_shape = (shape[0], shape[1] // 2, shape[2])
-                    
-                    from torch.distributed.tensor import zeros as dt_zeros
-                    w1 = dt_zeros(new_shape, device_mesh=value.device_mesh, placements=value.placements)
-                    w3 = dt_zeros(new_shape, device_mesh=value.device_mesh, placements=value.placements)
-                else:
-                    half = value.shape[1] // 2
-                    w1 = torch.empty(value.shape[0], half, value.shape[2], dtype=value.dtype, device=value.device)
-                    w3 = torch.empty(value.shape[0], half, value.shape[2], dtype=value.dtype, device=value.device)
-                    
-                result[base_key + '.w1'] = w1
-                result[base_key + '.w3'] = w3
-            else:
-                result[key] = value
-        
-        return result

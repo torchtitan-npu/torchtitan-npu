@@ -299,3 +299,39 @@ def apply_patch() -> bool:
     except Exception as e:
         logger.error(f"Failed to apply checkpoint patch: {e}", exc_info=True)
         return False
+    
+
+def patch_llama4_checkpoint_support():
+    
+    from torchtitan_npu.models.llama4.model.state_dict_adapter import dcp_load, Llama4StateDictAdapterNpu
+    from torchtitan.components.checkpoint import CheckpointManager
+    from torchtitan.protocols.train_spec import TrainSpec
+    
+    import torchtitan.models.llama4 as llama4_module
+    
+    CheckpointManager.dcp_load = dcp_load
+    
+    original = llama4_module.get_train_spec
+    
+    def patch_llama4_spec() -> TrainSpec:
+        spec = original()
+        spec.state_dict_adapter = Llama4StateDictAdapterNpu
+        return spec
+    
+    llama4_module.get_train_spec = patch_llama4_spec
+    
+
+def patch_dsv3_checkpoint_support():
+    from torchtitan_npu.models.deepseek_v3.model.state_dict_adapter import DeepSeekV3StateDictAdapterNpu
+    from torchtitan.protocols.train_spec import TrainSpec
+    
+    import torchtitan.models.deepseek_v3 as deepseek_v3_module
+    
+    original = deepseek_v3_module.get_train_spec
+    
+    def patch_deepseek_v3_spec() -> TrainSpec:
+        spec = original()
+        spec.state_dict_adapter = DeepSeekV3StateDictAdapterNpu
+        return spec
+    
+    deepseek_v3_module.get_train_spec = patch_deepseek_v3_spec

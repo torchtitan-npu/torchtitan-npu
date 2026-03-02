@@ -24,6 +24,14 @@ if __name__ == "__main__":
     if config.model.name == "deepseek_v32":
         from torchtitan_npu.train import _patch_forward_backward_step_for_dsv32
         _patch_forward_backward_step_for_dsv32()
+        
+    if config.model.name == "llama4":
+        from torchtitan_npu.tools.checkpoint_patch import patch_llama4_checkpoint_support
+        patch_llama4_checkpoint_support()
+        
+    if config.model.name == "deepseek_v3":
+        from torchtitan_npu.tools.checkpoint_patch import patch_dsv3_checkpoint_support
+        patch_dsv3_checkpoint_support()
 
     try:
         trainer = Trainer(config)

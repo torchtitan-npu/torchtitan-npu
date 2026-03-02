@@ -7,6 +7,7 @@ import gc
 import logging 
 from pathlib import Path
 from typing import Dict, Tuple
+from typing import Any, Dict
 
 import torch
 from torch.distributed.tensor import DTensor
@@ -183,4 +184,35 @@ def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
         DTensor.from_local(local_w1, device_mesh=w13.device_mesh, placement=w13.placements),
         DTensor.from_local(local_w3, device_mesh=w13.device_mesh, placement=w13.placements),
     )
+    
+
+def _split_w13_for_mapping(state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """ Split w13 into w1 and w3 for HF mapping """
+    result = {}
+    
+    for key, value in state_dict.items():
+        if ".moe.experts.w13" in key:
+            base_key = key.replace('.w13', '')
+            
+            # Create placeholders w1 and w3
+            # For DTensor, the shape needs to be adjusted.
+            if isinstance(value, DTensor):
+                
+                shape = value.shape
+                new_shape = (shape[0], shape[1] // 2, shape[2])
+                
+                from torch.distributed.tensor import zeros as dt_zeros
+                w1 = dt_zeros(new_shape, device_mesh=value.device_mesh, placements=value.placements)
+                w3 = dt_zeros(new_shape, device_mesh=value.device_mesh, placements=value.placements)
+            else:
+                half = value.shape[1] // 2
+                w1 = torch.empty(value.shape[0], half, value.shape[2], dtype=value.dtype, device=value.device)
+                w3 = torch.empty(value.shape[0], half, value.shape[2], dtype=value.dtype, device=value.device)
+                
+            result[base_key + '.w1'] = w1
+            result[base_key + '.w3'] = w3
+        else:
+            result[key] = value
+    
+    return result
     
