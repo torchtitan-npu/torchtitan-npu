@@ -1,85 +1,75 @@
 # torchtitan-npu
+## 简介
 
-### 执行命令
+torchtitan 是 PyTorch 生态的并行训练框架，它在 PyTorch 原生并行能力的基础上，实现了模型定义与并行策略的解耦、4D 并行的有机整合，并集成了多种调试与检查点工具，为研究与实践提供了高度易用、可扩展的基础设施。
 
+torchtitan-npu 基于 torchtitan 的训练流程，在昇腾平台上提供稳定、可复现且可分析的训练框架，用于支撑 LLM 训练任务。它在继承 torchtitan 原生易用性优势的同时，围绕训练阶段的关键系统能力，协同运行时与编译栈，实现内存管理、分布式并行、执行调度、算子融合与图优化路径等技术的工程化落地，并提供面向训练性能的分析与调优能力。
 
-```shell
-# 安装torchtitan以及torchtitan-npu
-pip install torchtitan==0.2.1
-pip install -e /path/to/torchtitan-npu
+目前，torchtitan-npu 已实现对 DeepSeek-V3 / V3.2 及 Llama 系列模型在昇腾 NPU 上的端到端预训练支持。
 
-# 示例执行，2层（1moe，1dense）裁剪模型（请提前配置toml文件中相关地址）
-chmod +x ./torchtitan-npu/run_train.sh
-NGPU=4 CONFIG_FILE="./torchtitan-npu/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml" ./torchtitan-npu/run_train.sh
-
+### 项目结构
+torchtitan-npu 充分利用了 torchtitan 提供的 ModelConverter 插件化机制。该机制介入模型定义之后、并行策略（如 TP/FSDP）应用之前，支持以非侵入式的方式，通过注册机制对特定模块进行替换或重写。基于此方案，我们实现了融合算子优化、量化支持以及优化器增强等功能。见以下项目结构：
+```
+torchtitan-npu/
+├── torchtitan_npu/     # torchtitan_npu核心源代码
+│   ├── config/         # 对Config的补丁
+│   ├── converter/      # 基于torchtitan ModelConverter机制的补丁
+│   ├── distributed/    # 自定义分布式代码
+│   ├── models/         # 基于torchtitan-npu的模型 (e.g., Deepseek-V3.2)
+│   ├── patches/        # 其他补丁
+│   ├── entry.py        # 启动训练
+│   └── __init__.py     # torchtitan-npu 插件修改注入点
+├── docs/               # 文档
+└── run_train.sh        # 训练启动脚本
 ```
 
-### 特性
+## 快速开始
+### 环境准备
+ - 硬件：Atlas A3 系列
+ - 软件版本：
+    - CANN==8.5.0（HDK配套版本见[Ascend开发者文档](https://www.hiascend.com/document/detail/zh/canncommercial/850/releasenote/releasenote_0000.html)）
+    - Python>=3.10
 
-#### 融合算子替换
-
-- 配置文件的 [model] 中配置 `converters` 使能，支持基础算子`npu_rms_norm`、`npu_rope`、`npu_permute`、`npu_gmm`、`npu_fusion_attention` 和 DeepSeekV3.2 `npu_dsa`
-- 可以配置多种替换 如: `converters = ["npu_rms_norm", "npu_rope", "npu_permute"]`
-- 注：当前的npu_fusion_attention替换仅为配置sync参数，解决inductor后端使用reduce_overhead的attention算子的多流问题，性能精度均与之前一致。
-
-#### 权重加载：当前支持deepseek_v32
-
-- 支持离线权重转换，根据配置项`use_grouped_mm`进行转换
-  - 如果`use_grouped_mm=True` 那么则将普通HF权重转化为gmm titan权重
-  - 反之`use_grouped_mm=False` 转化为普通权重
-  - ```
-    python ./torchtitan-npu/scripts/checkpoint_conversion/convert_from_hf.py \
-    /path/to/input/ \
-    /path/to/output/step-0/ \
-    --model_name deepseek_v32
-    --model_flavor debugmodel
-    ```
-- 支持直接使用HF权重（自动适配gmm），也支持直接使用titan dcp权重
-- 支持自定义设置导出权重
-  - ```
-    save_format = "dcp", 保存文件类型（"dcp"/"hf"）
-    save_expert_format = "standard", 保存expert类型("gmm"/"standard")
-    hf_save_dir = "/path/to/output/",
-    save_patch_enabled = True, (如果=False，则正常输出权重)
-    ```
-
-
-#### Swap optimizer
-该特性将在模型前反向计算时将优化器卸载至host侧节省device内存，优化器更新时分片执行 “load -> update -> offload” 以降低优化器更新时的内存峰值。详细信息可参考[该文档](https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md)。
-- 配置文件的 [optimizer] 中配置`swap_optimizer = true`使能该特性。
-- 配置文件的 [optimizer] 中配置`swap_optimizer_times = 16`可设定分块swap的次数，更精细控制优化器更新时的内存峰值。
-
-#### 自定义 Context Parallel
-同时修改以下两个配置，可使用自定义的 Context Parallel 上下文环境，执行自定义的CP逻辑。
-- 配置文件的 [parallelism] 中配置`enable_custom_context_parallel = true`使能自定义CP。
-- 配置文件的 [parallelism] 中配置`custom_context_parallel_path`为自定义的CP上下文环境类的路径以真正使能自定义CP。例如：`custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"`。
-
-#### MXFP8/HiF8
- 	 
-- 配置文件的 [model] 中配置 `converters` 使能，分别配置"quantize.linear.mx"，"quantize.grouped_mm.mx"用来使能线性层和MoE的低精度训练。
-- 配置recipe_name，用来指定是MXFP8低精度还是HiFloat8低精度，recipe_name可选项："mxfp8"、"hif8"。
-- filter_fqns用来指定不进行低精度替换的线性层。
-```shell
-## 配置举例：使能线性层的MXFP8低精度训练，量化方式使用MXFP8，模型层output和router.gate不进行低精度替换
-converters = ["quantize.linear.mx"]
-[quantize.linear.mx]
-recipe_name = "mxfp8"
-filter_fqns = ["output", "router.gate"]
- 	 
-## 配置举例：配置"quantize.grouped_mm.mx"使能MoE层低精度训练，MoE低精度功能依赖"npu_gmm"，在converter配置时"npu_gmm"需要在前，"quantize.grouped_mm.mx"在后。
-converters = ["npu_gmm", "quantize.grouped_mm.mx"]
-[quantize.grouped_mm.mx]
-recipe_name = "mxfp8"
-fqns = ["experts"]
+### 安装 torchtitan-npu
+#### 从源代码安装
+```
+git clone https://gitcode.com/cann/torchtitan-npu.git
+cd torchtitan-npu
+# 安装依赖
+pip install -r requirements.txt
 ```
 
-#### FSDP2 inductor后端编译不使用triton融合算子
-- 配置训练配置toml文件的 [model] `converters` ，配置`npu_bypass_triton_codegen`
-- 修改训练配置toml文件的 [compile] `enable=True`, `components=["model", "loss"]`
-- 配置环境变量 `TORCHINDUCTOR_SIZE_ASSERTS=0`
+### tokenizer下载
+```
+# 从huggingface下载 DeepSeek V3.2 tokenizer https://huggingface.co/settings/tokens
 
-#### SDPA 注意力支持 Ulysses CP
-在训练配置toml文件的[parallelism]部分中配置：
-context_parallel_degree = 2 # 或任意适当的值
-enable_custom_context_parallel = true
-custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.ulysses_cp.UlyssesContextParallelContext"
+python scripts/download_hf_assets.py --repo_id deepseek-ai/DeepSeek-V3.2 --assets tokenizer
+```
+
+### 开始训练
+使用 Deepseek v3.2 debug 模型启动2卡训练任务。
+
+```shell
+NGPU=1 bash run_train.sh
+```
+
+### 特性支持
+
+| 类别 | 功能特性 | 状态 |
+| :--- | :--- | :---: |
+| **分布式并行策略** | MoE的TP策略优化 | ✅ |
+| | [自定义CP策略](docs/feature_tutorials/custom_cp.md) | ✅ |
+| | DTensor计算的Sharding策略优化 | ✅ |
+| **融合算子适配** | LI/SFA | ✅ |
+| | SparseLightningIndexerGradKLLoss | ✅ |
+| **内存优化** | Swap Optimizer | ✅ |
+| **量化** | MxFP8 | ✅ |
+
+## 性能基准
+### 2026.02
+System: Atlas 800T A3
+| Model                                 | #NPU | Precision | GBS | MBS | Sequence Length | FSDP | TP  | PP  | CP  | EP  | Tokens / sec / NPU | TFLOP / sec / NPU |
+| :------------------------------------ | :--- | :-------- | :-- | :-- | :-------------- | :--- | :-- | :-- | :-- | :-- | :----------------- | :---------------- |
+| Deepseek V3.2 671B                    | 64   | FP16      | 4   | 4   | 65536           | 1    | 4   | 2   | 16  | 64  | 22.00              |                   |
+| Deepseek V3.2 671B (torchtitan 0.2.0) | 64   | FP16      | 16  | 16  | 32768           | 1    | 4   | 2   | 16  | 64  | 30.00              |                   |
+
