@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from torchtitan.config.job_config import (
     JobConfig as BaseJobConfig,
     Optimizer as BaseOptimizer,
-    Parallelism as BaseParallelism
+    Parallelism as BaseParallelism,
+    Training as BaseTraining
     )
 
 
@@ -50,6 +51,17 @@ class Parallelism(BaseParallelism):
 
 
 @dataclass
+class Training(BaseTraining):
+    torch_npu_memory_ratio: float = 1.0
+    """
+    Specifies the maximum proportion of NPU memory that PyTorch is allowed to occupy.
+    The value ranges from 0.0 to 1.0, where 0.9 means PyTorch can use up to 90% of the total NPU memory.
+    Adjusting this value helps control memory usage and avoid out-of-memory (OOM) errors on NPU devices.
+    """
+
+
+@dataclass
 class JobConfig(BaseJobConfig):
     optimizer: Optimizer = None
     parallelism: Parallelism = None
+    training: Training = None

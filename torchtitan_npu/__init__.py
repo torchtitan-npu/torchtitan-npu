@@ -24,7 +24,8 @@ def _apply_patches():
     from .patches.tools import utils
     # patching torch
     from .patches.torch import pipelining
-    from .patches.torch import hf_datasets
+    # patching torchtitan
+    from .patches.torchtitan import hf_datasets
     # patching optimizer
     from .patches.optimizer import swap_optimizer
     # patching context_parallel utils

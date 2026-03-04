@@ -5,8 +5,12 @@
 
 from functools import wraps
 
+import torch
 import torchtitan.train as titan_train
 from torchtitan.config import JobConfig
+from torchtitan.tools.logging import init_logger, logger
+
+init_logger()
 
 
 def _patch_forward_backward_step_for_dsv32():
@@ -49,3 +53,21 @@ def _patch_init_for_dsa_set_loss_scale():
 
     titan_train.Trainer.__init__ = wrapper_init
 
+
+def _patch_for_train_npu_memory():
+    _original = titan_train.Trainer.train
+    
+    def wrapper_train(self):
+        torch.npu.empty_cache()
+        memory_ratio = self.job_config.training.torch_npu_memory_ratio
+        if not (0.0 < memory_ratio <= 1.0):
+            logger.warning(
+                f"torch_npu_memory_ratio {memory_ratio} is invalid "
+                "(must be in (0.0, 1.0]), falling back to default value 1.0"
+            )
+            memory_ratio = 1.0
+        torch.npu.set_per_process_memory_fraction(memory_ratio)
+        logger.info(f"[NPU Memory Config] Set process memory usage upper limit to {memory_ratio}")
+        return _original(self)
+    
+    titan_train.Trainer.train = wrapper_train
