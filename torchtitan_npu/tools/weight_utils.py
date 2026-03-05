@@ -177,8 +177,8 @@ def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
     """ split DTensor """
     local_tensor = w13.to_local()
     chunks = torch.chunk(local_tensor, 2, dim=1)
-    local_w1 = chunks[0].clone
-    local_w3 = chunks[1].clone
+    local_w1 = chunks[0].clone()
+    local_w3 = chunks[1].clone()
     del chunks, local_tensor
     return (
         DTensor.from_local(local_w1, device_mesh=w13.device_mesh, placement=w13.placements),

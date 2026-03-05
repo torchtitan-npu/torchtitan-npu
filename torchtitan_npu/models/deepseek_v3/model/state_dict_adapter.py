@@ -19,7 +19,7 @@ class DeepSeekV3StateDictAdapterNpu(DeepSeekV3StateDictAdapter):
     def __init__(self, model_args, hf_assets_path: str | None):
         super().__init__(model_args, hf_assets_path)
         
-        self.use_gmm = getattr(model_args.moe_args, "use_grapued_mm", False)
+        self.use_gmm = getattr(model_args.moe_args, "use_grouped_mm", False)
         self._input_format = "hf"
         self._input_expert_format = "standard"
         
