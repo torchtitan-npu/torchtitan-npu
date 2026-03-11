@@ -66,6 +66,65 @@ _op_sac_save_list = {
 }
 
 
+class PrepareModuleInputOutputWithBwdAllReduce(PrepareModuleInputOutput):
+    """
+    Extension of PrepareModuleInputOutput that registers backward hooks on specified inputs
+    to perform allreduce on their gradients during backpropagation.
+
+    This is useful when certain inputs participate in computations that require
+    gradient synchronization across devices (e.g., in tensor parallelism scenarios).
+    """
+    def __init__(
+        self,
+        *,
+        bwd_allreduce_inputs: tuple[bool, ...],
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.bwd_allreduce_inputs = bwd_allreduce_inputs
+
+        if self.prepare_module_input.input_layouts is not None:
+            assert len(self.bwd_allreduce_inputs) == len(self.prepare_module_input.input_layouts), (
+                f"bwd_allreduce_inputs must have the same length as input_layouts! "
+                f"Got {len(self.bwd_allreduce_inputs)} vs {len(self.prepare_module_input.input_layouts)}"
+            )
+
+    def _attach_bwd_hook_fn(self, module: nn.Module, inputs: tuple) -> None:
+        """
+        Register backward hooks on specified inputs to perform allreduce on gradients.
+
+        Args:
+            module: The module to register hooks on
+            inputs: Tuple of input tensors to the module
+        """
+        for _, (inp, needs_allreduce) in enumerate(zip(inputs, self.bwd_allreduce_inputs)):
+            if not needs_allreduce:
+                continue
+
+            if not isinstance(inp, torch.Tensor) or not inp.requires_grad:
+                continue
+
+            def _allreduce_grad_hook(grad: torch.Tensor) -> torch.Tensor:
+                # Ensure gradient is contiguous for efficient communication
+                if not grad.is_contiguous():
+                    grad = grad.contiguous()
+                torch.distributed.all_reduce(grad, op=torch.distributed.ReduceOp.SUM, group=self.group)
+                return grad
+
+            inp.register_hook(_allreduce_grad_hook)
+    
+    def _apply(self, module: nn.Module, device_mesh: DeviceMesh) -> nn.Module:
+        super()._apply(module, device_mesh)
+
+        self.group = device_mesh.get_group()
+        if self.prepare_module_input.use_local_output:
+            module.register_forward_pre_hook(
+                self._attach_bwd_hook_fn
+            )
+
+        return module
+
+
 def parallelize_deepseekv32(
     model: nn.Module,
     parallel_dims: ParallelDims,
@@ -231,6 +290,7 @@ def apply_non_moe_tp(
     parallel_cfg = job_config.parallelism
     use_cp = parallel_cfg.enable_custom_context_parallel and parallel_cfg.context_parallel_degree > 1
     enable_npu_dsa = "npu_dsa" in job_config.model.converters or use_cp
+    enable_mla_absorb = getattr(model.model_args, "enable_mla_absorb", True)
 
     # 1. Parallelize the embedding and shard its outputs (which are the first
     # transformer block's inputs)
@@ -260,14 +320,25 @@ def apply_non_moe_tp(
         PrepareModuleInputOutput,
     )
 
-    attention_kernel_plan = prepare_module_input_output(
-        input_layouts=(Shard(1), Replicate(), Replicate()),
-        desired_input_layouts=(Shard(1), Replicate(), Replicate()),
-        use_local_input=True,
-        output_layouts=(Replicate(), Shard(1)),
-        desired_output_layouts=(Replicate(), Shard(1)),
-        use_local_output=False,
-    )
+    if enable_mla_absorb:
+        attention_kernel_plan = PrepareModuleInputOutputWithBwdAllReduce(
+            bwd_allreduce_inputs=(False, True, True),
+            input_layouts=(Shard(1), Replicate(), Replicate()),
+            desired_input_layouts=(Shard(1), Replicate(), Replicate()),
+            use_local_input=True,
+            output_layouts=(Replicate(), Shard(1)),
+            desired_output_layouts=(Replicate(), Shard(1)),
+            use_local_output=False,
+        )
+    else:
+        attention_kernel_plan = prepare_module_input_output(
+            input_layouts=(Shard(1), Replicate(), Replicate()),
+            desired_input_layouts=(Shard(1), Replicate(), Replicate()),
+            use_local_input=True,
+            output_layouts=(Replicate(), Shard(1)),
+            desired_output_layouts=(Replicate(), Shard(1)),
+            use_local_output=False,
+        )
 
     indexer_plan = prepare_module_input(
         input_layouts=(Replicate(), Replicate(), None, Replicate(), None),
