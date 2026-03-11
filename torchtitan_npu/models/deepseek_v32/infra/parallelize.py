@@ -11,6 +11,7 @@
 import logging
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.tensor import Partial, Replicate, Shard
@@ -40,6 +41,7 @@ from torchtitan.models.llama4.infra.parallelize import (
 )
 
 from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
+from torchtitan_npu.models.deepseek_v32.model.model import DSAIndexerLossLoggingHelper
 
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,9 @@ def parallelize_deepseekv32(
             f"Got attn_type='{attn_type}'. "
             f"FlexAttention and varlen attention are not supported with CP."
         )
+
+    # patch the indexer loss tracking with distributed version to get the synchronized indexer loss metric
+    apply_distributed_indexer_loss_tracking(parallel_dims)
 
     if parallel_dims.tp_enabled:
         enable_float8_linear = "float8" in job_config.model.converters
@@ -443,3 +448,53 @@ def apply_moe_ep_tp(
             device_mesh=experts_mesh,
             parallelize_plan=experts_plan,
         )
+
+
+def apply_distributed_indexer_loss_tracking(parallel_dims: ParallelDims):
+    """
+    Dynamically patch track_dsa_indexer_metrics to support 3D/4D parallelism
+    synchronization efficiently using a single global communication step.
+
+    Before synchronization, the indexer loss on each GPU is merely an average
+    over its local [B, S] (Batch, Sequence) shape. In a distributed scenario,
+    this local loss must be synchronized (averaged) across all parallel domains,
+    including Pipeline Parallel (PP), Tensor Parallel (TP), Data Parallel (DP),
+    and Context Parallel (CP) groups, to obtain the globally accurate metric.
+    """
+
+    @staticmethod
+    def distributed_track_dsa_indexer_metrics(total_acc_steps: int):
+        tracker = DSAIndexerLossLoggingHelper.tracker
+        if "values" not in tracker:
+            return
+
+        # 1. Clone the tensor to avoid modifying the underlying tracker.
+        # Shape is always [total_num_layers], so tensor size is consistent across all ranks.
+        dsa_indexer_losses = tracker["values"].clone()
+
+        if dist.is_initialized():
+            # 2. Perform a SINGLE global All-Reduce (AVG).
+            # This averages the tensor across all ranks in the world.
+            # For any specific layer, only the ranks in its corresponding PP stage have non-zero values.
+            # Therefore, the global sum for a layer is exactly the sum across its non-PP domains.
+            dist.all_reduce(dsa_indexer_losses, op=dist.ReduceOp.AVG)
+
+            # 3. Correct the mathematical expectation for Pipeline Parallelism (PP).
+            # A global AVG divides the sum by WORLD_SIZE.
+            # However, the valid non-zero values only come from (WORLD_SIZE // PP_DEGREE) ranks.
+            # By multiplying the result by PP_DEGREE, we recover the exact mathematical
+            # average across the non-PP domains (FSDP, TP, CP, etc.).
+            pp_degree = parallel_dims.pp if parallel_dims.pp_enabled else 1
+            dsa_indexer_losses *= pp_degree
+
+        # 4. Calculate the final aggregated loss.
+        # Divide by total gradient accumulation steps to get the true average per step.
+        dsa_indexer_num_layers = dsa_indexer_losses.shape[0]
+        loss = dsa_indexer_losses.sum() / dsa_indexer_num_layers / total_acc_steps
+
+        # 5. Clean the tracker and log the metric
+        DSAIndexerLossLoggingHelper.clean_loss_in_tracker()
+        logger.info(f"indexer loss: {loss.item()}")
+
+    # Apply the monkey patch
+    DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics = distributed_track_dsa_indexer_metrics

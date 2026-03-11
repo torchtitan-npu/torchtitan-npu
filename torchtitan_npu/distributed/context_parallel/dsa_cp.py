@@ -153,8 +153,8 @@ def dsa_forward_with_cp(
     k_pe_global = allgather_sequence(k_pe, self.cp_mesh)
 
     output, softmax_max, softmax_sum, *_ = torch_npu.npu_sparse_flash_attention(
-        q_nope, 
-        k_nope_global[:, : slice_end, :, :], 
+        q_nope,
+        k_nope_global[:, : slice_end, :, :],
         v_global[:, : slice_end, :, :],
         sparse_indices=topk_indices.to(torch.int32),
         block_table=None,
@@ -190,27 +190,7 @@ def dsa_forward_with_cp(
         sparse_mode=3   # mask is rightDownCausal mode
     )
     output = output.transpose(1, 2)
-
-    # indexer loss average, this only affects the loss display
-    dist.all_reduce(loss, op=dist.ReduceOp.SUM, group=self.cp_mesh.get_group())
-    loss /= self.cp_mesh.size()
     return loss, output
-
-
-def patch_indexer_grad(scale_factor):
-    if not hasattr(LILossTrain, '_original_backward_backup'):
-        LILossTrain._original_backward_backup = LILossTrain.backward
-    original_bwd = LILossTrain._original_backward_backup
-
-    @functools.wraps(original_bwd)
-    def wrapped_backward(ctx, *grad_outputs):
-        grads = original_bwd(ctx, *grad_outputs)
-        grads_list = list(grads)
-        for idx in INDEXER_GRAD_INDICES:
-            grads_list[idx] *= scale_factor     # scale the output grads
-        return tuple(grads_list)
-
-    LILossTrain.backward = staticmethod(wrapped_backward)
 
 
 def patch_dsa_forward_check():
@@ -239,7 +219,3 @@ class AscendDSAContextParallelContext(CustomContextParallelContext):
         DSV32_SDPA.cp_mesh = self.mesh
         # inner_attention forward will be patched with the CP version
         patch_dsa_forward_check()
-
-        # scale the grad to ensure the accuracy
-        cp_size = self.mesh.size()
-        patch_indexer_grad(scale_factor=cp_size)

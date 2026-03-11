@@ -45,20 +45,20 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool
 
 
 class RMSNorm(nn.Module):
-    
+
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.dim = dim
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(dim, dtype=torch.float32))
-    
+
     def forward(self, x: torch.Tensor):
         dtype = x.dtype
         x = x.float()
         var = x.pow(2).mean(-1, keepdim=True)
         x = x * torch.rsqrt(var + self.eps)
         return (self.weight * x).to(dtype)
-    
+
     def reset_parameters(self):
         if self.weight is not None:
             nn.init.ones_(self.weight)
@@ -250,14 +250,14 @@ class DSAIndexerLossLoggingHelper:
         tracker["values"].zero_()
 
     @staticmethod
-    def track_dsa_indexer_metrics():
+    def track_dsa_indexer_metrics(total_acc_steps: int):
         """Track the DSA Indexer metrics for logging."""
         tracker = DSAIndexerLossLoggingHelper.tracker
         if "values" not in tracker:
             return
-        dsa_indexer_losses = tracker["values"]
-        dsa_indexer_num_layers = dsa_indexer_losses.shape[0]
-        loss = dsa_indexer_losses.sum() / dsa_indexer_num_layers
+        das_indexer_losses = tracker["values"]
+        das_indexer_num_layers = das_indexer_losses.shape[0]
+        loss = das_indexer_losses.sum() / das_indexer_num_layers / total_acc_steps
         DSAIndexerLossLoggingHelper.clean_loss_in_tracker()
         logger.info(
             f"indexer loss: {loss.item()}"
@@ -610,7 +610,7 @@ class DeepSeekV32Model(DeepSeekV3Model):
             self.layers[str(layer_id)] = TransformerBlockV32(layer_id, model_args)
         self.model_args = model_args
         self.norm = RMSNorm(model_args.dim)
-    
+
     def forward(
         self,
         tokens: torch.Tensor,
