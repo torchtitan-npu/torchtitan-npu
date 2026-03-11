@@ -47,7 +47,7 @@ class NPUConverter(ModelConverter):
         pass
     
     def _validate_compatibility(self):
-        if not self._patch_cls.is_compatible(self.model_name):
+        if not self._patch_cls.is_compatible(self.job_config, self.model_name):
             raise ValueError(
                 f"Patch '{self._patch_name}' is NOT compatible with model '{self.model_name}' \n" 
                 f"Supported models: {self._supported_models}"

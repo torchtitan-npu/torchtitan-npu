@@ -255,9 +255,9 @@ class DSAIndexerLossLoggingHelper:
         tracker = DSAIndexerLossLoggingHelper.tracker
         if "values" not in tracker:
             return
-        das_indexer_losses = tracker["values"]
-        das_indexer_num_layers = das_indexer_losses.shape[0]
-        loss = das_indexer_losses.sum() / das_indexer_num_layers / 2
+        dsa_indexer_losses = tracker["values"]
+        dsa_indexer_num_layers = dsa_indexer_losses.shape[0]
+        loss = dsa_indexer_losses.sum() / dsa_indexer_num_layers
         DSAIndexerLossLoggingHelper.clean_loss_in_tracker()
         logger.info(
             f"indexer loss: {loss.item()}"

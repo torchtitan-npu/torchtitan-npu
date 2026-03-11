@@ -9,9 +9,11 @@ import torch
 import torch_npu
 import torch.nn as nn
 
+from torchtitan_npu.patches.torchtitan.activation_checkpoint import _indexer_loss_need_compute
 from ..base_converter import BaseConverter
 from ..convert_utils import replace_methods
 from ..registry import register_npu_converter
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +85,9 @@ class LILossTrain(torch.autograd.Function):
     ):
         """
         Forward pass: compute the total loss by processing hidden states in chunks.
+        Compute LI Loss only during the recomputation phase to avoid performance overhead.
+        Use a dummy placeholder tensor during the forward phase to maintain a consistent 
+        computational graph for activation checkpointing.
 
         Args:
             ctx: Context object used to save tensors for backward pass.
@@ -110,25 +115,31 @@ class LILossTrain(torch.autograd.Function):
             loss (Tensor): Difference between network forward output and golden value.
         """
 
-        d_query_index, d_key_index, d_weights, loss = torch_npu.npu_sparse_lightning_indexer_grad_kl_loss(
-            query,
-            key,
-            query_indexer,
-            key_indexer,
-            weights,
-            sparse_indices,
-            softmax_max,
-            softmax_sum,
-            scale_value=scale_value,
-            query_rope=query_rope,
-            key_rope=key_rope,
-            actual_seq_qlen=actual_seq_qlen,
-            actual_seq_klen=actual_seq_klen,
-            layout=layout,
-            sparse_mode=sparse_mode,
-            pre_tokens=pre_tokens,
-            next_tokens=next_tokens,
-        )
+        if _indexer_loss_need_compute():
+            d_query_index, d_key_index, d_weights, loss = torch_npu.npu_sparse_lightning_indexer_grad_kl_loss(
+                query,
+                key,
+                query_indexer,
+                key_indexer,
+                weights,
+                sparse_indices,
+                softmax_max,
+                softmax_sum,
+                scale_value=scale_value,
+                query_rope=query_rope,
+                key_rope=key_rope,
+                actual_seq_qlen=actual_seq_qlen,
+                actual_seq_klen=actual_seq_klen,
+                layout=layout,
+                sparse_mode=sparse_mode,
+                pre_tokens=pre_tokens,
+                next_tokens=next_tokens,
+            )
+        else:
+            d_query_index = torch.zeros_like(query_indexer)
+            d_key_index = torch.zeros_like(key_indexer)
+            d_weights = torch.zeros_like(weights)
+            loss = torch.zeros(1, dtype=torch.float32, device=query.device)
 
         # Save computed gradients for use in backward pass
         ctx.save_for_backward(d_query_index, d_key_index, d_weights)
@@ -247,6 +258,19 @@ class DSAKernel(BaseConverter):
 
     MODEL_PACKAGE = "torchtitan_npu.models.deepseek_v32"
     SUPPORTED_MODELS = {"deepseek_v32"}
+    SUPPORTED_ACTIVATION_CHECKPOINT = {"none", "full"}
+
+    
+    @classmethod
+    def is_compatible(cls, job_config, model_name):
+        mode = job_config.activation_checkpoint.mode
+        if mode not in cls.SUPPORTED_ACTIVATION_CHECKPOINT:
+            raise ValueError(
+                f"Patch `npu_dsa` is NOT compatible with activation checkpoint mode '{mode}'\n"
+                f"Supported activation checkpoint mode: {cls.SUPPORTED_ACTIVATION_CHECKPOINT}"
+            )
+        return super().is_compatible(job_config, model_name)
+    
 
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:

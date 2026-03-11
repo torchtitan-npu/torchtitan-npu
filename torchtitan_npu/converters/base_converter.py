@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Set, Type
 import torch.nn as nn
+from torchtitan.config.job_config import JobConfig
 
 
 class BaseConverter(ABC):
@@ -18,7 +19,7 @@ class BaseConverter(ABC):
         return cls.MODEL_IMPL.get("_default")
     
     @classmethod
-    def is_compatible(cls, model_name: str) -> Type[nn.Module]:
+    def is_compatible(cls, job_config: JobConfig, model_name: str) -> Type[nn.Module]:
         if "*" in cls.SUPPORTED_MODELS or model_name in cls.SUPPORTED_MODELS:
             return True
         return False

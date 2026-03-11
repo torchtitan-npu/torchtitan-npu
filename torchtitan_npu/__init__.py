@@ -24,12 +24,16 @@ def _apply_patches():
     from .patches.tools import utils
     # patching torch
     from .patches.torch import pipelining
+    from .patches.torch import clip_grad
     # patching torchtitan
     from .patches.torchtitan import hf_datasets
+    from .patches.torchtitan import activation_checkpoint
     # patching optimizer
     from .patches.optimizer import swap_optimizer
     # patching context_parallel utils
     from .patches.distributed import context_parallel_utils
+    # patching utils
+    from .patches.distributed import utils
     # patching torch_npu
     from .patches.torch_npu import custom_shardings
 
