@@ -22,6 +22,8 @@ def _apply_patches():
     from .tools import flight_recorder
     # patching step timing
     from .patches.tools import utils
+    # async_tp
+    from .patches.torch import micro_pipeline_tp
     # patching torch
     from .patches.torch import pipelining
     from .patches.torch import clip_grad

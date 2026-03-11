@@ -38,9 +38,9 @@ def compile_bypass_fusion(func):
 
 
 @register_npu_converter("npu_bypass_triton_codegen")
-class BypassTritionCodegenKernel(BaseConverter):
+class BypassTritonCodegenKernel(BaseConverter):
     
-    SUPPORTED_MODELS = {"deepseek_v3"}
+    SUPPORTED_MODELS = {"deepseek_v3", "llama3"}
 
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
