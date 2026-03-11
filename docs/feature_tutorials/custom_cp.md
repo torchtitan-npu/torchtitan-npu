@@ -17,7 +17,7 @@ torchtitan_npu在`torchtitan_npu/patches/distributed/custom_context_parallel.py`
 
 ## 配置选项
 
-在配置文件的`[parallelism]`节中添加以下配置以启用Custom CP：
+在训练任务的 TOML 配置文件（例如 `torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml`，或实际启动训练时 `--job.config_file` 所指向的路径）中，找到对应的 `[parallelism]` 节，并添加以下配置以启用 Custom CP：
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
@@ -28,8 +28,11 @@ torchtitan_npu在`torchtitan_npu/patches/distributed/custom_context_parallel.py`
 
 ### 配置示例：SDPA Ulysses CP（DeepSeek-V3）
 
-在配置文件的`[parallelism]`节中添加以下配置：
+首先在配置文件中使能本代码仓的自定义配置，随后在`[parallelism]`节中添加以下配置：
 ```toml
+[job]
+custom_config_module = "torchtitan_npu.config.custom_config"    # 使能本代码仓的自定义配置
+
 [parallelism]
 context_parallel_degree = 2
 enable_custom_context_parallel = true
@@ -39,6 +42,9 @@ custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.ulys
 ### 配置示例：DSA Context Parallel（DeepSeek-V3.2）
 
 ```toml
+[job]
+custom_config_module = "torchtitan_npu.config.custom_config"    # 使能本代码仓的自定义配置
+
 [parallelism]
 context_parallel_degree = 2
 enable_custom_context_parallel = true
