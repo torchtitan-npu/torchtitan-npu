@@ -13,8 +13,6 @@ from torch._inductor.decomposition import decompositions
 from torch._inductor.lowering import lowerings
 from torchtitan.config.job_config import Compile as CompileConfig
 from torchtitan_npu.patches.torch._inductor.graph import graphlowering_call_function
-from torchtitan_npu.patches.torch_npu._inductor.lowering import fix_npu_inductor
-from torchtitan_npu.patches.torch_npu._meta_registrations import npu_fusion_attention_forward
 
 from ..base_converter import BaseConverter
 from ..convert_utils import find_functions
@@ -55,7 +53,11 @@ class BypassTritonCodegenKernel(BaseConverter):
 
         for m in matches:
             m.replace(compile_bypass_fusion(m.func))
-        
+
+        # Lazy imports to avoid requiring NPU hardware at module load time
+        from torchtitan_npu.patches.torch_npu._inductor.lowering import fix_npu_inductor
+        from torchtitan_npu.patches.torch_npu._meta_registrations import npu_fusion_attention_forward
+
         from torch_npu.op_plugin.meta._meta_registrations import npu_fusion_attention_forward as original_meta_func
         # MLA performs shape inference according to the value tensor
         original_meta_func.__code__ = npu_fusion_attention_forward.__code__

@@ -1,0 +1,91 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+[job]
+dump_folder = "./outputs"
+description = "DeepSeek-V3.2 671B model training"
+print_config = false
+custom_config_module = "torchtitan_npu.config.custom_config"
+
+[profiling]
+enable_profiling = false
+save_traces_folder = "profile_trace"
+profile_freq = 10
+enable_memory_snapshot = false
+save_memory_snapshot_folder = "memory_snapshot"
+
+[metrics]
+log_freq = 1
+disable_color_printing = false
+enable_tensorboard = false
+save_tb_folder = "tb"
+enable_wandb = false
+
+[model]
+name = "deepseek_v32"
+flavor = "tinymodel"
+hf_assets_path = "./tests/assets/tokenizer"
+converters = []
+
+[optimizer]
+name = "AdamW"
+lr = 2.2e-4
+eps = 1e-8
+swap_optimizer = true   # swap optimizer between host and device to save device memory during training
+
+[lr_scheduler]
+warmup_steps = 2  # lr scheduler warm up, normally 20% of the train steps
+decay_ratio = 0.8  # lr scheduler decay ratio, 80% of the train steps
+decay_type = "cosine"
+min_lr_factor = 0.1
+
+[training]
+local_batch_size = 4
+seq_len = 2048
+max_norm = 1.0  # grad norm clipping
+steps = 10
+dataset = "c4_test"  # supported datasets: c4_test (2K), c4 (177M)
+dataset_path = "./tests/assets/c4_test"
+
+[parallelism]
+data_parallel_replicate_degree = 1
+data_parallel_shard_degree = -1
+fsdp_reshard_after_forward = "default" # default / never / always
+tensor_parallel_degree = 1
+enable_async_tensor_parallel = false
+pipeline_parallel_degree = 1
+pipeline_parallel_schedule = "Interleaved1F1B"
+expert_parallel_degree = 1
+expert_tensor_parallel_degree = 1
+context_parallel_degree = 1
+enable_custom_context_parallel = true
+custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"
+
+[checkpoint]
+enable = false
+folder = "path/to/checkpoint"
+load_step = 0
+# initial_load_model_only = true
+# initial_load_in_hf = true
+# initial_load_path = "/path/to/hf-weight"
+interval = 500
+last_save_model_only = true
+export_dtype = "float32"
+async_mode = "disabled"  # ["disabled", "async", "async_with_pinned_mem]"
+
+[activation_checkpoint]
+mode = "selective"  # ["none", "selective", "full"]
+selective_ac_option = 'op'  # 'int' = ac every positive int layer or 'op', ac based on ops policy
+
+[compile]
+enable = false
+components = ["loss"] # ["model", "loss"]
+
+[quantize.linear.float8]
+enable_fsdp_float8_all_gather = false
+precompute_float8_dynamic_scale_for_fsdp = false
+filter_fqns = ["output", "router.gate"]
+
+[quantize.grouped_mm.float8]
+fqns = ["experts"]
