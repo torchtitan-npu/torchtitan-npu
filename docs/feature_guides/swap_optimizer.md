@@ -19,7 +19,7 @@
 重写后的 `swap_optimizer_step` 引入了两个独立的底层数据流 `swap_to_device_stream` 和 `swap_to_host_stream`，并且将整个参数更新过程切分为多个小块（通过 `swap_optimizer_times` 控制单次处理的容量阈值 `swap_numel`）以实现高效的流水线更新：
 
 <p align="center">
-<img src="./figures/swap_optimizer.png" width="80%" >
+<img src="./assets/swap_optimizer.png" width="80%" >
 </p>
 
 1. **Load（加载）**：在设备流中异步将下一块所需参数的优化器状态从 CPU 拷贝到 Device，并恢复其显存大小。
