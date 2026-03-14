@@ -3,18 +3,18 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from torchtitan.config.job_config import (
     JobConfig as BaseJobConfig,
     Optimizer as BaseOptimizer,
     Parallelism as BaseParallelism,
-    Training as BaseTraining
+    Training as BaseTraining,
+    Profiling as BaseProfiling
     )
 
 
 @dataclass
 class Optimizer(BaseOptimizer):
-    swap_optimizer: bool = False
     """
     Whether to apply swap optimizer.
     This feature will offload the optimizer states to the host (CPU) during the forward and backward passes.
@@ -23,23 +23,23 @@ class Optimizer(BaseOptimizer):
     making it highly beneficial for memory-intensive scenarios.
     More info (in Chinese): https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md
     """
+    swap_optimizer: bool = False
 
-    swap_optimizer_times: int = 16
     """
     Specifies the number of slices for the pipelined swap_optimizer update.
     A higher value creates more, smaller slices, further reducing peak memory usage during the optimizer step.
     """
+    swap_optimizer_times: int = 16
 
 
 @dataclass
 class Parallelism(BaseParallelism):
-    enable_custom_context_parallel: bool = False
     """
     Whether to use a custom context manager for context parallel.
     If enable this, the 'custom_context_parallel_path' should be set correctly.
     """
+    enable_custom_context_parallel: bool = False
 
-    custom_context_parallel_path: str = ''
     """
     The path to custom context parallel context manager class.
     - The string must adhere to the format 'package.module.ClassName'.
@@ -48,16 +48,61 @@ class Parallelism(BaseParallelism):
 
     Example string: 'torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext'
     """
+    custom_context_parallel_path: str = ''
 
 
 @dataclass
 class Training(BaseTraining):
-    torch_npu_memory_ratio: float = 1.0
     """
     Specifies the maximum proportion of NPU memory that PyTorch is allowed to occupy.
     The value ranges from 0.0 to 1.0, where 0.9 means PyTorch can use up to 90% of the total NPU memory.
     Adjusting this value helps control memory usage and avoid out-of-memory (OOM) errors on NPU devices.
     """
+    torch_npu_memory_ratio: float = 1.0
+
+
+@dataclass
+class Profiling(BaseProfiling):
+    """
+    The step at which to start profiling.
+    Profiling will begin at this step and continue for `profiler_active` steps.
+    """
+    profile_step_start: int = 0
+
+    """
+    The step at which to end profiling.
+    If set to 0, will use profile_step_start + profiler_active.
+    """
+    profile_step_end: int = 0
+
+    """
+    List of ranks to profile, e.g., [0, 1, 2].
+    Use [-1] to profile all ranks.
+    Default is [-1] (all ranks).
+    """
+    profile_ranks: list[int] = field(default_factory=lambda: [-1])
+
+    """
+    Whether to record tensor shapes during profiling.
+    """
+    profile_record_shapes: bool = True
+
+    """
+    Whether to profile memory usage.
+    """
+    profile_with_memory: bool = False
+
+    """
+    Whether to record stack traces during profiling.
+    """
+    profile_with_stack: bool = False
+
+    """
+    Whether to enable online parsing of profiling data.
+    If disabled, on_trace_ready will be set to None and ASCEND_WORK_PATH environment
+    variable will be set to trace_dir for offline parsing.
+    """
+    enable_online_parse: bool = True
 
 
 @dataclass
@@ -65,3 +110,4 @@ class JobConfig(BaseJobConfig):
     optimizer: Optimizer = None
     parallelism: Parallelism = None
     training: Training = None
+    profiling: Profiling = None

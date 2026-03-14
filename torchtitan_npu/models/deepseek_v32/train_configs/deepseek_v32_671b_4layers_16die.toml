@@ -7,7 +7,18 @@ custom_config_module = "torchtitan_npu.config.custom_config"
 [profiling]
 enable_profiling = false
 save_traces_folder = "profile_trace"
-profile_freq = 10
+profile_ranks = [0]
+profile_step_start = 5
+profile_step_end = 6
+profile_record_shapes = true
+profile_with_memory = false
+profile_with_stack = false
+
+# ignored them when profile_step_start and profile_step_end are set
+# profile_freq = 10  
+# profiler_active = 1   
+# profiler_warmup = 1 
+
 enable_memory_snapshot = false
 save_memory_snapshot_folder = "memory_snapshot"
 
