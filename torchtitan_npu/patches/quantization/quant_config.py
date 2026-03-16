@@ -7,6 +7,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, Union
+
 import torch
 
 
@@ -38,9 +39,11 @@ class MXLinearConfig:
         if isinstance(recipe_name, str):
             valid_names = [n.value for n in MXLinearRecipeName]
             if recipe_name not in valid_names:
-                raise ValueError(f"recipe_name {recipe_name} not in valid names {valid_names}")
+                raise ValueError(
+                    f"recipe_name {recipe_name} not in valid names {valid_names}"
+                )
             recipe_name = MXLinearRecipeName(recipe_name)
-        
+
         # Return the corresponding quantization data format
         if recipe_name is MXLinearRecipeName.FLOAT8_MXFP8:
             return MXLinearConfig(recipe_name=MXLinearRecipeName.FLOAT8_MXFP8)
@@ -67,9 +70,11 @@ class MoETrainingConfig:
         if isinstance(recipe_name, str):
             valid_names = [n.value for n in MoEGroupedRecipeName]
             if recipe_name not in valid_names:
-                raise ValueError(f"recipe_name {recipe_name} not in valid names {valid_names}")
+                raise ValueError(
+                    f"recipe_name {recipe_name} not in valid names {valid_names}"
+                )
             recipe_name = MoEGroupedRecipeName(recipe_name)
-        
+
         # Return the corresponding quantization data format
         if recipe_name is MoEGroupedRecipeName.GMM_MXFP8:
             return MoETrainingConfig(recipe_name=MoEGroupedRecipeName.GMM_MXFP8)

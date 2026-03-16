@@ -10,7 +10,12 @@ from typing import Callable
 import torch
 from torch.distributed._tensor.placement_types import DTensorSpec
 from torch.distributed.tensor import DTensor
-from torch.distributed.tensor._op_schema import OpSchema, OpSpec, OpStrategy, TupleStrategy
+from torch.distributed.tensor._op_schema import (
+    OpSchema,
+    OpSpec,
+    OpStrategy,
+    TupleStrategy,
+)
 from torch.distributed.tensor._ops._matrix_ops import _mm_like_strategy
 
 
@@ -19,7 +24,9 @@ _SHARDING_REGISTRY = DTensor._op_dispatcher.sharding_propagator.op_strategy_func
 aten = torch.ops.aten
 
 
-def register_sharding_patch(op_overload, patch_fn: Callable[[OpSchema, Callable], OpStrategy]):
+def register_sharding_patch(
+    op_overload, patch_fn: Callable[[OpSchema, Callable], OpStrategy]
+):
     """
     Registers a custom patch for a specific torch operator sharding strategy.
 
@@ -28,7 +35,9 @@ def register_sharding_patch(op_overload, patch_fn: Callable[[OpSchema, Callable]
         patch_fn: A custom function that takes (op_schema, original_handler) and returns OpStrategy.
     """
     if op_overload not in _SHARDING_REGISTRY:
-        raise NotImplementedError(f"Op {op_overload} not found in original sharding registry.")
+        raise NotImplementedError(
+            f"Op {op_overload} not found in original sharding registry."
+        )
 
     # Capture the original handler to allow fallback.
     original_handler = _SHARDING_REGISTRY[op_overload]
@@ -52,7 +61,9 @@ def matmul_sharding(op_schema: OpSchema, fallback_handler: Callable) -> OpStrate
     # We only care about the first two arguments (Input and Weight)
     args = op_schema.args_schema
     if len(args) != 2:
-        raise NotImplementedError(f"Only support two inputs, current input num is {len(args)}")
+        raise NotImplementedError(
+            f"Only support two inputs, current input num is {len(args)}"
+        )
 
     shape1 = args[0].strategies[0].output_spec.shape
     shape2 = args[1].strategies[0].output_spec.shape
@@ -63,13 +74,17 @@ def matmul_sharding(op_schema: OpSchema, fallback_handler: Callable) -> OpStrate
     # Explicitly defining the equation avoids ambiguity for the sharding propagator.
     if ndim1 == 3 and ndim2 == 2:
         if shape1[2] != shape2[0]:
-            raise NotImplementedError(f"Input shapes are not 'bmk' and 'kn': {shape1=}, {shape2=}.")
+            raise NotImplementedError(
+                f"Input shapes are not 'bmk' and 'kn': {shape1=}, {shape2=}."
+            )
         equation = "bmk,kn->bmn"
         return _mm_like_strategy(equation, mesh, op_schema)
 
     if ndim1 == 2 and ndim2 == 2:
         if shape1[1] != shape2[0]:
-            raise NotImplementedError(f"Input shapes are not 'mk' and 'kn': {shape1=}, {shape2=}.")
+            raise NotImplementedError(
+                f"Input shapes are not 'mk' and 'kn': {shape1=}, {shape2=}."
+            )
         equation = "mk,kn->mn"
         return _mm_like_strategy(equation, mesh, op_schema)
 
@@ -79,9 +94,7 @@ def matmul_sharding(op_schema: OpSchema, fallback_handler: Callable) -> OpStrate
 
 
 def combine_strategies_for_matmul_backward(
-    strategy_dx: OpStrategy,
-    strategy_dw: OpStrategy,
-    original_weight_spec: DTensorSpec
+    strategy_dx: OpStrategy, strategy_dw: OpStrategy, original_weight_spec: DTensorSpec
 ) -> OpStrategy:
     """
     Generate OpStrategy for matmul_backward by filtering and combining dx and dw strategies.
@@ -121,19 +134,23 @@ def combine_strategies_for_matmul_backward(
                 new_input_specs = [
                     dx_spec.input_specs[0],  # dy
                     dw_spec.input_specs[0],  # x
-                    dx_spec.input_specs[1]   # w
+                    dx_spec.input_specs[1],  # w
                 ]
                 new_output_specs = (dx_spec.output_specs, dw_spec.output_specs)
 
                 # Combine redistribute costs for dy, x and w
                 costs_dx = dx_spec.redistribute_cost
                 costs_dw = dw_spec.redistribute_cost
-                new_redistribute_cost = [[costs_dx[0][0] + costs_dw[1][0]], costs_dw[0], costs_dx[1]]
+                new_redistribute_cost = [
+                    [costs_dx[0][0] + costs_dw[1][0]],
+                    costs_dw[0],
+                    costs_dx[1],
+                ]
 
                 new_spec = OpSpec(
                     output_specs=new_output_specs,
                     input_specs=new_input_specs,
-                    redistribute_cost=new_redistribute_cost
+                    redistribute_cost=new_redistribute_cost,
                 )
                 combined_strategies.append(new_spec)
 
@@ -146,7 +163,9 @@ def combine_strategies_for_matmul_backward(
     return OpStrategy(combined_strategies)
 
 
-def matmul_backward_sharding(op_schema: OpSchema, fallback_handler: Callable) -> OpStrategy:
+def matmul_backward_sharding(
+    op_schema: OpSchema, fallback_handler: Callable
+) -> OpStrategy:
     """
     Custom sharding strategy for NPU matmul_backward.
     """
@@ -154,7 +173,9 @@ def matmul_backward_sharding(op_schema: OpSchema, fallback_handler: Callable) ->
 
     args = op_schema.args_schema
     if len(args) != 4:
-        raise NotImplementedError(f"Only support four inputs, current input num is {len(args)}")
+        raise NotImplementedError(
+            f"Only support four inputs, current input num is {len(args)}"
+        )
 
     shape_dy = args[0].strategies[0].output_spec.shape
     shape_x = args[1].strategies[0].output_spec.shape
@@ -167,22 +188,34 @@ def matmul_backward_sharding(op_schema: OpSchema, fallback_handler: Callable) ->
     if ndim_dy == 3 and ndim_x == 3 and ndim_w == 2:
         # generate sharding strategies for: dy @ w -> dx
         if shape_dy[2] != shape_w[1]:
-            raise NotImplementedError(f"Input shapes are not 'bmk'(dy) and 'nk'(w): {shape_dy=}, {shape_w=}.")
+            raise NotImplementedError(
+                f"Input shapes are not 'bmk'(dy) and 'nk'(w): {shape_dy=}, {shape_w=}."
+            )
         equation_dx = "bmk,nk->bmn"
         op_schema_dx = copy.copy(op_schema)
-        op_schema_dx.args_schema = (op_schema_dx.args_schema[0], op_schema_dx.args_schema[2])
+        op_schema_dx.args_schema = (
+            op_schema_dx.args_schema[0],
+            op_schema_dx.args_schema[2],
+        )
         strategy_dx = _mm_like_strategy(equation_dx, mesh, op_schema_dx)
 
         # generate sharding strategies for: x @ dy -> dw
         if shape_dy[0] != shape_x[0] or shape_dy[1] != shape_x[1]:
-            raise NotImplementedError(f"Input shapes are not 'bmn'(x) and 'bmk'(dy): {shape_x=}, {shape_dy=}.")
+            raise NotImplementedError(
+                f"Input shapes are not 'bmn'(x) and 'bmk'(dy): {shape_x=}, {shape_dy=}."
+            )
         equation_dw = "bmn,bmk->nk"
         op_schema_dw = copy.copy(op_schema)
-        op_schema_dw.args_schema = (op_schema_dw.args_schema[1], op_schema_dw.args_schema[0])
+        op_schema_dw.args_schema = (
+            op_schema_dw.args_schema[1],
+            op_schema_dw.args_schema[0],
+        )
         strategy_dw = _mm_like_strategy(equation_dw, mesh, op_schema_dw)
 
         # get combined strategy for matmul backward
-        return combine_strategies_for_matmul_backward(strategy_dx, strategy_dw, args[2].strategies[0].output_spec)
+        return combine_strategies_for_matmul_backward(
+            strategy_dx, strategy_dw, args[2].strategies[0].output_spec
+        )
 
     # fallback to original logic.
     return fallback_handler(op_schema)

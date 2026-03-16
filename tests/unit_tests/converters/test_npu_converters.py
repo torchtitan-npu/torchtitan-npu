@@ -4,8 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from unittest.mock import MagicMock, patch
-from torchtitan_npu.converters.npu_converter import NPUConverter
+
 from torchtitan_npu.converters.base_converter import BaseConverter
+from torchtitan_npu.converters.npu_converter import NPUConverter
 
 
 def test_converter_init(mock_job_config, mock_parallel_dims):
@@ -23,9 +24,9 @@ def test_convert_calls_patch_apply(mock_job_config, mock_parallel_dims, simple_m
     mock_patch_cls.is_compatible.return_value = True
 
     # Use patch.object to mock class attributes without accessing private attributes directly
-    with patch.object(NPUConverter, '_patch_cls', mock_patch_cls), \
-            patch.object(NPUConverter, '_patch_name', 'test_patch'), \
-            patch.object(NPUConverter, '_supported_models', {'*'}):
+    with patch.object(NPUConverter, "_patch_cls", mock_patch_cls), patch.object(
+        NPUConverter, "_patch_name", "test_patch"
+    ), patch.object(NPUConverter, "_supported_models", {"*"}):
         converter = NPUConverter(config, mock_parallel_dims)
         converter.convert(simple_model)
 
@@ -39,9 +40,9 @@ def test_convert_returns_model(mock_job_config, mock_parallel_dims, simple_model
     mock_patch_cls.apply.return_value = 0
     mock_patch_cls.is_compatible.return_value = True
 
-    with patch.object(NPUConverter, '_patch_cls', mock_patch_cls), \
-            patch.object(NPUConverter, '_patch_name', 'test_patch'), \
-            patch.object(NPUConverter, '_supported_models', {'*'}):
+    with patch.object(NPUConverter, "_patch_cls", mock_patch_cls), patch.object(
+        NPUConverter, "_patch_name", "test_patch"
+    ), patch.object(NPUConverter, "_supported_models", {"*"}):
         converter = NPUConverter(config, mock_parallel_dims)
         result = converter.convert(simple_model)
 

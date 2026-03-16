@@ -4,13 +4,14 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass, field
+
 from torchtitan.config.job_config import (
     JobConfig as BaseJobConfig,
     Optimizer as BaseOptimizer,
     Parallelism as BaseParallelism,
+    Profiling as BaseProfiling,
     Training as BaseTraining,
-    Profiling as BaseProfiling
-    )
+)
 
 
 @dataclass
@@ -23,6 +24,7 @@ class Optimizer(BaseOptimizer):
     making it highly beneficial for memory-intensive scenarios.
     More info (in Chinese): https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md
     """
+
     swap_optimizer: bool = False
 
     """
@@ -38,6 +40,7 @@ class Parallelism(BaseParallelism):
     Whether to use a custom context manager for context parallel.
     If enable this, the 'custom_context_parallel_path' should be set correctly.
     """
+
     enable_custom_context_parallel: bool = False
 
     """
@@ -48,7 +51,7 @@ class Parallelism(BaseParallelism):
 
     Example string: 'torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext'
     """
-    custom_context_parallel_path: str = ''
+    custom_context_parallel_path: str = ""
 
 
 @dataclass
@@ -58,6 +61,7 @@ class Training(BaseTraining):
     The value ranges from 0.0 to 1.0, where 0.9 means PyTorch can use up to 90% of the total NPU memory.
     Adjusting this value helps control memory usage and avoid out-of-memory (OOM) errors on NPU devices.
     """
+
     torch_npu_memory_ratio: float = 1.0
 
 
@@ -67,6 +71,7 @@ class Profiling(BaseProfiling):
     The step at which to start profiling.
     Profiling will begin at this step and continue for `profiler_active` steps.
     """
+
     profile_step_start: int = 0
 
     """

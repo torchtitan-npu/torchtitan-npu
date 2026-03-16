@@ -3,12 +3,12 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import inspect
 import logging
 import re
-import inspect
 import sys
 from dataclasses import dataclass
-from typing import Optional, Callable, Type, List
+from typing import Callable, List, Optional, Type
 
 import torch.nn as nn
 
@@ -68,7 +68,9 @@ class MethodMatch:
             logger.info(f"   {self.full_path}")
 
 
-def _get_package(model: Optional[nn.Module] = None, package: Optional[str] = None) -> str:
+def _get_package(
+    model: Optional[nn.Module] = None, package: Optional[str] = None
+) -> str:
     if package:
         return package
     if model:
@@ -83,7 +85,7 @@ def find_modules(model: nn.Module, pattern: str) -> List[ModuleMatch]:
             model.get_submodule(name.rsplit(".", 1)[0]) if "." in name else model,
             name.rsplit(".", 1)[-1] if "." in name else name,
             module,
-            name
+            name,
         )
         for name, module in model.named_modules()
         if regex.search(module.__class__.__name__) and name
@@ -120,16 +122,20 @@ def find_methods(
             continue
 
         cls = getattr(mod, class_name, None)
-        if (inspect.isclass(cls)
-                and cls.__module__ == mod_path
-                and hasattr(cls, method_name)):
-            matches.append(MethodMatch(
-                module_path=mod_path,
-                class_name=class_name,
-                method_name=method_name,
-                cls=cls,
-                method=getattr(cls, method_name)
-            ))
+        if (
+            inspect.isclass(cls)
+            and cls.__module__ == mod_path
+            and hasattr(cls, method_name)
+        ):
+            matches.append(
+                MethodMatch(
+                    module_path=mod_path,
+                    class_name=class_name,
+                    method_name=method_name,
+                    cls=cls,
+                    method=getattr(cls, method_name),
+                )
+            )
 
     return matches
 

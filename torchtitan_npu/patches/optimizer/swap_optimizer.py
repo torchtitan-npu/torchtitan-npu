@@ -21,10 +21,10 @@ from typing import Any, TypeVar
 
 import torch
 import torch.nn as nn
+import torchtitan
 from torch.distributed.tensor import DTensor
 from torch.optim import Optimizer
 from torch.optim.optimizer import _use_grad_for_differentiable
-import torchtitan
 from torchtitan.components.optimizer import OptimizersContainer
 from torchtitan.tools.utils import get_device_info
 
@@ -42,14 +42,14 @@ def get_torch_device():
 
 
 def unwrap_dtensor(tensor):
-    """ get normal tensor """
+    """get normal tensor"""
     if isinstance(tensor, DTensor):
         return tensor.to_local()
     return tensor
 
 
 class SwapOptimizersContainer(OptimizersContainer):
-    """ A contianer for optimizers which can be swapped between host and device to save memory during training.
+    """A container for optimizers which can be swapped between host and device to save memory during training.
 
     It will offload the optimizer states to the host (CPU) during the forward and backward passes.
     During the optimizer.step(), it will load, update, and offload these states in slices.
@@ -67,14 +67,14 @@ class SwapOptimizersContainer(OptimizersContainer):
     swap_to_device_events_map = {}
     param_update_events_map = {}
 
-    state_keys = ['exp_avg', 'exp_avg_sq', 'max_exp_avg_sq']
+    state_keys = ["exp_avg", "exp_avg_sq", "max_exp_avg_sq"]
 
     def __init__(
         self,
         model_parts: list[nn.Module],
         optimizer_cls: type[T],
         optimizer_kwargs: dict[str, Any],
-        swap_optimizer_times: int
+        swap_optimizer_times: int,
     ) -> None:
         super().__init__(model_parts, optimizer_cls, optimizer_kwargs)
 
@@ -87,12 +87,19 @@ class SwapOptimizersContainer(OptimizersContainer):
         for idx, optim in enumerate(self.optimizers):
             optim.param_to_group_map = {}
             for group in optim.param_groups:
-                for p in group['params']:
+                for p in group["params"]:
                     optim.param_to_group_map[p] = group
                     SwapOptimizersContainer.param_state_initialization(p, optim)
-            swap_num = sum([sum([unwrap_dtensor(p).numel() for p in group['params']]) for group in optim.param_groups])
+            swap_num = sum(
+                [
+                    sum([unwrap_dtensor(p).numel() for p in group["params"]])
+                    for group in optim.param_groups
+                ]
+            )
             optim.swap_numel = swap_num // swap_optimizer_times
-            logger.info(f"Swap param numel for optimizer_{idx}: {optim.swap_numel} / {swap_num}\n")
+            logger.info(
+                f"Swap param numel for optimizer_{idx}: {optim.swap_numel} / {swap_num}\n"
+            )
 
     @classmethod
     def param_state_initialization(cls, param, optim):
@@ -103,18 +110,24 @@ class SwapOptimizersContainer(OptimizersContainer):
         cpu_state = {}
         cls.param_to_cpu_states_map[param] = cpu_state
 
-        amsgrad = optim.param_to_group_map[param]['amsgrad']
+        amsgrad = optim.param_to_group_map[param]["amsgrad"]
 
         for key in cls.state_keys:
             if key in device_state:
                 continue
-            if key == 'max_exp_avg_sq' and not amsgrad:
+            if key == "max_exp_avg_sq" and not amsgrad:
                 device_state[key] = None
                 cpu_state[key] = None
             else:
-                device_state[key] = torch.zeros_like(param, memory_format=torch.contiguous_format)
-                unwrap_dtensor(device_state[key]).untyped_storage().resize_(0)   # offload device states
-                cpu_state[key] = torch.zeros_like(unwrap_dtensor(param), pin_memory=True, device='cpu')
+                device_state[key] = torch.zeros_like(
+                    param, memory_format=torch.contiguous_format
+                )
+                unwrap_dtensor(device_state[key]).untyped_storage().resize_(
+                    0
+                )  # offload device states
+                cpu_state[key] = torch.zeros_like(
+                    unwrap_dtensor(param), pin_memory=True, device="cpu"
+                )
 
     @classmethod
     def swap_states_to_device(cls, param):
@@ -128,10 +141,14 @@ class SwapOptimizersContainer(OptimizersContainer):
                 continue
             local_state = unwrap_dtensor(device_state[key])
             if local_state.untyped_storage().size() == 0:
-                local_state.untyped_storage().resize_(cpu_state[key].untyped_storage().size())
+                local_state.untyped_storage().resize_(
+                    cpu_state[key].untyped_storage().size()
+                )
                 local_state.copy_(cpu_state[key], non_blocking=True)
 
-        cls.swap_to_device_events_map[param] = get_torch_device().current_stream().record_event()
+        cls.swap_to_device_events_map[param] = (
+            get_torch_device().current_stream().record_event()
+        )
 
     @classmethod
     def swap_states_to_host(cls, param):
@@ -148,7 +165,9 @@ class SwapOptimizersContainer(OptimizersContainer):
                 cpu_state[key].copy_(local_state, non_blocking=True)
                 local_state.untyped_storage().resize_(0)
 
-        cls.swap_to_host_events_map[param] = get_torch_device().current_stream().record_event()
+        cls.swap_to_host_events_map[param] = (
+            get_torch_device().current_stream().record_event()
+        )
 
     @classmethod
     def wait_swap_to_device_event(cls, param):
@@ -166,42 +185,50 @@ class SwapOptimizersContainer(OptimizersContainer):
 
 
 def param_update(param, state, param_group):
-    beta1, beta2 = param_group['betas']
-    step_func = torch._fused_adamw_ if param_group['decoupled_weight_decay'] else torch._fused_adam_
+    beta1, beta2 = param_group["betas"]
+    step_func = (
+        torch._fused_adamw_
+        if param_group["decoupled_weight_decay"]
+        else torch._fused_adam_
+    )
     step_func(
         [param],
         [param.grad],
-        [state['exp_avg']],
-        [state['exp_avg_sq']],
-        [state['max_exp_avg_sq']] if param_group['amsgrad'] else [],
-        [param_group['step']],
-        amsgrad=param_group['amsgrad'],
-        lr=param_group['lr'],
+        [state["exp_avg"]],
+        [state["exp_avg_sq"]],
+        [state["max_exp_avg_sq"]] if param_group["amsgrad"] else [],
+        [param_group["step"]],
+        amsgrad=param_group["amsgrad"],
+        lr=param_group["lr"],
         beta1=beta1,
         beta2=beta2,
-        weight_decay=param_group['weight_decay'],
-        eps=param_group['eps'],
-        maximize=param_group['maximize']
+        weight_decay=param_group["weight_decay"],
+        eps=param_group["eps"],
+        maximize=param_group["maximize"],
     )
 
 
 def pipeline_load_param(swap_numel, params_list, start_index, current_swap_count):
     torch_device = get_torch_device()
-    torch_device.current_stream().wait_stream(SwapOptimizersContainer.swap_to_host_stream)
+    torch_device.current_stream().wait_stream(
+        SwapOptimizersContainer.swap_to_host_stream
+    )
 
     with torch_device.stream(SwapOptimizersContainer.swap_to_device_stream):
-        torch_device.current_stream().wait_stream(SwapOptimizersContainer.swap_to_host_stream)
+        torch_device.current_stream().wait_stream(
+            SwapOptimizersContainer.swap_to_host_stream
+        )
 
         idx = start_index
         while idx < len(params_list):
             param_local = unwrap_dtensor(params_list[idx])
             if params_list[idx].grad is None:
                 idx += 1
-                continue    # skip no grad param
+                continue  # skip no grad param
 
             numel = param_local.numel()
             if current_swap_count > 0 and current_swap_count + numel > swap_numel:
-                break       # stop load params when the buffer is full
+                break  # stop load params when the buffer is full
 
             SwapOptimizersContainer.swap_states_to_device(params_list[idx])
             current_swap_count += numel
@@ -213,7 +240,9 @@ def pipeline_load_param(swap_numel, params_list, start_index, current_swap_count
 @_use_grad_for_differentiable
 def swap_optimizer_step(self, closure=None):
     if torch.jit.is_scripting():
-        raise NotImplementedError("SwapOptimizer does not support torch.jit.script by now.")
+        raise NotImplementedError(
+            "SwapOptimizer does not support torch.jit.script by now."
+        )
 
     loss = None
     if closure is not None:
@@ -221,41 +250,57 @@ def swap_optimizer_step(self, closure=None):
             loss = closure()
 
     for group in self.param_groups:
-        if 'step' in group:
-            group['step'] += 1
-            if group['step'].is_cpu:
-                group['step'] = group['step'].cuda()
+        if "step" in group:
+            group["step"] += 1
+            if group["step"].is_cpu:
+                group["step"] = group["step"].cuda()
         else:
-            group['step'] = torch.tensor(1, dtype=torch.int64, device=get_torch_device().current_device())
+            group["step"] = torch.tensor(
+                1, dtype=torch.int64, device=get_torch_device().current_device()
+            )
 
     swap_count = 0
-    params_list = [p for group in self.param_groups for p in group['params']]
+    params_list = [p for group in self.param_groups for p in group["params"]]
     for i, param in enumerate(params_list):
         if param.grad is None:
             continue
         if param.grad.is_sparse:
-            raise RuntimeError('SwapOptimizer step function does not support sparse gradients for now.')
+            raise RuntimeError(
+                "SwapOptimizer step function does not support sparse gradients for now."
+            )
 
         state = self.state[param]
         group = self.param_to_group_map[param]
-        amsgrad = group['amsgrad']
+        amsgrad = group["amsgrad"]
 
         # state initialization
         if len(state) == 0:
-            state['exp_avg'] = torch.zeros_like(param, memory_format=torch.preserve_format)
-            state['exp_avg_sq'] = torch.zeros_like(param, memory_format=torch.preserve_format)
-        if 'max_exp_avg_sq' not in state:
-            state['max_exp_avg_sq'] = torch.zeros_like(param, memory_format=torch.preserve_format) if amsgrad else None
+            state["exp_avg"] = torch.zeros_like(
+                param, memory_format=torch.preserve_format
+            )
+            state["exp_avg_sq"] = torch.zeros_like(
+                param, memory_format=torch.preserve_format
+            )
+        if "max_exp_avg_sq" not in state:
+            state["max_exp_avg_sq"] = (
+                torch.zeros_like(param, memory_format=torch.preserve_format)
+                if amsgrad
+                else None
+            )
 
         # pipelined swap update (load -> update -> offload)
         # load
         if swap_count == 0:
-            swap_count = pipeline_load_param(self.swap_numel, params_list, i, swap_count)
+            swap_count = pipeline_load_param(
+                self.swap_numel, params_list, i, swap_count
+            )
 
         # update
         SwapOptimizersContainer.wait_swap_to_device_event(param)
         param_update(param, state, group)
-        SwapOptimizersContainer.param_update_events_map[param] = get_torch_device().current_stream().record_event()
+        SwapOptimizersContainer.param_update_events_map[param] = (
+            get_torch_device().current_stream().record_event()
+        )
         # offload
         with get_torch_device().stream(SwapOptimizersContainer.swap_to_host_stream):
             SwapOptimizersContainer.wait_param_update_event(param)
@@ -267,10 +312,7 @@ def swap_optimizer_step(self, closure=None):
 
 @functools.wraps(_original_build_optimizers)
 def _build_optimizers_wrapper(
-    model_parts,
-    optimizer_config,
-    parallel_dims,
-    ft_manager=None
+    model_parts, optimizer_config, parallel_dims, ft_manager=None
 ):
     if getattr(optimizer_config, "swap_optimizer", False):
         # patch optimizer step functions
@@ -301,11 +343,13 @@ def _build_optimizers_wrapper(
             model_parts,
             optimizer_cls,
             optimizer_kwargs,
-            optimizer_config.swap_optimizer_times
+            optimizer_config.swap_optimizer_times,
         )
 
     # original optimizers
-    return _original_build_optimizers(model_parts, optimizer_config, parallel_dims, ft_manager)
+    return _original_build_optimizers(
+        model_parts, optimizer_config, parallel_dims, ft_manager
+    )
 
 
 # patch build_optimizers function

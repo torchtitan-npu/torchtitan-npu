@@ -34,7 +34,9 @@ def _prepare_cos_sin_from_cache(rope_cache: torch.Tensor, x: torch.Tensor):
     return cos, sin
 
 
-def npu_apply_rotary_emb_deepseek(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True) -> torch.Tensor:
+def npu_apply_rotary_emb_deepseek(
+    x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True
+) -> torch.Tensor:
     dtype = x.dtype
     shape = x.shape
 
@@ -43,7 +45,7 @@ def npu_apply_rotary_emb_deepseek(x: torch.Tensor, freqs_cis: torch.Tensor, inte
         x = x.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous().view(*shape)
 
     cos, sin = _prepare_cos_sin_from_complex(freqs_cis, x.dtype)
-    y = torch_npu.npu_rotary_mul(x, cos, sin, rotary_mode='interleave')
+    y = torch_npu.npu_rotary_mul(x, cos, sin, rotary_mode="interleave")
 
     if not interleaved:
         y = torch.cat([y[..., 0::2], y[..., 1::2]], dim=-1)
@@ -51,16 +53,22 @@ def npu_apply_rotary_emb_deepseek(x: torch.Tensor, freqs_cis: torch.Tensor, inte
     return y.to(dtype)
 
 
-def npu_apply_rotary_emb_llama(xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor) -> Tuple[
-    torch.Tensor, torch.Tensor]:
+def npu_apply_rotary_emb_llama(
+    xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
     cos, sin = _prepare_cos_sin_from_complex(freqs_cis, xq.dtype)
-    return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(xk, cos.to(xk.dtype), sin.to(xk.dtype))
+    return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
+        xk, cos.to(xk.dtype), sin.to(xk.dtype)
+    )
 
 
-def npu_apply_rotary_emb_qwen(xq: torch.Tensor, xk: torch.Tensor, rope_cache: torch.Tensor) -> Tuple[
-    torch.Tensor, torch.Tensor]:
+def npu_apply_rotary_emb_qwen(
+    xq: torch.Tensor, xk: torch.Tensor, rope_cache: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
     cos, sin = _prepare_cos_sin_from_cache(rope_cache, xq)
-    return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(xk, cos.to(xk.dtype), sin.to(xk.dtype))
+    return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
+        xk, cos.to(xk.dtype), sin.to(xk.dtype)
+    )
 
 
 @register_npu_converter("npu_rope")
@@ -72,14 +80,14 @@ class RoPEKernel(BaseConverter):
         "qwen3": npu_apply_rotary_emb_qwen,
         "default": npu_apply_rotary_emb_llama,
     }
-    
+
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         target = "apply_rotary_emb"
         matches = find_functions(target, model=model)
         if not matches:
             return model
-        
+
         impl = cls.get_impl_cls(model_name)
 
         count = replace_functions(target, impl, model=model)

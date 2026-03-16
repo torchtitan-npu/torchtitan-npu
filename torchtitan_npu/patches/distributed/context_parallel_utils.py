@@ -12,14 +12,16 @@ import functools
 import threading
 
 import torch
-from torch.distributed.device_mesh import DeviceMesh
 import torchtitan.distributed.utils as dist_utils
+from torch.distributed.device_mesh import DeviceMesh
 from torchtitan.train import Trainer
 
 from torchtitan_npu.patches.tools.utils import load_class_from_string
 
 
-_patch_context = threading.local()  # ceate a thread-safe context manager for monkey patching
+_patch_context = (
+    threading.local()
+)  # create a thread-safe context manager for monkey patching
 _original_create_cp_ctx = dist_utils.create_context_parallel_ctx
 _original_step_method = Trainer.forward_backward_step
 
@@ -33,25 +35,32 @@ def _create_cp_ctx_wrapper(
     cp_rotate_method: str,
 ):
     # get parallel_config from the patch context
-    parallel_config = getattr(_patch_context, 'current_parallel_config', None)
+    parallel_config = getattr(_patch_context, "current_parallel_config", None)
 
     # verify tp + cp availability
-    tp_degree = getattr(parallel_config, 'tensor_parallel_degree', None)
+    tp_degree = getattr(parallel_config, "tensor_parallel_degree", None)
     if tp_degree:
         cp_degree = cp_mesh.size()
-        model_args = getattr(_patch_context, 'model_args', None)
-        n_heads = getattr(model_args, 'n_heads', None)
+        model_args = getattr(_patch_context, "model_args", None)
+        n_heads = getattr(model_args, "n_heads", None)
         if n_heads % (cp_degree * tp_degree) != 0:
-            raise ValueError(f"The combined CP ({cp_degree}) and TP ({tp_degree}) "
-             f"degree does not divide the number of heads ({n_heads}).")
-
+            raise ValueError(
+                f"The combined CP ({cp_degree}) and TP ({tp_degree}) "
+                f"degree does not divide the number of heads ({n_heads})."
+            )
 
     # use custom cp context
-    if parallel_config and getattr(parallel_config, "enable_custom_context_parallel", False):
+    if parallel_config and getattr(
+        parallel_config, "enable_custom_context_parallel", False
+    ):
         custom_cp_path = getattr(parallel_config, "custom_context_parallel_path", "")
         custom_cp_cls = load_class_from_string(custom_cp_path)
-        if not (hasattr(custom_cp_cls, '__enter__') and hasattr(custom_cp_cls, '__exit__')):
-            raise TypeError(f"Custom cp class '{custom_cp_cls}' is not a context manager with __enter__ and __exit__")
+        if not (
+            hasattr(custom_cp_cls, "__enter__") and hasattr(custom_cp_cls, "__exit__")
+        ):
+            raise TypeError(
+                f"Custom cp class '{custom_cp_cls}' is not a context manager with __enter__ and __exit__"
+            )
         return custom_cp_cls(
             cp_mesh,
             buffers=cp_buffers,
@@ -60,7 +69,9 @@ def _create_cp_ctx_wrapper(
         )
 
     # use original cp context
-    return _original_create_cp_ctx(cp_mesh, cp_buffers, cp_seq_dims, cp_no_restore_buffers, cp_rotate_method)
+    return _original_create_cp_ctx(
+        cp_mesh, cp_buffers, cp_seq_dims, cp_no_restore_buffers, cp_rotate_method
+    )
 
 
 @functools.wraps(_original_step_method)

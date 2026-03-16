@@ -35,7 +35,7 @@ class NPURMSNorm(nn.Module):
         nn.init.ones_(self.weight)
 
     def extra_repr(self) -> str:
-        return f'dim={self.dim}, eps={self.eps}'
+        return f"dim={self.dim}, eps={self.eps}"
 
 
 def _get_eps(module: nn.Module) -> Optional[float]:
@@ -55,7 +55,6 @@ def _create_npu_rms_norm(old: nn.Module) -> nn.Module:
 
 @register_npu_converter("npu_rms_norm")
 class RMSNormKernel(BaseConverter):
-
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         count = replace_modules(model, r"RMSNorm", _create_npu_rms_norm)

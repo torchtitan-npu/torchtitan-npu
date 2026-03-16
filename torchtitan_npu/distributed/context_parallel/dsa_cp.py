@@ -7,16 +7,21 @@ import functools
 
 import torch
 import torch.distributed as dist
-from torch.distributed._tensor import DTensor, Replicate, Shard, Partial
 import torch_npu
+from torch.distributed._tensor import DTensor, Partial, Replicate, Shard
 
-from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss, LILossTrain
+from torchtitan_npu.converters.kernels.dsa import (
+    LILossTrain,
+    SparseLightningIndexerKLLoss,
+)
 from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
-from torchtitan_npu.patches.distributed.custom_context_parallel import CustomContextParallelContext
+from torchtitan_npu.patches.distributed.custom_context_parallel import (
+    CustomContextParallelContext,
+)
 
 
-INDEXER_GRAD_INDICES = [2, 3, 4]    # corresponding to LILossTrain.backward outputs
-USE_DTENSOR_MODE = True             # whether use dtensor to communicate
+INDEXER_GRAD_INDICES = [2, 3, 4]  # corresponding to LILossTrain.backward outputs
+USE_DTENSOR_MODE = True  # whether use dtensor to communicate
 
 
 class AllgatherOnSequence(torch.autograd.Function):
@@ -33,7 +38,9 @@ class AllgatherOnSequence(torch.autograd.Function):
         # BSND -> SBND
         tensor_permuted = tensor.permute(1, 0, 2, 3).contiguous()
         # AllGather tensor in given group on sequence dim
-        output_buffer = torch.empty((s_global, b, n, d), dtype=tensor.dtype, device=tensor.device)
+        output_buffer = torch.empty(
+            (s_global, b, n, d), dtype=tensor.dtype, device=tensor.device
+        )
         dist.all_gather_into_tensor(output_buffer, tensor_permuted, group=group)
         # SBND -> BSND
         tensor_global = output_buffer.permute(1, 0, 2, 3)
@@ -54,8 +61,12 @@ class AllgatherOnSequence(torch.autograd.Function):
         # BSND -> SBND
         grad_output_permuted = grad_output.permute(1, 0, 2, 3).contiguous()
         # ReduceScatter grad: input [s_global, b, n, d] -> output [s_local, b, n, d]
-        grad_local_permuted = torch.empty((s_local, b, n, d), dtype=grad_output.dtype, device=grad_output.device)
-        dist.reduce_scatter_tensor(grad_local_permuted, grad_output_permuted, group=group)
+        grad_local_permuted = torch.empty(
+            (s_local, b, n, d), dtype=grad_output.dtype, device=grad_output.device
+        )
+        dist.reduce_scatter_tensor(
+            grad_local_permuted, grad_output_permuted, group=group
+        )
         # SBND -> BSND
         grad_input = grad_local_permuted.permute(1, 0, 2, 3)
         return grad_input, None
@@ -112,7 +123,9 @@ def dsa_forward_with_cp(
     Out context parallel strategy for DSA is to simply allgather KV tensors because these tensors are relatively small
     """
     if k.shape[1] != 1 or v.shape[1] != 1:
-        raise NotImplementedError("Only support num_head_kv == 1 in dsa forward under absorb mode.")
+        raise NotImplementedError(
+            "Only support num_head_kv == 1 in dsa forward under absorb mode."
+        )
 
     # get complete k_indexer in cp_group by allgather
     k_indexer_global = allgather_sequence(k_indexer, self.cp_mesh)
@@ -124,12 +137,12 @@ def dsa_forward_with_cp(
 
     topk_indices, _ = torch_npu.npu_lightning_indexer(
         q_indexer,
-        k_indexer_global[:, : slice_end, :, :],
+        k_indexer_global[:, :slice_end, :, :],
         weights,
         actual_seq_lengths_query=None,
         actual_seq_lengths_key=None,
-        layout_query='BSND',
-        layout_key='BSND',
+        layout_query="BSND",
+        layout_key="BSND",
         sparse_count=index_topk,
         sparse_mode=3,
         return_value=True,
@@ -141,11 +154,17 @@ def dsa_forward_with_cp(
     v = v.transpose(1, 2)
 
     # Split q_nope / q_pe
-    q_nope, q_pe = torch.split(q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
-    k_nope, k_pe = torch.split(k, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
+    q_nope, q_pe = torch.split(
+        q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1
+    )
+    k_nope, k_pe = torch.split(
+        k, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1
+    )
 
     bsz = q.shape[0]
-    actual_seq_len = torch.full((bsz,), q_nope.shape[1], dtype=torch.int32, device=q_nope.device)
+    actual_seq_len = torch.full(
+        (bsz,), q_nope.shape[1], dtype=torch.int32, device=q_nope.device
+    )
 
     # the causal attn can be ensured by topk_indices in npu_sparse_flash_attention, do not need to slice key tensors
     k_nope_global = allgather_sequence(k_nope, self.cp_mesh)
@@ -154,40 +173,40 @@ def dsa_forward_with_cp(
 
     output, softmax_max, softmax_sum, *_ = torch_npu.npu_sparse_flash_attention(
         q_nope,
-        k_nope_global[:, : slice_end, :, :],
-        v_global[:, : slice_end, :, :],
+        k_nope_global[:, :slice_end, :, :],
+        v_global[:, :slice_end, :, :],
         sparse_indices=topk_indices.to(torch.int32),
         block_table=None,
         actual_seq_lengths_query=actual_seq_len,
         actual_seq_lengths_kv=actual_seq_len * self.cp_mesh.size(),
         query_rope=q_pe,
-        key_rope=k_pe_global[:, : slice_end, :, :],
+        key_rope=k_pe_global[:, :slice_end, :, :],
         scale_value=scale,
         sparse_block_size=1,
-        layout_query='BSND',
-        layout_kv='BSND',
+        layout_query="BSND",
+        layout_kv="BSND",
         sparse_mode=3,
-        attention_mode=2,            # 0: GQA/MHA, 1: MLA-naive, 2: MLA-absorb
-        return_softmax_lse=True,     # it must be True in training mode
+        attention_mode=2,  # 0: GQA/MHA, 1: MLA-naive, 2: MLA-absorb
+        return_softmax_lse=True,  # it must be True in training mode
     )
 
     # to ensure causal attn in npu_sparse_lightning_indexer_grad_kl_loss, should slice the key tensors
     loss = self.compute_dsa_indexer_loss(
         q_nope,
-        k_nope_global[:, : slice_end, :, :],
+        k_nope_global[:, :slice_end, :, :],
         q_indexer,
-        k_indexer_global[:, : slice_end, :, :],
+        k_indexer_global[:, :slice_end, :, :],
         weights,
         topk_indices,
         softmax_max,
         softmax_sum,
         scale_value=scale,
         query_rope=q_pe,
-        key_rope=k_pe_global[:, : slice_end, :, :],
+        key_rope=k_pe_global[:, :slice_end, :, :],
         actual_seq_qlen=None,
         actual_seq_klen=None,
-        layout='BSND',
-        sparse_mode=3   # mask is rightDownCausal mode
+        layout="BSND",
+        sparse_mode=3,  # mask is rightDownCausal mode
     )
     output = output.transpose(1, 2)
     return loss, output

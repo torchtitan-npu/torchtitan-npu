@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from unittest.mock import MagicMock
+
 import pytest
 import torch
 import torch.nn as nn
@@ -17,6 +18,7 @@ def mock_job_config():
         config.model.name = model_name
         config.model.converters = converters or []
         return config
+
     return _create
 
 
@@ -32,11 +34,11 @@ def simple_model():
             super().__init__()
             self.weight = nn.Parameter(torch.ones(dim))
             self.eps = 1e-6
-    
+
     class SimpleMethod(nn.Module):
         def __init__(self):
             super().__init__()
             self.norm = SimpleRMSNorm(64)
             self.linear = nn.Linear(64, 64)
-    
+
     return SimpleMethod()

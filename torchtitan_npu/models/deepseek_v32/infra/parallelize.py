@@ -26,7 +26,10 @@ from torch.distributed.tensor.parallel import (
 from torchtitan.config import JobConfig, TORCH_DTYPE_MAP
 from torchtitan.distributed import NoParallel, ParallelDims
 from torchtitan.distributed.activation_checkpoint import apply_ac
-from torchtitan.distributed.dual_pipe_v import DualPipeExpertParallel, get_dual_pipe_v_flag
+from torchtitan.distributed.dual_pipe_v import (
+    DualPipeExpertParallel,
+    get_dual_pipe_v_flag,
+)
 from torchtitan.distributed.expert_parallel import (
     BaseExpertParallel,
     DeepEPExpertParallel,
@@ -35,10 +38,7 @@ from torchtitan.distributed.expert_parallel import (
 )
 from torchtitan.distributed.tensor_parallel import maybe_enable_async_tp
 from torchtitan.models.llama3.infra.parallelize import apply_ddp
-from torchtitan.models.llama4.infra.parallelize import (
-    apply_compile,
-    apply_fsdp,
-)
+from torchtitan.models.llama4.infra.parallelize import apply_compile, apply_fsdp
 
 from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
 from torchtitan_npu.models.deepseek_v32.model.model import DSAIndexerLossLoggingHelper
@@ -74,17 +74,15 @@ class PrepareModuleInputOutputWithBwdAllReduce(PrepareModuleInputOutput):
     This is useful when certain inputs participate in computations that require
     gradient synchronization across devices (e.g., in tensor parallelism scenarios).
     """
-    def __init__(
-        self,
-        *,
-        bwd_allreduce_inputs: tuple[bool, ...],
-        **kwargs
-    ):
+
+    def __init__(self, *, bwd_allreduce_inputs: tuple[bool, ...], **kwargs):
         super().__init__(**kwargs)
         self.bwd_allreduce_inputs = bwd_allreduce_inputs
 
         if self.prepare_module_input.input_layouts is not None:
-            assert len(self.bwd_allreduce_inputs) == len(self.prepare_module_input.input_layouts), (
+            assert len(self.bwd_allreduce_inputs) == len(
+                self.prepare_module_input.input_layouts
+            ), (
                 f"bwd_allreduce_inputs must have the same length as input_layouts! "
                 f"Got {len(self.bwd_allreduce_inputs)} vs {len(self.prepare_module_input.input_layouts)}"
             )
@@ -97,7 +95,9 @@ class PrepareModuleInputOutputWithBwdAllReduce(PrepareModuleInputOutput):
             module: The module to register hooks on
             inputs: Tuple of input tensors to the module
         """
-        for _, (inp, needs_allreduce) in enumerate(zip(inputs, self.bwd_allreduce_inputs)):
+        for _, (inp, needs_allreduce) in enumerate(
+            zip(inputs, self.bwd_allreduce_inputs)
+        ):
             if not needs_allreduce:
                 continue
 
@@ -108,19 +108,19 @@ class PrepareModuleInputOutputWithBwdAllReduce(PrepareModuleInputOutput):
                 # Ensure gradient is contiguous for efficient communication
                 if not grad.is_contiguous():
                     grad = grad.contiguous()
-                torch.distributed.all_reduce(grad, op=torch.distributed.ReduceOp.SUM, group=self.group)
+                torch.distributed.all_reduce(
+                    grad, op=torch.distributed.ReduceOp.SUM, group=self.group
+                )
                 return grad
 
             inp.register_hook(_allreduce_grad_hook)
-    
+
     def _apply(self, module: nn.Module, device_mesh: DeviceMesh) -> nn.Module:
         super()._apply(module, device_mesh)
 
         self.group = device_mesh.get_group()
         if self.prepare_module_input.use_local_output:
-            module.register_forward_pre_hook(
-                self._attach_bwd_hook_fn
-            )
+            module.register_forward_pre_hook(self._attach_bwd_hook_fn)
 
         return module
 
@@ -282,13 +282,16 @@ def apply_non_moe_tp(
     tp_mesh: DeviceMesh,
     loss_parallel: bool,
     enable_float8_tensorwise_tp: bool,
-    job_config: JobConfig
+    job_config: JobConfig,
 ):
     """Apply tensor parallelism."""
 
     # whether the npu_dsa kernel is enabled
     parallel_cfg = job_config.parallelism
-    use_cp = parallel_cfg.enable_custom_context_parallel and parallel_cfg.context_parallel_degree > 1
+    use_cp = (
+        parallel_cfg.enable_custom_context_parallel
+        and parallel_cfg.context_parallel_degree > 1
+    )
     enable_npu_dsa = "npu_dsa" in job_config.model.converters or use_cp
     enable_mla_absorb = getattr(model.model_args, "enable_mla_absorb", True)
 
@@ -313,7 +316,12 @@ def apply_non_moe_tp(
         },
     )
 
-    rowwise_parallel, colwise_parallel, prepare_module_input, prepare_module_input_output = (
+    (
+        rowwise_parallel,
+        colwise_parallel,
+        prepare_module_input,
+        prepare_module_input_output,
+    ) = (
         RowwiseParallel,
         ColwiseParallel,
         PrepareModuleInput,
@@ -373,7 +381,9 @@ def apply_non_moe_tp(
         if enable_npu_dsa:
             # NOTE: here we patch the indexer_loss computation with npu fusion kernel module
             #       then we set the specific parallelize_plan for this module to ensure the correctness of loss
-            transformer_block.attention.inner_attention.compute_dsa_indexer_loss = SparseLightningIndexerKLLoss()
+            transformer_block.attention.inner_attention.compute_dsa_indexer_loss = (
+                SparseLightningIndexerKLLoss()
+            )
 
         layer_plan = {
             "attention_norm": SequenceParallel(),
@@ -448,7 +458,7 @@ def apply_moe_ep_tp(
     etp_mesh: DeviceMesh | None,
     ep_etp_mesh: DeviceMesh | None,
     dual_pipe_v: bool = False,
-    use_deepep: bool = False
+    use_deepep: bool = False,
 ):
     assert (
         tp_mesh is not None or ep_mesh is not None
@@ -471,7 +481,9 @@ def apply_moe_ep_tp(
                     output_layouts=(Shard(1),),
                     desired_output_layouts=(Shard(1),),
                 ),
-                "moe.router.gate": SequenceParallel(sequence_dim=0, use_local_output=True),
+                "moe.router.gate": SequenceParallel(
+                    sequence_dim=0, use_local_output=True
+                ),
             }
             if transformer_block.moe.shared_experts is not None:
                 # input: sharded on fused batch-seq dimension (dim=0)
@@ -483,7 +495,9 @@ def apply_moe_ep_tp(
                             desired_input_layouts=(Replicate(),),
                         ),
                         "moe.shared_experts.w1": ColwiseParallel(),
-                        "moe.shared_experts.w2": RowwiseParallel(output_layouts=Shard(0)),
+                        "moe.shared_experts.w2": RowwiseParallel(
+                            output_layouts=Shard(0)
+                        ),
                         "moe.shared_experts.w3": ColwiseParallel(),
                     }
                 )
@@ -568,4 +582,6 @@ def apply_distributed_indexer_loss_tracking(parallel_dims: ParallelDims):
         logger.info(f"indexer loss: {loss.item()}")
 
     # Apply the monkey patch
-    DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics = distributed_track_dsa_indexer_metrics
+    DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics = (
+        distributed_track_dsa_indexer_metrics
+    )

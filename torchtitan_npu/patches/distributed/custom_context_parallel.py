@@ -4,13 +4,15 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates
 # Developed by Huawei Technologies Co., Ltd. based on Meta Platforms, Inc. and affiliates TorchTitan
 
-from typing import Optional, List, Set, Generator
+from typing import Generator, List, Optional, Set
 
 import torch
 import torch.nn as nn
-from torch.distributed.device_mesh import DeviceMesh
-from torch.distributed.tensor.experimental._context_parallel._attention import _context_parallel_buffers
 import torchtitan
+from torch.distributed.device_mesh import DeviceMesh
+from torch.distributed.tensor.experimental._context_parallel._attention import (
+    _context_parallel_buffers,
+)
 
 
 _original_create_cp_ctx = torchtitan.distributed.utils.create_context_parallel_ctx
@@ -38,7 +40,9 @@ class CustomContextParallelContext:
         self.mesh = mesh
         self.buffers = [] if buffers is None else buffers
         self.buffer_seq_dims = [] if buffer_seq_dims is None else buffer_seq_dims
-        self.no_restore_buffers = set() if no_restore_buffers is None else no_restore_buffers
+        self.no_restore_buffers = (
+            set() if no_restore_buffers is None else no_restore_buffers
+        )
         self.load_balance = load_balance
 
         if len(self.buffers) != len(self.buffer_seq_dims):
@@ -56,8 +60,7 @@ class CustomContextParallelContext:
     def __enter__(self):
         # slice input tensors on sequence dim
         self.original_buffers = [
-            None if b in self.no_restore_buffers else b.clone()
-            for b in self.buffers
+            None if b in self.no_restore_buffers else b.clone() for b in self.buffers
         ]
 
         if len(self.buffers) > 0:
@@ -66,7 +69,9 @@ class CustomContextParallelContext:
             cp_world_size = self.mesh.size()
 
             if self.load_balance:
-                raise NotImplementedError("Load balance for context parallel is not supported now.")
+                raise NotImplementedError(
+                    "Load balance for context parallel is not supported now."
+                )
             else:
                 load_balance_indices = None
 

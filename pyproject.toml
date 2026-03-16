@@ -3,10 +3,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "torchtitan_npu"
 version = "0.2.1"
@@ -18,3 +14,33 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["torchtitan_npu*"]
 exclude = ["CI*", "test_reports*", "cloudcache*", "third_party*"]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "expecttest", # test_tokenizer
+    "pyrefly==0.45.1",
+]
+
+[tool.codespell]
+skip = ["*.json"]
+ignore-words-list = ["cann"]
+
+# ---- Explicit project build information ---- #
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = ["--showlocals"]  # show local variables in tracebacks
+testpaths = ["tests"]
+
+[tool.pyrefly]
+project-excludes = ["torchtitan/experiments", "**/tests/**"]
+ignore-missing-imports = ["torchao.*", "torchft"]  # optional dependencies
+search-path = ["../pytorch"]  # local built pytorch
+
+[tool.usort]
+known_first_party = ["torchtitan_npu"]

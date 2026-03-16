@@ -15,8 +15,8 @@ from torchtitan.components.loss import build_cross_entropy_loss
 from torchtitan.components.lr_scheduler import build_lr_schedulers
 from torchtitan.components.optimizer import build_optimizers_with_moe_load_balancing
 from torchtitan.components.tokenizer import build_hf_tokenizer
-from torchtitan.hf_datasets.text_datasets import build_text_dataloader
 from torchtitan.distributed.pipeline_parallel import pipeline_llm
+from torchtitan.hf_datasets.text_datasets import build_text_dataloader
 from torchtitan.models.moe import MoEArgs
 from torchtitan.protocols.train_spec import TrainSpec
 
@@ -147,7 +147,7 @@ deepseekv32_args = {
         save_expert_format="gmm",
         hf_save_dir=None,
         save_patch_enabled=False,
-    ), 
+    ),
 }
 
 

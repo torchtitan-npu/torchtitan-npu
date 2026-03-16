@@ -16,11 +16,11 @@ import math
 from collections.abc import Iterable
 
 import torch
+
+import torchtitan
 from torch import distributed as dist
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.tensor import DTensor
-
-import torchtitan
 
 
 @torch.no_grad()

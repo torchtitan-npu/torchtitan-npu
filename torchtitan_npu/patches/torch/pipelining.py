@@ -4,7 +4,11 @@ from typing import Any, Callable, Optional
 
 import torch
 from torch.distributed.fsdp import FSDPModule, fully_shard
-from torch.distributed.pipelining._backward import stage_backward, stage_backward_input, stage_backward_weight
+from torch.distributed.pipelining._backward import (
+    stage_backward,
+    stage_backward_input,
+    stage_backward_weight,
+)
 from torch.nn.parallel import DistributedDataParallel
 
 
@@ -74,8 +78,12 @@ def backward_maybe_with_nosync(
     elif isinstance(self.submod, FSDPModule):
         self.submod.set_is_last_backward(False)
         # NOTE: npu modification start
-        self.submod.set_reshard_after_backward(True)    # set True to save memory by resharding params
-        self.submod.set_requires_gradient_sync(True)    # set True to save memory by resharding grads
+        self.submod.set_reshard_after_backward(
+            True
+        )  # set True to save memory by resharding params
+        self.submod.set_requires_gradient_sync(
+            True
+        )  # set True to save memory by resharding grads
         # NOTE: npu modification end
         result = perform_backward(backward_type)()
 
@@ -88,4 +96,6 @@ def backward_maybe_with_nosync(
 
 
 # apply patch to reshard params and grads after backward to save memory, but this will hurt efficiency
-torch.distributed.pipelining.stage._PipelineStageBase.backward_maybe_with_nosync = backward_maybe_with_nosync
+torch.distributed.pipelining.stage._PipelineStageBase.backward_maybe_with_nosync = (
+    backward_maybe_with_nosync
+)

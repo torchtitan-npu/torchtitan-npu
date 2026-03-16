@@ -13,16 +13,30 @@ import warnings
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Callable, List, Optional, Tuple, Union, Dict, Type
-from typing import OrderedDict as OrderedDictType
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    OrderedDict as OrderedDictType,
+    Tuple,
+    Type,
+    Union,
+)
 
 import torch
 import torch.nn as nn
 import torch.nn.utils.parametrize as parametrize
-from torchtitan_npu.converters.kernels.quant_linear import MXLinear
+
 from torchtitan_npu.converters.convert_utils import replace_functions
-from torchtitan_npu.converters.kernels.quant_gmm import npu_grouped_mxfp8_mm, npu_grouped_hif8_mm
-from .quant_config import MXLinearConfig, MoEGroupedRecipeName
+from torchtitan_npu.converters.kernels.quant_gmm import (
+    npu_grouped_hif8_mm,
+    npu_grouped_mxfp8_mm,
+)
+from torchtitan_npu.converters.kernels.quant_linear import MXLinear
+
+from .quant_config import MoEGroupedRecipeName, MXLinearConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +50,12 @@ def register_quantize_module_handler(config_type):
     def decorator(func):
         _QUANTIZE_CONFIG_HANDLER[config_type] = func
         return func
+
     return decorator
 
 
 def _is_linear(mod, *args):
-    return(
+    return (
         isinstance(mod, torch.nn.Linear)
         and hasattr(mod, "weight")
         and not isinstance(mod, nn.modules.linear.NonDynamicallyQuantizableLinear)
@@ -48,11 +63,11 @@ def _is_linear(mod, *args):
 
 
 def _replace_with_custom_fn_if_matches_filter(
-        model,
-        replacement_fn,
-        filter_fn,
-        cur_fqn="",
-        extra_args: Optional[Tuple[Any, ...]] = (),
+    model,
+    replacement_fn,
+    filter_fn,
+    cur_fqn="",
+    extra_args: Optional[Tuple[Any, ...]] = (),
 ) -> None:
     if filter_fn(model, cur_fqn[:-1]):
         model = replacement_fn(model, *extra_args)
@@ -74,9 +89,9 @@ def _replace_with_custom_fn_if_matches_filter(
 
 
 def linear_quantize_(
-        model: torch.nn.Module,
-        config,
-        filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = _is_linear
+    model: torch.nn.Module,
+    config,
+    filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = _is_linear,
 ):
     """
     Convert the weight of linear modules in the model with 'config', model is modified inplace
@@ -98,10 +113,10 @@ def linear_quantize_(
 
 
 def grouped_quantize_(
-        model: torch.nn.Module,
-        config,
-        filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = None,
-        recipe_name=None
+    model: torch.nn.Module,
+    config,
+    filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = None,
+    recipe_name=None,
 ):
     TARGET_PACKAGE = "torchtitan_npu.converter.kernels.gmm"
     replacement_counts = 0
@@ -109,19 +124,21 @@ def grouped_quantize_(
         func_replacements = replace_functions(
             func_name="npu_grouped_mm",
             new_func=npu_grouped_mxfp8_mm,
-            package=TARGET_PACKAGE
+            package=TARGET_PACKAGE,
         )
         replacement_counts += func_replacements
     elif config.recipe_name == MoEGroupedRecipeName.GMM_HIF8:
         func_replacements = replace_functions(
             func_name="npu_grouped_mm",
             new_func=npu_grouped_hif8_mm,
-            package=TARGET_PACKAGE
+            package=TARGET_PACKAGE,
         )
         replacement_counts += func_replacements
     else:
         raise AssertionError(f"unknown recipe_name {recipe_name}")
-    logger.info(f"[MXFP8/Hif8 GMM] Replaced {replacement_counts} NPU GMM methods/functions.")
+    logger.info(
+        f"[MXFP8/Hif8 GMM] Replaced {replacement_counts} NPU GMM methods/functions."
+    )
 
 
 @register_quantize_module_handler(MXLinearConfig)

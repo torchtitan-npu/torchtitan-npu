@@ -1,11 +1,15 @@
-import operator
 import logging
+import operator
 from typing import Any, Callable
 
 import torch
 from torch._decomp import get_decompositions
 from torch._inductor import config
-from torch._library.utils import get_layout_constraint_tag
+from torch._inductor.exc import (
+    LoweringException,
+    MissingOperatorWithDecomp,
+    MissingOperatorWithoutDecomp,
+)
 from torch._inductor.lowering import (
     constrain_to_fake_tensors,
     FALLBACK_ALLOW_LIST,
@@ -14,17 +18,14 @@ from torch._inductor.lowering import (
     maybe_layout_constraints,
     tag_to_layout_constraint,
 )
-from torch._inductor.exc import (
-    LoweringException,
-    MissingOperatorWithDecomp,
-    MissingOperatorWithoutDecomp,
-)
+from torch._library.utils import get_layout_constraint_tag
 
 logger = logging.getLogger(__name__)
 
 
-def graphlowering_call_function(self, target: Callable, args: Any, 
-                                kwargs: dict[str, Any]) -> Any:  # type: ignore[type-arg, override]
+def graphlowering_call_function(
+    self, target: Callable, args: Any, kwargs: dict[str, Any]
+) -> Any:  # type: ignore[type-arg, override]
     """
     torch._inductor.graph.py
 
@@ -42,13 +43,13 @@ def graphlowering_call_function(self, target: Callable, args: Any,
         return target(*args, **kwargs)
 
     if target not in lowerings:
-        assert isinstance(target, torch._ops.OpOverload), (
-            f"{target} is not an OpOverload"
-        )
+        assert isinstance(
+            target, torch._ops.OpOverload
+        ), f"{target} is not an OpOverload"
         base_name = target.name().split(".")[0]
         if base_name in FALLBACK_ALLOW_LIST:
             make_fallback(target, warn=False, override_decomp=True)
-        elif config.implicit_fallbacks:           
+        elif config.implicit_fallbacks:
             default_tag: torch._C.Tag = get_layout_constraint_tag(
                 target, with_default=True
             )

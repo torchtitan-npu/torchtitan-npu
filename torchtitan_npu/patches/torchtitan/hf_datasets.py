@@ -4,7 +4,11 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets import load_dataset
-from torchtitan.hf_datasets.text_datasets import DATASETS, DatasetConfig, _process_c4_text
+from torchtitan.hf_datasets.text_datasets import (
+    _process_c4_text,
+    DatasetConfig,
+    DATASETS,
+)
 
 from torchtitan.tools.logging import init_logger, logger
 
@@ -25,13 +29,19 @@ for name, config in new_datasets.items():
     if name not in DATASETS:
         DATASETS[name] = config
         added_datasets.append(name)
-        logger.info(f"[Dataset Patch] Successfully added dataset config: {name} (path: {config.path})")
+        logger.info(
+            f"[Dataset Patch] Successfully added dataset config: {name} (path: {config.path})"
+        )
     else:
         logger.warning(f"[Dataset Patch] Dataset {name} already exists, skip adding")
 
 # Summary print
 if added_datasets:
-    logger.info(f"[Dataset Patch] Added {len(added_datasets)} datasets in total: {added_datasets}")
+    logger.info(
+        f"[Dataset Patch] Added {len(added_datasets)} datasets in total: {added_datasets}"
+    )
     logger.info(f"[Dataset Patch] All supported datasets now: {list(DATASETS.keys())}")
 else:
-    logger.info(f"[Dataset Patch] No new datasets to add, current supported: {list(DATASETS.keys())}")
+    logger.info(
+        f"[Dataset Patch] No new datasets to add, current supported: {list(DATASETS.keys())}"
+    )

@@ -23,7 +23,9 @@ from .args import DeepSeekV32ModelArgs
 logger = logging.getLogger()
 
 
-def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True) -> torch.Tensor:
+def apply_rotary_emb(
+    x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True
+) -> torch.Tensor:
     """
     Applies rotary positional embeddings to the input tensor.
     Args:
@@ -45,7 +47,6 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool
 
 
 class RMSNorm(nn.Module):
-
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
         self.dim = dim
@@ -75,10 +76,13 @@ def hadamard_transform_ref(x, scale=1.0):
     dim = x.shape[-1]
     x = x.reshape(-1, dim)
     log_dim = math.ceil(math.log2(dim))
-    dim_padded = 2 ** log_dim
+    dim_padded = 2**log_dim
     if dim != dim_padded:
         x = F.pad(x, (0, dim_padded - dim))
-    out = F.linear(x, torch.tensor(hadamard(dim_padded, dtype=float), dtype=x.dtype, device=x.device))
+    out = F.linear(
+        x,
+        torch.tensor(hadamard(dim_padded, dtype=float), dtype=x.dtype, device=x.device),
+    )
     out = out * scale
     return out[..., :dim].reshape(*x_shape)
 
@@ -89,19 +93,15 @@ def rotate_activation(x: torch.Tensor) -> torch.Tensor:
     except ImportError:
         hadamard_transform = hadamard_transform_ref
     hidden_size = x.size(-1)
-    return hadamard_transform(x, scale=hidden_size ** -0.5)
+    return hadamard_transform(x, scale=hidden_size**-0.5)
 
 
-def bf16_index(
-    q: torch.Tensor,
-    weight: torch.Tensor,
-    k: torch.Tensor
-) -> torch.Tensor:
+def bf16_index(q: torch.Tensor, weight: torch.Tensor, k: torch.Tensor) -> torch.Tensor:
     """
     Perform index score using BF16 precision.
     """
-    query = rearrange(q, 'b s h d -> b h s d').to(torch.float32)
-    key = rearrange(k, 'b s h d -> b h d s').to(torch.float32)
+    query = rearrange(q, "b s h d -> b h s d").to(torch.float32)
+    key = rearrange(k, "b s h d -> b h d s").to(torch.float32)
     p = torch.matmul(query, key)
     relu_out = torch.nn.functional.relu(p)
 
@@ -112,7 +112,6 @@ def bf16_index(
 
 
 class Indexer(torch.nn.Module):
-
     def __init__(self, args: DeepSeekV32ModelArgs):
         super().__init__()
         self.dim: int = args.dim
@@ -121,41 +120,51 @@ class Indexer(torch.nn.Module):
         self.rope_head_dim: int = args.qk_rope_head_dim
         self.index_topk: int = args.index_topk
         self.q_lora_rank: int = args.q_lora_rank
-        self.wq_b = nn.Linear(self.q_lora_rank, self.n_heads * self.head_dim, bias=False)
+        self.wq_b = nn.Linear(
+            self.q_lora_rank, self.n_heads * self.head_dim, bias=False
+        )
         self.wk = nn.Linear(self.dim, self.head_dim, bias=False)
         self.k_norm = nn.LayerNorm(self.head_dim)
         # weights_proj in the checkpoint is stored in bf16, while the parameters here are stored in fp32 for convenient.
-        self.weights_proj = nn.Linear(self.dim, self.n_heads, dtype=torch.float32, bias=False)
-        self.softmax_scale = self.head_dim ** -0.5
+        self.weights_proj = nn.Linear(
+            self.dim, self.n_heads, dtype=torch.float32, bias=False
+        )
+        self.softmax_scale = self.head_dim**-0.5
 
-    def forward(self, x: torch.Tensor, qr: torch.Tensor, start_pos: int,
-                freqs_cis: torch.Tensor, mask: Optional[torch.Tensor]):
+    def forward(
+        self,
+        x: torch.Tensor,
+        qr: torch.Tensor,
+        start_pos: int,
+        freqs_cis: torch.Tensor,
+        mask: Optional[torch.Tensor],
+    ):
         bsz, seqlen, _ = x.size()
         end_pos = start_pos + seqlen
         q = self.wq_b(qr)
         q = q.view(bsz, seqlen, self.n_heads, self.head_dim)
-        q_pe, q_nope = torch.split(q, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1)
+        q_pe, q_nope = torch.split(
+            q, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1
+        )
         # rope in indexer is not interleaved
         q_pe = apply_rotary_emb(q_pe, freqs_cis, False)
         q = torch.cat([q_pe, q_nope], dim=-1)
         k = self.wk(x)
         k = self.k_norm(k)
-        k_pe, k_nope = torch.split(k, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1)
+        k_pe, k_nope = torch.split(
+            k, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1
+        )
         # rope in indexer is not interleaved
         k_pe = apply_rotary_emb(k_pe.unsqueeze(2), freqs_cis, False).squeeze(2)
         k = torch.cat([k_pe, k_nope], dim=-1).unsqueeze(2)
         q = rotate_activation(q)
         k = rotate_activation(k)
-        weights = self.weights_proj(x) * self.n_heads ** -0.5
+        weights = self.weights_proj(x) * self.n_heads**-0.5
         weights = weights * self.softmax_scale
         return q, weights, k, end_pos
 
     def init_weights(self, init_std: float):
-        linear_list = [
-            self.wq_b,
-            self.wk,
-            self.weights_proj
-        ]
+        linear_list = [self.wq_b, self.wk, self.weights_proj]
         linear_list.extend([self.wq_b, self.wk, self.weights_proj])
         for linear in linear_list:
             nn.init.trunc_normal_(linear.weight, mean=0.0, std=0.02)
@@ -197,8 +206,12 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
             DSAIndexerLossAutoScaler.main_loss_backward_scale = torch.tensor(
                 1.0, device=loss.device
             )
-        dsa_indexer_loss_backward_scale = DSAIndexerLossAutoScaler.main_loss_backward_scale
-        scaled_dsa_indexer_loss_grad = torch.ones_like(loss) * dsa_indexer_loss_backward_scale
+        dsa_indexer_loss_backward_scale = (
+            DSAIndexerLossAutoScaler.main_loss_backward_scale
+        )
+        scaled_dsa_indexer_loss_grad = (
+            torch.ones_like(loss) * dsa_indexer_loss_backward_scale
+        )
         return grad_output, scaled_dsa_indexer_loss_grad
 
     @staticmethod
@@ -241,7 +254,9 @@ class DSAIndexerLossLoggingHelper:
         tracker = DSAIndexerLossLoggingHelper.tracker
         if "values" not in tracker:
             tracker["values"] = torch.zeros(num_layers, device=loss.device)
-        tracker["values"][layer_number - 1] += loss.to_local().detach() if isinstance(loss, DTensor) else loss.detach()
+        tracker["values"][layer_number - 1] += (
+            loss.to_local().detach() if isinstance(loss, DTensor) else loss.detach()
+        )
 
     @staticmethod
     def clean_loss_in_tracker():
@@ -259,9 +274,7 @@ class DSAIndexerLossLoggingHelper:
         das_indexer_num_layers = das_indexer_losses.shape[0]
         loss = das_indexer_losses.sum() / das_indexer_num_layers / total_acc_steps
         DSAIndexerLossLoggingHelper.clean_loss_in_tracker()
-        logger.info(
-            f"indexer loss: {loss.item()}"
-        )
+        logger.info(f"indexer loss: {loss.item()}")
 
 
 class DSAIndexerLoss(torch.nn.Module):
@@ -273,6 +286,7 @@ class DSAIndexerLoss(torch.nn.Module):
         topk_indices: Selected top-K indices for sparse phase
         loss_scale: Dsa indexer loss scale
     """
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -286,33 +300,38 @@ class DSAIndexerLoss(torch.nn.Module):
         index_score = F.softmax(index_score, dim=-1, dtype=torch.float32)
         # considering only the selected token
         selected_main_attn_dist = F.normalize(selected_main_attn_dist, p=1, dim=-1)
-        loss = F.kl_div((index_score + 1e-8).log(),
-                        selected_main_attn_dist + 1e-8,
-                        reduction='none',
-                        ).sum(dim=-1).mean()
+        loss = (
+            F.kl_div(
+                (index_score + 1e-8).log(),
+                selected_main_attn_dist + 1e-8,
+                reduction="none",
+            )
+            .sum(dim=-1)
+            .mean()
+        )
         loss *= loss_scale
         return loss
 
 
 def get_attn_scores(
-        query,
-        key,
-        attention_mask,
-        attn_scale,
+    query,
+    key,
+    attention_mask,
+    attn_scale,
 ):
     """aggregate the main attention scores"""
     num_head_q = query.shape[1]
     num_head_k = key.shape[1]
     if num_head_q != num_head_k and num_head_k != 1:
         raise NotImplementedError(
-            f"Only suppport num_head_q == num_head_k or num_head_k == 1. "
+            f"Only support num_head_q == num_head_k or num_head_k == 1. "
             f"Current {num_head_q=}, {num_head_k=}."
         )
 
     attn = (query @ key.transpose(-1, -2)) * attn_scale
 
     if attention_mask is not None:
-        attn.masked_fill_(attention_mask, float('-inf'))
+        attn.masked_fill_(attention_mask, float("-inf"))
 
     attn = F.softmax(attn, dim=-1, dtype=torch.float32)
     attn = attn.sum(dim=1)
@@ -345,45 +364,62 @@ class DSV32_SDPA(torch.nn.Module):
             ]
 
     def forward(
-            self,
-            q: torch.Tensor,
-            k: torch.Tensor,
-            v: torch.Tensor,
-            attn_mask: torch.Tensor | None = None,
-            scale: float | None = None,
-            q_indexer: torch.Tensor | None = None,
-            k_indexer: torch.Tensor | None = None,
-            weights: torch.Tensor | None = None,
-            end_pos: torch.Tensor | None = None,
-            index_topk: torch.Tensor | None = None,
-        ) -> torch.Tensor:
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        attn_mask: torch.Tensor | None = None,
+        scale: float | None = None,
+        q_indexer: torch.Tensor | None = None,
+        k_indexer: torch.Tensor | None = None,
+        weights: torch.Tensor | None = None,
+        end_pos: torch.Tensor | None = None,
+        index_topk: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         bsz = q.size(0)
         seqlen = q.size(2)
 
         # prepare attention_mask for sparse attention according to lightning_indexer score
-        index_score = bf16_index(q_indexer.contiguous(), weights.unsqueeze(-1), k_indexer.contiguous())
+        index_score = bf16_index(
+            q_indexer.contiguous(), weights.unsqueeze(-1), k_indexer.contiguous()
+        )
         if attn_mask is None:
-            attn_mask = torch.where(torch.triu(torch.ones((bsz, seqlen, seqlen),
-                                            dtype=q.dtype,
-                                            device=q.device),
-                                            diagonal=1) == 1, float('-inf'), 0.0)
+            attn_mask = torch.where(
+                torch.triu(
+                    torch.ones((bsz, seqlen, seqlen), dtype=q.dtype, device=q.device),
+                    diagonal=1,
+                )
+                == 1,
+                float("-inf"),
+                0.0,
+            )
         index_score += attn_mask
         topk_score, topk_indices = index_score.topk(min(index_topk, end_pos), dim=-1)
-        query_positions = torch.arange(seqlen, device=topk_indices.device).unsqueeze(0).unsqueeze(-1)
+        query_positions = (
+            torch.arange(seqlen, device=topk_indices.device).unsqueeze(0).unsqueeze(-1)
+        )
         valid_positions = topk_indices <= query_positions
-        topk_indices = torch.where(valid_positions, topk_indices, torch.full_like(topk_indices, -1))
-        index_mask = torch.full((bsz, seqlen, seqlen), float("-inf"), device=q.device).scatter_(-1, topk_indices, 0)
+        topk_indices = torch.where(
+            valid_positions, topk_indices, torch.full_like(topk_indices, -1)
+        )
+        index_mask = torch.full(
+            (bsz, seqlen, seqlen), float("-inf"), device=q.device
+        ).scatter_(-1, topk_indices, 0)
         attention_masks = attn_mask + index_mask
         attention_masks = torch.isinf(attention_masks) & (attention_masks < 0)
         attention_masks = attention_masks.unsqueeze(1)
 
         # compute sparse attention
         with sdpa_kernel(self.sdpa_backends, set_priority=True):
-            output = F.scaled_dot_product_attention(q, k, v, attn_mask=~attention_masks, scale=scale, is_causal=False)
+            output = F.scaled_dot_product_attention(
+                q, k, v, attn_mask=~attention_masks, scale=scale, is_causal=False
+            )
 
         # compute sparse lightning_indexer loss
         main_attn_dist = get_attn_scores(q.detach(), k.detach(), attention_masks, scale)
-        selected_main_attn_dist = torch.gather(main_attn_dist, dim=-1, index=topk_indices)
+        selected_main_attn_dist = torch.gather(
+            main_attn_dist, dim=-1, index=topk_indices
+        )
         loss = self.compute_dsa_indexer_loss(
             selected_main_attn_dist,
             topk_score,
@@ -457,49 +493,59 @@ class Attention(nn.Module):
         # Query projection
         qr = self.q_norm(self.wq_a(x))
         q = self.wq_b(qr)
-        q = q.view(bsz, seqlen, -1, self.qk_head_dim)   # (bsz, seqlen, n_heads, qk_head_dim)
-        q_nope, q_pe = torch.split(q, [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1)
+        q = q.view(
+            bsz, seqlen, -1, self.qk_head_dim
+        )  # (bsz, seqlen, n_heads, qk_head_dim)
+        q_nope, q_pe = torch.split(
+            q, [self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1
+        )
         q_pe = apply_rotary_emb(q_pe, freqs_cis)
         q = torch.cat([q_nope, q_pe], dim=-1)
 
         # Key-value projection
         kv = self.wkv_a(x)  # (bsz, seqlen, kv_lora_rank + qk_rope_head_dim)
         kv, k_pe = torch.split(kv, [self.kv_lora_rank, self.qk_rope_head_dim], dim=-1)
-        k_pe = apply_rotary_emb(k_pe.unsqueeze(2), freqs_cis)  # (bsz, seqlen, 1, qk_rope_head_dim)
+        k_pe = apply_rotary_emb(
+            k_pe.unsqueeze(2), freqs_cis
+        )  # (bsz, seqlen, 1, qk_rope_head_dim)
 
         if not self.enable_mla_absorb:
-            kv = self.wkv_b(self.kv_norm(kv))  # (bsz, seqlen, n_heads * (qk_nope_head_dim + v_head_dim))
+            kv = self.wkv_b(
+                self.kv_norm(kv)
+            )  # (bsz, seqlen, n_heads * (qk_nope_head_dim + v_head_dim))
             kv = kv.view(bsz, seqlen, -1, self.qk_nope_head_dim + self.v_head_dim)
-            k_nope, v = torch.split(kv, [self.qk_nope_head_dim, self.v_head_dim], dim=-1)
+            k_nope, v = torch.split(
+                kv, [self.qk_nope_head_dim, self.v_head_dim], dim=-1
+            )
             k = torch.cat([k_nope, k_pe.expand(-1, -1, self.n_heads, -1)], dim=-1)
 
             q = q.transpose(1, 2)  # (bsz, n_heads, seqlen, qk_head_dim)
             k = k.transpose(1, 2)  # (bsz, n_heads, seqlen, qk_head_dim)
             v = v.transpose(1, 2)  # (bsz, n_heads, seqlen, v_head_dim)
 
-            q_indexer, weights, k_indexer, end_pos = self.indexer(x.detach(),
-                                                                  qr.detach(),
-                                                                  0,
-                                                                  freqs_cis,
-                                                                  attention_masks
-                                                                  )
+            q_indexer, weights, k_indexer, end_pos = self.indexer(
+                x.detach(), qr.detach(), 0, freqs_cis, attention_masks
+            )
 
-            loss, output = self.inner_attention(q,
-                                                k,
-                                                v,
-                                                attn_mask=attention_masks,
-                                                scale=self.softmax_scale,
-                                                q_indexer=q_indexer,
-                                                k_indexer=k_indexer,
-                                                weights=weights,
-                                                end_pos=end_pos,
-                                                index_topk=self.indexer.index_topk
-                                                )
+            loss, output = self.inner_attention(
+                q,
+                k,
+                v,
+                attn_mask=attention_masks,
+                scale=self.softmax_scale,
+                q_indexer=q_indexer,
+                k_indexer=k_indexer,
+                weights=weights,
+                end_pos=end_pos,
+                index_topk=self.indexer.index_topk,
+            )
         else:
             kv = self.kv_norm(kv)
-            wkv_b_weight = self.wkv_b.weight.reshape(-1, self.qk_nope_head_dim + self.v_head_dim, self.kv_lora_rank)
-            w_uk = wkv_b_weight[:, :self.qk_nope_head_dim, :]
-            w_uv = wkv_b_weight[:, self.qk_nope_head_dim:, :]
+            wkv_b_weight = self.wkv_b.weight.reshape(
+                -1, self.qk_nope_head_dim + self.v_head_dim, self.kv_lora_rank
+            )
+            w_uk = wkv_b_weight[:, : self.qk_nope_head_dim, :]
+            w_uv = wkv_b_weight[:, self.qk_nope_head_dim :, :]
             w_uv_t = w_uv.permute(0, 2, 1).contiguous()
 
             q_nope = torch.einsum("bshq,hqr->bshr", q_nope, w_uk)
@@ -513,33 +559,33 @@ class Attention(nn.Module):
             k = k.transpose(1, 2)  # (bsz, n_heads, 1, qk_head_dim)
             v = v.transpose(1, 2)  # (bsz, n_heads, 1, v_head_dim)
 
-            q_indexer, weights, k_indexer, end_pos = self.indexer(x.detach(),
-                                                                  qr.detach(),
-                                                                  0,
-                                                                  freqs_cis,
-                                                                  attention_masks
-                                                                  )
+            q_indexer, weights, k_indexer, end_pos = self.indexer(
+                x.detach(), qr.detach(), 0, freqs_cis, attention_masks
+            )
 
-            loss, output = self.inner_attention(q,
-                                                k,
-                                                v,
-                                                attn_mask=attention_masks,
-                                                scale=self.softmax_scale,
-                                                q_indexer=q_indexer,
-                                                k_indexer=k_indexer,
-                                                weights=weights,
-                                                end_pos=end_pos,
-                                                index_topk=self.indexer.index_topk
-                                                )
+            loss, output = self.inner_attention(
+                q,
+                k,
+                v,
+                attn_mask=attention_masks,
+                scale=self.softmax_scale,
+                q_indexer=q_indexer,
+                k_indexer=k_indexer,
+                weights=weights,
+                end_pos=end_pos,
+                index_topk=self.indexer.index_topk,
+            )
             output = torch.einsum("bhsr,hrv->bhsv", output, w_uv_t)
 
         # Reshape and project output
-        output = output.transpose(1, 2).contiguous()    # (bsz, seqlen, n_heads, v_head_dim)
-        output = output.view(bsz, seqlen, -1)           # (bsz, seqlen, n_heads * v_head_dim)
+        output = output.transpose(
+            1, 2
+        ).contiguous()  # (bsz, seqlen, n_heads, v_head_dim)
+        output = output.view(bsz, seqlen, -1)  # (bsz, seqlen, n_heads * v_head_dim)
         output = self.wo(output)
         DSAIndexerLossLoggingHelper.save_loss_to_tracker(loss, layer_id, self.n_layers)
         output = DSAIndexerLossAutoScaler.apply(output, loss)
-        return output   # (bsz, seqlen, dim)
+        return output  # (bsz, seqlen, dim)
 
     def init_weights(self, init_std: float):
         linear_list = [
@@ -560,6 +606,7 @@ class TransformerBlockV32(TransformerBlock):
     """
     Transformer block with attention and feed-forward layers.
     """
+
     def __init__(self, layer_id: int, model_args: DeepSeekV32ModelArgs):
         super().__init__(layer_id, model_args)
         self.attention = Attention(model_args)
@@ -603,6 +650,7 @@ class DeepSeekV32Model(DeepSeekV3Model):
     """
     DeepSeek-V3.2 Transformer model with attention and feed-forward layers.
     """
+
     def __init__(self, model_args: DeepSeekV32ModelArgs):
         super().__init__(model_args)
         self.layers = torch.nn.ModuleDict()

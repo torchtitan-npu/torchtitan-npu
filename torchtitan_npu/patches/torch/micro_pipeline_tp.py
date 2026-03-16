@@ -113,6 +113,8 @@ _npu_tp_patches_applied = False
 
 
 """Register PrivateUse1 kernels for NPU fused all_gather_matmul / matmul_reduce_scatter. Inserters use upstream."""
+
+
 def install_npu_tp_patches():
     global _npu_tp_patches_applied
     if _npu_tp_patches_applied:

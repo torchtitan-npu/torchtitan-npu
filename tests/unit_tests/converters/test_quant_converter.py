@@ -5,10 +5,19 @@
 
 
 def test_quant_converter_replace():
-    from torchtitan.components.quantization.mx import MXLinearConverter, MXGroupedMMConverter
+    from torchtitan.components.quantization.mx import (
+        MXGroupedMMConverter,
+        MXLinearConverter,
+    )
+
     from torchtitan_npu.converters import quant_converter
 
     assert MXLinearConverter.__init__ == quant_converter.npu_quant_linear_converter_init
     assert MXLinearConverter.convert == quant_converter.npu_quant_linear_converter
-    assert MXGroupedMMConverter.__init__ == quant_converter.npu_quant_grouped_mm_converter_init
-    assert MXGroupedMMConverter.convert == quant_converter.npu_quant_grouped_mm_converter
+    assert (
+        MXGroupedMMConverter.__init__
+        == quant_converter.npu_quant_grouped_mm_converter_init
+    )
+    assert (
+        MXGroupedMMConverter.convert == quant_converter.npu_quant_grouped_mm_converter
+    )

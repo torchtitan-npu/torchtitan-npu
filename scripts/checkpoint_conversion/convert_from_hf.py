@@ -10,19 +10,20 @@ from pathlib import Path
 
 import torch
 import torch.distributed.checkpoint as dcp
-import torchtitan.protocols.train_spec as train_spec_module
-from torch.distributed.checkpoint import HuggingFaceStorageReader
-from torchtitan.components.checkpoint import ModelWrapper
-
-# Models in torchtitan
-import torchtitan.models.qwen3
 import torchtitan.models.llama3
 import torchtitan.models.llama3_ft
 import torchtitan.models.llama4
 
+# Models in torchtitan
+import torchtitan.models.qwen3
+import torchtitan.protocols.train_spec as train_spec_module
+from torch.distributed.checkpoint import HuggingFaceStorageReader
+from torchtitan.components.checkpoint import ModelWrapper
+
+import torchtitan_npu.models.deepseek_v3
+
 # New models in torchtitan-npu
 import torchtitan_npu.models.deepseek_v32
-import torchtitan_npu.models.deepseek_v3
 
 
 @torch.inference_mode()

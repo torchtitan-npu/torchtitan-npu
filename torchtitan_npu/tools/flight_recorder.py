@@ -43,4 +43,6 @@ def init_distributed_with_hccl_flight_recorder(
     return init_distributed(comm_config, *args, **kwargs)
 
 
-torchtitan.distributed.utils.init_distributed = init_distributed_with_hccl_flight_recorder
+torchtitan.distributed.utils.init_distributed = (
+    init_distributed_with_hccl_flight_recorder
+)

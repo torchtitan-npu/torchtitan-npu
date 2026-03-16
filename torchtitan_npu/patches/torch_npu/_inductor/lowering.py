@@ -1,7 +1,13 @@
 import logging
+
 from torch._inductor.lowering import lowerings
 from torch_npu._inductor.lowering import _init_set
-from torch_npu._inductor.lowering_op_list import GENERATE_LIST, GENERATE_LIST2, FALLBACK_LIST, LOWERING_OVERLOAD_OP
+from torch_npu._inductor.lowering_op_list import (
+    FALLBACK_LIST,
+    GENERATE_LIST,
+    GENERATE_LIST2,
+    LOWERING_OVERLOAD_OP,
+)
 
 logger = logging.getLogger(__name__)
 

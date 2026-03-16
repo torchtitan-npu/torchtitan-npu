@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) Meta Platforms, Inc. and affiliates.
-# 
+#
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
@@ -13,7 +13,7 @@ from torch.distributed.tensor import DTensor
 from torchtitan.models.moe.moe import indices_padding_wrapper
 
 from ..base_converter import BaseConverter
-from ..convert_utils import replace_methods, replace_functions
+from ..convert_utils import replace_functions, replace_methods
 from ..registry import register_npu_converter
 
 logger = logging.getLogger(__name__)
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 # Calculate the number of experts and EP degree, which are used as parameters
 # when invoking operators during Hifloat8 low-precision training.
 group_size_params = {
-    'num_experts': None,
-    'expert_model_parallel_size': None,
-    'g_size': None
+    "num_experts": None,
+    "expert_model_parallel_size": None,
+    "g_size": None,
 }
 
 
@@ -113,16 +113,19 @@ def npu_grouped_experts_forward(
         or "ep" not in self.w2.device_mesh.mesh_dim_names
     ):
         run_experts_fn = indices_padding_wrapper(_run_experts_grouped_mm)
-        group_size_params['expert_model_parallel_size'] = 1
+        group_size_params["expert_model_parallel_size"] = 1
     else:
         run_experts_fn = _run_experts_grouped_mm
         ep_dim_index = self.w2.device_mesh.mesh_dim_names.index("ep")
-        group_size_params['expert_model_parallel_size'] = self.w2.device_mesh.shape[ep_dim_index]
-    
-    if group_size_params['g_size'] is None:
-        group_size_params['num_experts'] = self.num_experts
-        group_size_params['g_size'] = (
-            group_size_params['num_experts'] // group_size_params['expert_model_parallel_size']
+        group_size_params["expert_model_parallel_size"] = self.w2.device_mesh.shape[
+            ep_dim_index
+        ]
+
+    if group_size_params["g_size"] is None:
+        group_size_params["num_experts"] = self.num_experts
+        group_size_params["g_size"] = (
+            group_size_params["num_experts"]
+            // group_size_params["expert_model_parallel_size"]
         )
 
     return run_experts_fn(w13, w2, None, x, num_tokens_per_expert)
@@ -150,21 +153,21 @@ class GMMKernel(BaseConverter):
             class_name=cls.TARGET_CLASS,
             method_name="forward",
             new_method=npu_grouped_experts_forward,
-            package=cls.TARGET_PACKAGE
+            package=cls.TARGET_PACKAGE,
         )
 
         replacement_counts += replace_methods(
             class_name=cls.TARGET_CLASS,
             method_name="init_weights",
             new_method=npu_grouped_experts_init_weights,
-            package=cls.TARGET_PACKAGE
+            package=cls.TARGET_PACKAGE,
         )
 
         # 2. Replacing module function _run_experts_grouped_mm
         func_replacements = replace_functions(
             func_name="_run_experts_grouped_mm",
             new_func=_run_experts_grouped_mm,
-            package=cls.TARGET_PACKAGE
+            package=cls.TARGET_PACKAGE,
         )
         replacement_counts += func_replacements
 
@@ -178,10 +181,13 @@ class GMMKernel(BaseConverter):
         """Traverse the model and convert w1+w3 of the existing GroupedExperts into w13."""
         for name, module in model.named_modules():
             class_name = type(module).__name__
-            if 'GroupedExperts' not in class_name and cls.TARGET_CLASS not in class_name:
+            if (
+                "GroupedExperts" not in class_name
+                and cls.TARGET_CLASS not in class_name
+            ):
                 continue
-            w1 = getattr(module, 'w1', None)
-            w3 = getattr(module, 'w3', None)
+            w1 = getattr(module, "w1", None)
+            w3 = getattr(module, "w3", None)
 
             if w1 is not None and w3 is not None:
                 try:
@@ -201,8 +207,10 @@ class GMMKernel(BaseConverter):
         hidden_dim = w1.shape[1]
         dim = w1.shape[2]
 
-        w13_data = torch.empty(num_experts, hidden_dim * 2, dim, dtype=w1.dtype, device=w1.device)
-        module.register_parameter('w13', nn.Parameter(w13_data))
+        w13_data = torch.empty(
+            num_experts, hidden_dim * 2, dim, dtype=w1.dtype, device=w1.device
+        )
+        module.register_parameter("w13", nn.Parameter(w13_data))
         module.use_grouped_mm = True
 
         module.w1 = None

@@ -73,9 +73,10 @@ def maybe_enable_profiling(
         active = profiling_config.profiler_active
         wait = profile_freq - (active + warmup)
         repeat = 0
-        
+
     if wait < 0:
-        logger.warn(f"profile_step_start must be greater than {global_step} + 2, "
+        logger.warn(
+            f"profile_step_start must be greater than {global_step} + 2, "
             f"or profile_freq must be greater or equal to warmup + active, but "
             f"got wait={wait}, profiling will be skipped."
         )

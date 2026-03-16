@@ -11,8 +11,8 @@ instead of DTensor ops, for better performance on NPU.
 Infinity norm falls back to the original implementation.
 """
 
-from collections import defaultdict
 import math
+from collections import defaultdict
 
 import torch
 import torch.distributed as dist
@@ -26,9 +26,7 @@ from torch.utils._foreach_utils import (
     _has_foreach_support,
 )
 
-_REDUCE_PLACEMENT_NAMES = frozenset({
-    'Shard', '_StridedShard', '_Partial', 'Partial'
-})
+_REDUCE_PLACEMENT_NAMES = frozenset({"Shard", "_StridedShard", "_Partial", "Partial"})
 
 
 def group_dtensors_by_layout(dtensors):
@@ -49,8 +47,8 @@ def group_dtensors_by_layout(dtensors):
 def reduce_across_mesh(local_sum, mesh, placements):
     for mesh_dim, placement in enumerate(placements):
         needs_reduce = (
-            hasattr(placement, 'reduce_op') or
-            type(placement).__name__ in _REDUCE_PLACEMENT_NAMES
+            hasattr(placement, "reduce_op")
+            or type(placement).__name__ in _REDUCE_PLACEMENT_NAMES
         )
         if not needs_reduce:
             continue
@@ -61,7 +59,7 @@ def reduce_across_mesh(local_sum, mesh, placements):
 
 def custom_total_norm(norms, norm_type, first_device):
     """
-    Translate the DTensor to local_tensor to compute total_norm for acceleration, 
+    Translate the DTensor to local_tensor to compute total_norm for acceleration,
     only supports norm type != inf
     """
     groups = group_dtensors_by_layout(norms)
@@ -71,10 +69,13 @@ def custom_total_norm(norms, norm_type, first_device):
         group_local_sum = torch.tensor(0.0, device=first_device, dtype=torch.float32)
         for t in tensors:
             t = t.to_local()
-            group_local_sum += torch.linalg.vector_norm(t, ord=norm_type, dtype=torch.float32) ** norm_type
+            group_local_sum += (
+                torch.linalg.vector_norm(t, ord=norm_type, dtype=torch.float32)
+                ** norm_type
+            )
         reduce_across_mesh(group_local_sum, mesh, placements)
         global_total_sum += group_local_sum
-    
+
     total_norm = global_total_sum ** (1.0 / norm_type)
     return total_norm
 
@@ -155,5 +156,6 @@ def _get_total_norm(
             "set `error_if_nonfinite=False`"
         )
     return total_norm
+
 
 torch.nn.utils.get_total_norm = _get_total_norm

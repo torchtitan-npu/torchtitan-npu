@@ -21,16 +21,23 @@ def _patch_train_step_for_dsv32_indexer_loss():
         result = _original_train_step(self, *args, **kwargs)
 
         # Handle indexer loss tracking
-        if hasattr(self.model_args, "enable_indexer_loss") and self.model_args.enable_indexer_loss:
+        if (
+            hasattr(self.model_args, "enable_indexer_loss")
+            and self.model_args.enable_indexer_loss
+        ):
             # Import dynamically to avoid circular dependencies
-            from torchtitan_npu.models.deepseek_v32.model.model import DSAIndexerLossLoggingHelper
+            from torchtitan_npu.models.deepseek_v32.model.model import (
+                DSAIndexerLossLoggingHelper,
+            )
 
             # Align logging frequency with the core metrics processor
             if self.metrics_processor.should_log(self.step):
                 ga_steps = self.gradient_accumulation_steps
                 if self.parallel_dims.pp_enabled:
                     local_bs = self.job_config.training.local_batch_size
-                    micro_bs = self.job_config.parallelism.pipeline_parallel_microbatch_size
+                    micro_bs = (
+                        self.job_config.parallelism.pipeline_parallel_microbatch_size
+                    )
                     pp_microbatches = local_bs // micro_bs
                     total_acc_steps = ga_steps * pp_microbatches
                 else:
@@ -60,7 +67,10 @@ def _patch_init_for_dsa_set_loss_scale():
         if not self.parallel_dims.pp_enabled:
             return
 
-        from torchtitan_npu.models.deepseek_v32.model.model import DSAIndexerLossAutoScaler
+        from torchtitan_npu.models.deepseek_v32.model.model import (
+            DSAIndexerLossAutoScaler,
+        )
+
         if self.parallel_dims.dp_enabled:
             batch_mesh = self.parallel_dims.get_mesh("batch")
             batch_degree = batch_mesh.size()
@@ -91,7 +101,9 @@ def _patch_for_train_npu_memory():
             )
             memory_ratio = 1.0
         torch.npu.set_per_process_memory_fraction(memory_ratio)
-        logger.info(f"[NPU Memory Config] Set process memory usage upper limit to {memory_ratio}")
+        logger.info(
+            f"[NPU Memory Config] Set process memory usage upper limit to {memory_ratio}"
+        )
         return _original(self)
 
     titan_train.Trainer.train = wrapper_train

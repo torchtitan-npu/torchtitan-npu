@@ -12,21 +12,23 @@ Modifies activation checkpointing to check recomputation phase by using context 
 import threading
 from enum import Enum
 
-import torchtitan.distributed.activation_checkpoint as ac_module
 import torch.nn as nn
-from torch.utils._python_dispatch import TorchDispatchMode
-from torch.utils import checkpoint as checkpoint_utils
+
+import torchtitan.distributed.activation_checkpoint as ac_module
 
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper as ptd_checkpoint_wrapper,
 )
+from torch.utils import checkpoint as checkpoint_utils
+from torch.utils._python_dispatch import TorchDispatchMode
 
 
 class RecomputeState(Enum):
     FORWARD = 1
     RECOMPUTE = 2
 
-_recompute_flag = threading.local() # Thread-local flag for recomputation
+
+_recompute_flag = threading.local()  # Thread-local flag for recomputation
 
 
 def _indexer_loss_need_compute() -> bool:
@@ -34,7 +36,7 @@ def _indexer_loss_need_compute() -> bool:
     Check if we should compute indexer loss.
     To save compute, skip it during the initial forward pass when AC is enabled.
     """
-    _state = getattr(_recompute_flag, 'state', None)
+    _state = getattr(_recompute_flag, "state", None)
     return _state is None or _state == RecomputeState.RECOMPUTE
 
 
@@ -45,25 +47,24 @@ def set_recompute_state(state: RecomputeState):
 class _FwdMode(TorchDispatchMode):
     def __torch_dispatch__(self, func, types, args=(), kwargs=None):
         return func(*args, **kwargs)
-    
+
     def __enter__(self):
         set_recompute_state(RecomputeState.FORWARD)
         return super().__enter__()
-    
+
     def __exit__(self, *args, **kwargs):
         set_recompute_state(RecomputeState.RECOMPUTE)
         return super().__exit__(*args, **kwargs)
-        
 
 
 class _RecomputeMode(TorchDispatchMode):
     def __torch_dispatch__(self, func, types, args=(), kwargs=None):
         return func(*args, **kwargs)
-    
+
     def __enter__(self):
         set_recompute_state(RecomputeState.RECOMPUTE)
         return super().__enter__()
-    
+
     def __exit__(self, *args, **kwargs):
         set_recompute_state(RecomputeState.FORWARD)
         return super().__exit__(*args, **kwargs)

@@ -3,8 +3,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
 from torchtitan.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
 
 

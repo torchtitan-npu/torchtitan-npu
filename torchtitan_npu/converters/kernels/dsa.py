@@ -5,11 +5,15 @@
 
 import logging
 from typing import Tuple
-import torch
-import torch_npu
-import torch.nn as nn
 
-from torchtitan_npu.patches.torchtitan.activation_checkpoint import _indexer_loss_need_compute
+import torch
+import torch.nn as nn
+import torch_npu
+
+from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
+    _indexer_loss_need_compute,
+)
+
 from ..base_converter import BaseConverter
 from ..convert_utils import replace_methods
 from ..registry import register_npu_converter
@@ -38,7 +42,7 @@ class SparseLightningIndexerKLLoss(nn.Module):
         key_rope=None,
         actual_seq_qlen=None,
         actual_seq_klen=None,
-        layout='BSND',
+        layout="BSND",
         sparse_mode=3,
         pre_tokens=65536,
         next_tokens=65536,
@@ -46,9 +50,25 @@ class SparseLightningIndexerKLLoss(nn.Module):
         """NPU Sparse Lightning Indexer KL Divergence Loss Function"""
         bsz = query.shape[0]
         sq = query.shape[1]
-        loss = LILossTrain.apply(query, key, query_indexer, key_indexer, weights, topk_indices, softmax_max,
-                                 softmax_sum, scale_value, query_rope, key_rope, actual_seq_qlen, actual_seq_klen,
-                                 layout, sparse_mode, pre_tokens, next_tokens, )
+        loss = LILossTrain.apply(
+            query,
+            key,
+            query_indexer,
+            key_indexer,
+            weights,
+            topk_indices,
+            softmax_max,
+            softmax_sum,
+            scale_value,
+            query_rope,
+            key_rope,
+            actual_seq_qlen,
+            actual_seq_klen,
+            layout,
+            sparse_mode,
+            pre_tokens,
+            next_tokens,
+        )
         return loss / (bsz * sq)
 
 
@@ -78,7 +98,7 @@ class LILossTrain(torch.autograd.Function):
         key_rope=None,
         actual_seq_qlen=None,
         actual_seq_klen=None,
-        layout='BSND',
+        layout="BSND",
         sparse_mode=3,
         pre_tokens=65536,
         next_tokens=65536,
@@ -86,7 +106,7 @@ class LILossTrain(torch.autograd.Function):
         """
         Forward pass: compute the total loss by processing hidden states in chunks.
         Compute LI Loss only during the recomputation phase to avoid performance overhead.
-        Use a dummy placeholder tensor during the forward phase to maintain a consistent 
+        Use a dummy placeholder tensor during the forward phase to maintain a consistent
         computational graph for activation checkpointing.
 
         Args:
@@ -116,7 +136,12 @@ class LILossTrain(torch.autograd.Function):
         """
 
         if _indexer_loss_need_compute():
-            d_query_index, d_key_index, d_weights, loss = torch_npu.npu_sparse_lightning_indexer_grad_kl_loss(
+            (
+                d_query_index,
+                d_key_index,
+                d_weights,
+                loss,
+            ) = torch_npu.npu_sparse_lightning_indexer_grad_kl_loss(
                 query,
                 key,
                 query_indexer,
@@ -185,7 +210,9 @@ def dsa_forward(
     Forward pass of the dsa module.
     """
     if k.shape[1] != 1 or v.shape[1] != 1:
-        raise NotImplementedError("Only support num_head_kv == 1 in dsa forward under absorb mode.")
+        raise NotImplementedError(
+            "Only support num_head_kv == 1 in dsa forward under absorb mode."
+        )
 
     # Fuse LILossTrain includes LIG
     topk_indices, _ = torch_npu.npu_lightning_indexer(
@@ -194,8 +221,8 @@ def dsa_forward(
         weights,
         actual_seq_lengths_query=None,
         actual_seq_lengths_key=None,
-        layout_query='BSND',
-        layout_key='BSND',
+        layout_query="BSND",
+        layout_key="BSND",
         sparse_count=index_topk,
         sparse_mode=3,
         return_value=True,
@@ -207,14 +234,22 @@ def dsa_forward(
     v = v.transpose(1, 2)
 
     # Split q_nope / q_pe
-    q_nope, q_pe = torch.split(q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
-    k_nope, k_pe = torch.split(k, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1)
+    q_nope, q_pe = torch.split(
+        q, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1
+    )
+    k_nope, k_pe = torch.split(
+        k, [self.model_args.kv_lora_rank, self.model_args.qk_rope_head_dim], dim=-1
+    )
 
     bsz = q.shape[0]
-    actual_seq_len = torch.full((bsz,), q_nope.shape[1], dtype=torch.int32, device=q_nope.device)
+    actual_seq_len = torch.full(
+        (bsz,), q_nope.shape[1], dtype=torch.int32, device=q_nope.device
+    )
 
     output, softmax_max, softmax_sum, *_ = torch_npu.npu_sparse_flash_attention(
-        q_nope, k_nope, v,
+        q_nope,
+        k_nope,
+        v,
         sparse_indices=topk_indices.to(torch.int32),
         block_table=None,
         actual_seq_lengths_query=actual_seq_len,
@@ -223,11 +258,11 @@ def dsa_forward(
         key_rope=k_pe,
         scale_value=scale,
         sparse_block_size=1,
-        layout_query='BSND',
-        layout_kv='BSND',
+        layout_query="BSND",
+        layout_kv="BSND",
         sparse_mode=3,
-        attention_mode=2,            # 0: GQA/MHA, 1: MLA-naive, 2: MLA-absorb
-        return_softmax_lse=True,     # it must be True in training mode
+        attention_mode=2,  # 0: GQA/MHA, 1: MLA-naive, 2: MLA-absorb
+        return_softmax_lse=True,  # it must be True in training mode
     )
 
     # The loss is actually computed by SparseLightningIndexerKLLoss.forward
@@ -247,7 +282,7 @@ def dsa_forward(
         key_rope=k_pe,
         actual_seq_qlen=None,
         actual_seq_klen=None,
-        layout='BSND',
+        layout="BSND",
     )
     output = output.transpose(1, 2)
     return loss, output
@@ -260,7 +295,6 @@ class DSAKernel(BaseConverter):
     SUPPORTED_MODELS = {"deepseek_v32"}
     SUPPORTED_ACTIVATION_CHECKPOINT = {"none", "full"}
 
-    
     @classmethod
     def is_compatible(cls, job_config, model_name):
         mode = job_config.activation_checkpoint.mode
@@ -270,7 +304,6 @@ class DSAKernel(BaseConverter):
                 f"Supported activation checkpoint mode: {cls.SUPPORTED_ACTIVATION_CHECKPOINT}"
             )
         return super().is_compatible(job_config, model_name)
-    
 
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
@@ -278,12 +311,18 @@ class DSAKernel(BaseConverter):
 
         count = replace_methods("DSV32_SDPA", "forward", dsa_forward, package=pkg)
         logger.info(f"  [DSV32_SDPA forward] Applied {count} replacement(s)")
-        logger.info(f"  Only matrix absorb mode is supported, and LI Loss is enabled by default.")
+        logger.info(
+            f"  Only matrix absorb mode is supported, and LI Loss is enabled by default."
+        )
 
         # If tp is no enabled, then the indexer_loss patch in deepseek_v32_parallelize.py won't be applied
         # The patch is applied here as a supplement
         for transformer_block in model.layers.values():
             inner_attention = transformer_block.attention.inner_attention
-            if not isinstance(inner_attention.compute_dsa_indexer_loss, SparseLightningIndexerKLLoss):
-                inner_attention.compute_dsa_indexer_loss = SparseLightningIndexerKLLoss()
+            if not isinstance(
+                inner_attention.compute_dsa_indexer_loss, SparseLightningIndexerKLLoss
+            ):
+                inner_attention.compute_dsa_indexer_loss = (
+                    SparseLightningIndexerKLLoss()
+                )
         return count

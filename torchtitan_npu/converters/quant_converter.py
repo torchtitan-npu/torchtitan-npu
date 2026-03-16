@@ -5,20 +5,25 @@
 # LICENSE file in the root directory of this source tree.
 
 from functools import partial
+
 import torch
-import torch_npu
 import torch.nn as nn
+import torch_npu
+from torchtitan.components.quantization import QuantizationConverter
+from torchtitan.components.quantization.mx import (
+    MXGroupedMMConverter,
+    MXLinearConverter,
+)
 
 from torchtitan.config.job_config import JobConfig
 from torchtitan.distributed import ParallelDims
 from torchtitan.tools.logging import logger
-from torchtitan.components.quantization.mx import MXLinearConverter
-from torchtitan.components.quantization.mx import MXGroupedMMConverter
-from torchtitan.components.quantization import QuantizationConverter
-from ..patches.quantization.quant_config import MXLinearConfig as TorchMXLinearConfig
-from ..patches.quantization.quant_config import MoETrainingConfig as TorchMoETrainingConfig
-from ..patches.quantization.quantize import linear_quantize_
-from ..patches.quantization.quantize import grouped_quantize_
+
+from ..patches.quantization.quant_config import (
+    MoETrainingConfig as TorchMoETrainingConfig,
+    MXLinearConfig as TorchMXLinearConfig,
+)
+from ..patches.quantization.quantize import grouped_quantize_, linear_quantize_
 
 
 def is_a5():
@@ -42,11 +47,15 @@ def module_filter_fn(mod: nn.Module, fqn: str, filter_fqns: list[str]) -> bool:
     return not is_filtered_fqn
 
 
-def npu_quant_linear_converter_init(self, job_config: JobConfig, parallel_dims: ParallelDims):
+def npu_quant_linear_converter_init(
+    self, job_config: JobConfig, parallel_dims: ParallelDims
+):
     QuantizationConverter._validate(job_config)
     self.enabled = False
     if not is_a5():
-        raise RuntimeError("MXFP8 is only supported on Ascend910_95 or higher architecture.")
+        raise RuntimeError(
+            "MXFP8 is only supported on Ascend910_95 or higher architecture."
+        )
 
     # TP not yet supported with torch.compile
     model_compile_enabled = (
@@ -56,7 +65,7 @@ def npu_quant_linear_converter_init(self, job_config: JobConfig, parallel_dims: 
         raise RuntimeError("TP not yet supported with torch.compile for mxfp8")
 
     mx_job_config: TorchMXLinearConfig = job_config.quantize.linear.mx
-    # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8. 
+    # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8.
     config = TorchMXLinearConfig.from_recipe_name(mx_job_config.recipe_name)
     self.filter_fqns = mx_job_config.filter_fqns
     self.config = config
@@ -78,14 +87,18 @@ def npu_quant_linear_converter(self, model: nn.Module):
     logger.info("Swapped to MXLinear_NPU layers")
 
 
-def npu_quant_grouped_mm_converter_init(self, job_config: JobConfig, parallel_dims: ParallelDims):
+def npu_quant_grouped_mm_converter_init(
+    self, job_config: JobConfig, parallel_dims: ParallelDims
+):
     QuantizationConverter._validate(job_config)
     self.enabled = False
     if not is_a5():
-        raise RuntimeError("MXFP8 is only supported on Ascend910_95 or higher architecture.")
+        raise RuntimeError(
+            "MXFP8 is only supported on Ascend910_95 or higher architecture."
+        )
 
     mx_job_config: TorchMoETrainingConfig = job_config.quantize.grouped_mm.mx
-    # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8. 
+    # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8.
     config = TorchMoETrainingConfig.from_recipe_name(mx_job_config.recipe_name)
     self.config = config
 
@@ -102,17 +115,19 @@ def npu_quant_grouped_mm_converter(self, model: nn.Module):
     """
     if not self.enabled:
         return
-    
+
     def moe_module_filter_fn(mod: nn.Module, cur_fqn: str) -> bool:
         for target_fqn in self.moe_fqns:
             if target_fqn in cur_fqn:
                 return True
         return False
+
     grouped_quantize_(model, config=self.config, filter_fn=moe_module_filter_fn)
     logger.info(
         f"Converted MoE layers matching FQNs {self.moe_fqns} "
         f"to use dynamic {self.recipe_name} quantization with scaled grouped GEMMs"
     )
+
 
 MXLinearConverter.__init__ = npu_quant_linear_converter_init
 MXLinearConverter.convert = npu_quant_linear_converter

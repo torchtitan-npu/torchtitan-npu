@@ -52,7 +52,7 @@ do
     fi
 done
 if [[ $NODE_RANK == "" ]];then
-    echo "[Error] para \"NODE_RANK\" must be confing"
+    echo "[Error] Variable \"NODE_RANK\" must be configured"
     exit 1
 fi
 WORLD_SIZE=$(($NPUS_PER_NODE*$NNODES))

@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch.nn as nn
+
 from torchtitan_npu.converters.base_converter import BaseConverter
 
 

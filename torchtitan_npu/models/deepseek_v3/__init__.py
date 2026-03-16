@@ -69,10 +69,9 @@ def update_from_config(self, job_config: JobConfig, **kwargs) -> None:
             f"Sequence length {seq_len} exceeds original maximum {self.max_seq_len}."
         )
     self.max_seq_len = seq_len
-    
+
     self.moe_impl = job_config.parallelism.expert_parallel_comm_backend
-    self.moe_args._debug_force_load_balance = (
-        job_config.debug.moe_force_load_balance
-    )
+    self.moe_args._debug_force_load_balance = job_config.debug.moe_force_load_balance
+
 
 DeepSeekV3ModelArgs.update_from_config = update_from_config
