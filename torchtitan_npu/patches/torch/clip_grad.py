@@ -1,8 +1,6 @@
 # Adapted from
 # https://github.com/pytorch/pytorch/blob/v2.10.0/torch/nn/utils/clip_grad.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
-# Copyright (c) Meta Platforms, Inc. and affiliates
-# Developed by Huawei Technologies Co., Ltd. based on Meta Platforms, Inc. and affiliates TorchTitan
 
 """
 Optimizer `_get_total_norm` for DTensors.

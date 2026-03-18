@@ -46,6 +46,9 @@ def _apply_patches():
     # patching torchtitan
     from .patches.torchtitan import activation_checkpoint, hf_datasets
 
+    # patching fake process group
+    from .patches.torch.testing._internal.distributed import fake_pg
+
     # patching tools
     from .tools import flight_recorder, profiling
 
