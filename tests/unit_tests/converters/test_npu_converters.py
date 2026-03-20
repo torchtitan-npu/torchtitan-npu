@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from unittest.mock import MagicMock, patch
-
+import pytest
 from torchtitan_npu.converters.base_converter import BaseConverter
 from torchtitan_npu.converters.npu_converter import NPUConverter
 
@@ -47,3 +47,32 @@ def test_convert_returns_model(mock_job_config, mock_parallel_dims, simple_model
         result = converter.convert(simple_model)
 
     assert result is simple_model
+
+
+def test_convert_raises_for_incompatible_model(mock_job_config, mock_parallel_dims, simple_model):
+    config = mock_job_config(model_name="llama3")
+
+    mock_patch_cls = MagicMock(spec=BaseConverter)
+    mock_patch_cls.is_compatible.return_value = False
+
+    with patch.object(NPUConverter, '_patch_cls', mock_patch_cls), \
+            patch.object(NPUConverter, '_patch_name', 'test_patch'), \
+            patch.object(NPUConverter, '_supported_models', {'deepseek_v3'}):
+        converter = NPUConverter(config, mock_parallel_dims)
+        with pytest.raises(ValueError, match="NOT compatible"):
+            converter.convert(simple_model)
+
+
+def test_convert_wraps_patch_failure(mock_job_config, mock_parallel_dims, simple_model):
+    config = mock_job_config(model_name="llama3")
+
+    mock_patch_cls = MagicMock(spec=BaseConverter)
+    mock_patch_cls.is_compatible.return_value = True
+    mock_patch_cls.apply.side_effect = RuntimeError("boom")
+
+    with patch.object(NPUConverter, '_patch_cls', mock_patch_cls), \
+            patch.object(NPUConverter, '_patch_name', 'test_patch'), \
+            patch.object(NPUConverter, '_supported_models', {'*'}):
+        converter = NPUConverter(config, mock_parallel_dims)
+        with pytest.raises(RuntimeError, match="Failed to apply patch"):
+            converter.convert(simple_model)

@@ -39,3 +39,20 @@ def test_get_impl_cls_match():
 
 def test_get_impl_cls_default():
     assert TestConverter.get_impl_cls("not_impl") == MockImplDefault
+
+
+def test_is_compatible_supports_wildcard_models():
+    assert TestConverter.is_compatible(job_config=None, model_name="anything")
+
+
+class RestrictedConverter(BaseConverter):
+    MODEL_IMPL = {"_default": MockImplDefault}
+    SUPPORTED_MODELS = {"llama3"}
+
+    @classmethod
+    def apply(cls, model, model_name, **kwargs):
+        return 0
+
+
+def test_is_compatible_rejects_unsupported_model():
+    assert not RestrictedConverter.is_compatible(job_config=None, model_name="deepseek_v3")

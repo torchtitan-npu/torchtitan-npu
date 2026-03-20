@@ -15,3 +15,7 @@ einops
 expecttest
 tomli_w
 transformers
+pytest
+pytest-html
+pytest-cov
+pytest-mock

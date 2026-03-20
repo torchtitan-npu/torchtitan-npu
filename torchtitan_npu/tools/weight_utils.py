@@ -33,10 +33,10 @@ def convert_expert_format(state_dict: Dict, target_format: str) -> Dict:
 def detect_expert_format(state_dict: Dict) -> str:
     """Detecting the expert format of state_dict"""
     for key in state_dict.keys():
-        if ".experts." in key or "experts." in key:
-            if ".gate_up_proj." in key or ".w13." in key:
+        if '.experts.' in key or 'experts.' in key:
+            if '.gate_up_proj.' in key or '.w13.' in key or key.endswith(".w13"):
                 return "gmm"
-            if ".gate_proj." in key or ".w1" in key:
+            if '.gate_proj.' in key or '.w1.' in key or key.endswith(".w1"):
                 return "standard"
     return "none"
 
@@ -183,10 +183,10 @@ def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
     del chunks, local_tensor
     return (
         DTensor.from_local(
-            local_w1, device_mesh=w13.device_mesh, placement=w13.placements
+            local_w1, device_mesh=w13.device_mesh, placements=w13.placements
         ),
         DTensor.from_local(
-            local_w3, device_mesh=w13.device_mesh, placement=w13.placements
+            local_w3, device_mesh=w13.device_mesh, placements=w13.placements
         ),
     )
 

@@ -78,7 +78,7 @@ class RoPEKernel(BaseConverter):
         "deepseek_v3": npu_apply_rotary_emb_deepseek,
         "deepseek_v32": npu_apply_rotary_emb_deepseek,
         "qwen3": npu_apply_rotary_emb_qwen,
-        "default": npu_apply_rotary_emb_llama,
+        "_default": npu_apply_rotary_emb_llama,
     }
 
     @classmethod

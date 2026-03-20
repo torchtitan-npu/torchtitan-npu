@@ -38,6 +38,18 @@ class SaveConfig:
         self._patched = False
         self.num_experts = 0
 
+    def get_adapter(self):
+        return self._adapter
+
+    def set_adapter(self, adapter):
+        self._adapter = adapter
+
+    def is_patched(self):
+        return self._patched
+
+    def set_patched(self, patched):
+        self._patched = patched
+
 
 _config = SaveConfig()
 
@@ -54,7 +66,7 @@ def configure_from_model_args(model_args: Any, adapter: Optional[Any] = None):
     _config.save_format = get_config("save_format", "dcp")
     _config.save_expert_format = get_config("save_expert_format", None)
     _config.hf_save_dir = get_config("hf_save_dir", None)
-    _config._adapter = adapter
+    _config.set_adapter(adapter)
 
 
 def is_enabled() -> bool:
@@ -78,7 +90,7 @@ def _convert_state_dict_for_save(state_dict: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _get_total_experts() -> int:
-    model_args = getattr(_config._adapter, "model_args", None)
+    model_args = getattr(_config.get_adapter(), "model_args", None)
     return model_args.moe_args.num_experts
 
 
@@ -105,12 +117,12 @@ def _convert_to_hf_and_save(state_dict: Dict[str, Any], output_dir: str):
         experts_per_rank = (
             total_experts // world_size if total_experts > 0 and world_size > 1 else 0
         )
-        hf_state_dict = _config._adapter.to_hf(model_state_dict)
+        hf_state_dict = _config.get_adapter().to_hf(model_state_dict)
 
         # Separate expert and non-expert weights
         expert_keys = sorted([k for k in hf_state_dict.keys() if ".experts" in k])
         non_expert_keys = sorted(
-            [k for k in hf_state_dict.keys() if ".exeprts." not in k]
+            [k for k in hf_state_dict.keys() if ".experts." not in k]
         )
 
         # Determine if remapping is needed
@@ -285,7 +297,7 @@ def apply_patch() -> bool:
     """apply monkey patch"""
     global _original_save, _original_model_states_sd
 
-    if _config._patched:
+    if _config.is_patched():
         return True
 
     if not _config.enabled:
@@ -297,9 +309,13 @@ def apply_patch() -> bool:
         # Patch "_flattened_model_states_sd" expert conversion
         if hasattr(CheckpointManager, "_flattened_model_states_sd"):
             if _original_model_states_sd is None:
-                _original_model_states_sd = CheckpointManager._flattened_model_states_sd
-            CheckpointManager._flattened_model_states_sd = (
-                _create_patched_model_states_sd(_original_model_states_sd)
+                _original_model_states_sd = getattr(
+                    CheckpointManager, "_flattened_model_states_sd"
+                )
+            setattr(
+                CheckpointManager,
+                "_flattened_model_states_sd",
+                _create_patched_model_states_sd(_original_model_states_sd),
             )
 
         # Patch "save" file saving
@@ -307,7 +323,7 @@ def apply_patch() -> bool:
             _original_save = CheckpointManager.save
         CheckpointManager.save = _create_patched_save(_original_save)
 
-        _config._patched = True
+        _config.set_patched(True)
 
         return True
 

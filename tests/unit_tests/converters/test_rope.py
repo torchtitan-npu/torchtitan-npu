@@ -40,18 +40,20 @@ def test_qwen3_mapping():
 
 
 def test_llama_mapping():
-    from torchtitan_npu.converters.kernels.rope import RoPEKernel
+    from torchtitan_npu.converters.kernels.rope import RoPEKernel, npu_apply_rotary_emb_llama
 
     impl = RoPEKernel.get_impl_cls("llama3")
     default_impl = RoPEKernel.MODEL_IMPL.get("_default")
 
+    assert default_impl == npu_apply_rotary_emb_llama
     assert impl == default_impl
 
 
 def test_unknown_mapping():
-    from torchtitan_npu.converters.kernels.rope import RoPEKernel
+    from torchtitan_npu.converters.kernels.rope import RoPEKernel, npu_apply_rotary_emb_llama
 
     impl = RoPEKernel.get_impl_cls("unknown")
     default_impl = RoPEKernel.MODEL_IMPL.get("_default")
 
+    assert default_impl == npu_apply_rotary_emb_llama
     assert impl == default_impl

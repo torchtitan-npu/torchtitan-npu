@@ -26,6 +26,11 @@ from ..patches.quantization.quant_config import (
 from ..patches.quantization.quantize import grouped_quantize_, linear_quantize_
 
 
+def validate_quantization_job_config(job_config: JobConfig) -> None:
+    validate_impl = getattr(QuantizationConverter, "_validate")
+    validate_impl(job_config)
+
+
 def is_a5():
     try:
         return "Ascend910_95" in torch_npu.npu.get_device_name()
@@ -50,7 +55,7 @@ def module_filter_fn(mod: nn.Module, fqn: str, filter_fqns: list[str]) -> bool:
 def npu_quant_linear_converter_init(
     self, job_config: JobConfig, parallel_dims: ParallelDims
 ):
-    QuantizationConverter._validate(job_config)
+    validate_quantization_job_config(job_config)
     self.enabled = False
     if not is_a5():
         raise RuntimeError(
@@ -90,7 +95,7 @@ def npu_quant_linear_converter(self, model: nn.Module):
 def npu_quant_grouped_mm_converter_init(
     self, job_config: JobConfig, parallel_dims: ParallelDims
 ):
-    QuantizationConverter._validate(job_config)
+    validate_quantization_job_config(job_config)
     self.enabled = False
     if not is_a5():
         raise RuntimeError(
