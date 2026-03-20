@@ -40,7 +40,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 REPORT_DIR="${PROJECT_ROOT}/test_reports"
-TITAN_VERSION="v0.2.1"
+TITAN_VERSION="v0.2.2"
 TITAN_DIR="${PROJECT_ROOT}/third_party/torchtitan"
 
 # Default configuration
