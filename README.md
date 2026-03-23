@@ -40,7 +40,7 @@ torchtitan-npu 基于 torchtitan 的训练流程，在继承 torchtitan 原生�
 | 功能                                                       | 原生支持 | NPU支持 |
 | ---------------------------------------------------------- | -------- | ------- |
 | MxFP8 量化                                                 | ✅       | ✅      |
-| [HiF8 量化](docs/feature_guides/low_precision_training.md) | ✅       | ✅      |
+| [HiF8 量化](docs/feature_guides/low_precision_training.md) | ❌       | ✅      |
 
 ### 训练调试与监控
 
