@@ -10,37 +10,40 @@ matmul+reduce-scatter, and installs the corresponding Inductor FX inserters.
 """
 
 from functools import lru_cache
-from typing import List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
 import torch.distributed.distributed_c10d as c10d
+
 import torch_npu
 from torch.distributed import _symmetric_memory
 from torchtitan.distributed import tensor_parallel as _tp_mod
 
 
 @lru_cache(maxsize=None)
-def _get_hccl_comm_name(group_name: str) -> Optional[str]:
+def _get_hccl_comm_name(group_name: str) -> str | None:
     if not dist.is_initialized():
         return None
+    # pyrefly: ignore [bad-argument-type]
     group = c10d._resolve_process_group(group_name)
     if group is None:
         return None
     rank = dist.get_rank(group)
+    # pyrefly: ignore [missing-attribute]
     return group._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
 
 
 def _npu_kernel_fused_all_gather_matmul(
     A_shard: torch.Tensor,
-    Bs: List[torch.Tensor],
+    Bs: list[torch.Tensor],
     gather_dim: int,
     group_name: str,
     *,
     return_A: bool = True,
-) -> Tuple[Optional[torch.Tensor], List[torch.Tensor]]:
+) -> tuple[torch.Tensor | None, list[torch.Tensor]]:
     if len(Bs) > 1:
         return_A = True
+    # pyrefly: ignore [bad-argument-type]
     group = c10d._resolve_process_group(group_name)
     world_size = group.size()
     shard_moved = A_shard.movedim(gather_dim, 0).contiguous()
@@ -88,6 +91,7 @@ def _npu_kernel_fused_matmul_reduce_scatter(
     scatter_dim: int,
     group_name: str,
 ) -> torch.Tensor:
+    # pyrefly: ignore [bad-argument-type]
     group = c10d._resolve_process_group(group_name)
     world_size = group.size()
 
@@ -132,7 +136,7 @@ def install_npu_tp_patches():
 
     torch.distributed.is_nccl_available = dist.is_nccl_available = lambda: True
     # Force-enable symmetric memory so micro-pipeline TP fusions are always allowed on NPU.
-    _symmetric_memory.is_symm_mem_enabled_for_group = lambda x: True
+    _symmetric_memory.is_symm_mem_enabled_for_group = lambda group_name: True
 
 
 _orig_maybe_enable_async_tp = _tp_mod.maybe_enable_async_tp

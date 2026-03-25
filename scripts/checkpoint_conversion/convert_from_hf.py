@@ -10,35 +10,24 @@ from pathlib import Path
 
 import torch
 import torch.distributed.checkpoint as dcp
-import torchtitan.models.llama3
-import torchtitan.models.llama3_ft
-import torchtitan.models.llama4
-
-# Models in torchtitan
-import torchtitan.models.qwen3
 import torchtitan.protocols.train_spec as train_spec_module
 from torch.distributed.checkpoint import HuggingFaceStorageReader
 from torchtitan.components.checkpoint import ModelWrapper
 
-import torchtitan_npu.models.deepseek_v3
-
-# New models in torchtitan-npu
-import torchtitan_npu.models.deepseek_v32
-
 
 @torch.inference_mode()
 def convert_from_hf(input_dir, output_dir, model_name, model_flavor):
-    if model_name == "flux":
-        import torchtitan.experiments.flux  # noqa: F401
     # initialize model to allocate memory for state dict
     train_spec = train_spec_module.get_train_spec(model_name)
     model_args = train_spec.model_args[model_flavor]
 
     with torch.device("cpu"):
         model = train_spec.model_cls(model_args)
-    model = ModelWrapper(model)
+    model = ModelWrapper(model)  # pyrefly: ignore [bad-argument-type]
 
-    sd_adapter = train_spec.state_dict_adapter(model_args, None)
+    sd_adapter = train_spec.state_dict_adapter(  # pyrefly: ignore [not-callable]
+        model_args, None
+    )
     assert (
         sd_adapter is not None
     ), "trying to convert checkpoint from HF to DCP safetensors format, but sd_adapter is not provided."

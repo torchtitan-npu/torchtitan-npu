@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from tests.conftest import assert_tensor_finite, stable_randn
+
 from torchtitan_npu.converters.kernels.fusion_attention import NPUFusionAttention
 
 

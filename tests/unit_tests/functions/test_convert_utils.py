@@ -9,21 +9,21 @@ Tests for convert_utils module.
 These tests verify the utility functions for module/function/method replacement.
 """
 
-import pytest
 import torch.nn as nn
 
 from torchtitan_npu.converters.convert_utils import (
-    find_modules,
     find_functions,
     find_methods,
-    replace_modules,
+    find_modules,
     replace_functions,
     replace_methods,
+    replace_modules,
 )
 
 
 class SimpleModule(nn.Module):
     """Simple test module."""
+
     def __init__(self):
         super().__init__()
         self.linear = nn.Linear(10, 10)
@@ -89,7 +89,7 @@ def test_find_methods_in_class():
     matches = find_methods(
         "SimpleModule",
         "forward",
-        package="tests.unit_tests.functions.test_convert_utils"
+        package="tests.unit_tests.functions.test_convert_utils",
     )
 
     assert len(matches) == 1
@@ -125,9 +125,7 @@ def test_replace_functions_replaces_loaded_function():
         return []
 
     count = replace_functions(
-        "find_modules",
-        replacement,
-        package="torchtitan_npu.converters"
+        "find_modules", replacement, package="torchtitan_npu.converters"
     )
 
     assert count >= 1
@@ -148,12 +146,10 @@ def test_replace_methods_replaces_loaded_method():
         "SimpleModule",
         "forward",
         replacement,
-        package="tests.unit_tests.functions.test_convert_utils"
+        package="tests.unit_tests.functions.test_convert_utils",
     )
 
     assert count == 1
     assert test_module.SimpleModule.forward is replacement
 
     test_module.SimpleModule.forward = original
-
-

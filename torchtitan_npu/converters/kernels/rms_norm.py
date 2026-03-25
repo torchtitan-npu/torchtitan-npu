@@ -4,10 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Optional
 
 import torch
 import torch.nn as nn
+
 import torch_npu
 
 from ..base_converter import BaseConverter
@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class NPURMSNorm(nn.Module):
-    def __init__(self, dim: int, eps: float = None):
+    def __init__(self, dim: int, eps: float | None = None):
         super().__init__()
         self.dim = dim
-        self.eps = float(eps) if eps is not None else None
+        self.eps: float | None = float(eps) if eps is not None else None
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -38,7 +38,7 @@ class NPURMSNorm(nn.Module):
         return f"dim={self.dim}, eps={self.eps}"
 
 
-def _get_eps(module: nn.Module) -> Optional[float]:
+def _get_eps(module: nn.Module) -> float | None:
     for attr_name in ["eps", "variance_epsilon", "epsilon"]:
         eps = getattr(module, attr_name, None)
         if eps is not None:
@@ -47,8 +47,10 @@ def _get_eps(module: nn.Module) -> Optional[float]:
 
 
 def _create_npu_rms_norm(old: nn.Module) -> nn.Module:
+    # pyrefly: ignore [bad-index]
     dim = old.weight.shape[-1]
     eps = _get_eps(old)
+    # pyrefly: ignore [bad-argument-type]
     new = NPURMSNorm(dim, eps=eps)
     return new
 
@@ -56,6 +58,8 @@ def _create_npu_rms_norm(old: nn.Module) -> nn.Module:
 @register_npu_converter("npu_rms_norm")
 class RMSNormKernel(BaseConverter):
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         count = replace_modules(model, r"RMSNorm", _create_npu_rms_norm)
+        # pyrefly: ignore [bad-return]
         return count

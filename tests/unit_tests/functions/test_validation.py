@@ -4,8 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 from types import SimpleNamespace
 
-import torch.nn as nn
 import pytest
+
+import torch.nn as nn
 
 from torchtitan_npu.converters.base_converter import BaseConverter
 from torchtitan_npu.converters.npu_converter import NPUConverter
@@ -50,4 +51,3 @@ def test_npu_converter_convert_raises_for_unsupported_model():
 
     with pytest.raises(ValueError, match="NOT compatible"):
         converter.convert(nn.Linear(8, 16))
-

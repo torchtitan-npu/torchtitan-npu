@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Set, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .base_converter import BaseConverter
@@ -10,24 +10,25 @@ if TYPE_CHECKING:
 @dataclass
 class PatchInfo:
     name: str
-    patch_cls: Type["BaseConverter"]
-    supported_models: Set[str] = field(default_factory=lambda: {"*"})
+    patch_cls: type["BaseConverter"]
+    supported_models: set[str] = field(default_factory=lambda: {"*"})
 
 
 class ConverterRegistry:
     _instance = None
+    _patches: dict[str, PatchInfo]
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._patches: Dict[str, PatchInfo] = {}
+            cls._instance._patches = {}
         return cls._instance
 
     @staticmethod
     def _register_as_model_converter(
         name: str,
-        patch_cls: Type["BaseConverter"],
-        supported_models: Set[str],
+        patch_cls: type["BaseConverter"],
+        supported_models: set[str],
     ):
         from torchtitan.protocols.model_converter import register_model_converter
 
@@ -45,8 +46,8 @@ class ConverterRegistry:
 
         register_model_converter(converter_cls, name)
 
-    def register(self, name: str, supported_models: Set[str] = None):
-        def decorator(patch_cls: Type["BaseConverter"]):
+    def register(self, name: str, supported_models: set[str] | None = None):
+        def decorator(patch_cls: type["BaseConverter"]):
             models = supported_models
             if models is None:
                 models = getattr(patch_cls, "SUPPORTED_MODELS", {"*"})
@@ -61,12 +62,12 @@ class ConverterRegistry:
 
         return decorator
 
-    def get(self, name: str) -> Optional[PatchInfo]:
+    def get(self, name: str) -> PatchInfo | None:
         return self._patches.get(name)
 
 
 registry = ConverterRegistry()
 
 
-def register_npu_converter(name: str, supported_models: Set[str] = None):
+def register_npu_converter(name: str, supported_models: set[str] | None = None):
     return registry.register(name, supported_models)

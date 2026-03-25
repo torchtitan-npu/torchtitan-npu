@@ -62,4 +62,3 @@ def test_npu_apply_rotary_emb_qwen_uses_input_sequence_length(monkeypatch):
     assert captured[0][1].shape == (1, 4, 1, 16)
     assert captured[0][0].dtype == xq.dtype
     assert captured[0][1].dtype == xq.dtype
-

@@ -3,9 +3,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, Optional
 
 import torch
+
 import torch_npu
 
 from torchtitan_npu.patches.quantization.quant_config import (
@@ -24,6 +24,7 @@ def view_as_n_dim(input_tensor, dim=2):
 
 class MXfp8MM(torch.autograd.Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, x, weight):
         x_mxfp8, x_scale = torch_npu.npu_dynamic_mx_quant(
             view_as_n_dim(x), axis=-1, dst_type=torch.float8_e4m3fn, scale_alg=1
@@ -49,6 +50,7 @@ class MXfp8MM(torch.autograd.Function):
         return output
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grads):
         x, weight = ctx.saved_tensors
         grads_mxfp8, grads_scale = torch_npu.npu_dynamic_mx_quant(
@@ -91,6 +93,7 @@ class MXfp8MM(torch.autograd.Function):
 
 class Hif8MM(torch.autograd.Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, x, weight):
         mm_kwargs = {"x1_dtype": torch_npu.hifloat8, "x2_dtype": torch_npu.hifloat8}
         x_quant, x_scale = torch_npu.npu_dynamic_quant(
@@ -115,6 +118,7 @@ class Hif8MM(torch.autograd.Function):
         return output
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grads):
         mm_kwargs = {"x1_dtype": torch_npu.hifloat8, "x2_dtype": torch_npu.hifloat8}
         x, weight = ctx.saved_tensors
@@ -166,23 +170,25 @@ class MXLinear(torch.nn.Linear):
     def from_float(
         cls,
         mod,
-        config: Optional[MXLinearConfig] = MXLinearConfig(),
+        config: MXLinearConfig | None = MXLinearConfig(),
     ):
         if not isinstance(mod, torch.nn.Linear):
             raise RuntimeError(
                 f"Unsupported module type: {type(mod)}. Expected torch.nn.Linear"
             )
         mod.__class__ = MXLinear
-        mod.config = config
+        mod.config = config  # pyrefly: ignore [bad-argument-type]
         return mod
 
-    def forward(self, x):
+    def forward(self, input):
         w = self.weight
         config = self.config
         if config.recipe_name == MXLinearRecipeName.FLOAT8_MXFP8:
-            y = MXfp8MM.apply(x, w)
+            y = MXfp8MM.apply(input, w)
         elif config.recipe_name == MXLinearRecipeName.FLOAT8_HIF8:
-            y = Hif8MM.apply(x, w)
+            y = Hif8MM.apply(input, w)
         if self.bias is not None:
+            # pyrefly: ignore [unbound-name]
             y = y + self.bias
+        # pyrefly: ignore [unbound-name]
         return y

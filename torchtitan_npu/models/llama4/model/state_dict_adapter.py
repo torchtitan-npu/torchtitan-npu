@@ -5,9 +5,8 @@
 # LICENSE file in the root directory of this source tree.
 
 
-from typing import Any, Dict, Optional
+from typing import Any
 
-import torch
 import torch.distributed.checkpoint as dcp
 
 from torchtitan.models.llama4 import Llama4StateDictAdapter
@@ -59,13 +58,13 @@ def dcp_load(
 
 
 class Llama4StateDictAdapterNpu(Llama4StateDictAdapter):
-    def __init__(self, model_args, hf_assets_path: Optional[str] = None):
+    def __init__(self, model_args, hf_assets_path: str | None = None):
         super().__init__(model_args, hf_assets_path)
 
         self._input_format = "hf"
         self.use_gmm = getattr(model_args.moe_args, "use_grouped_mm", False)
 
-    def from_hf(self, hf_state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def from_hf(self, hf_state_dict: dict[str, Any]) -> dict[str, Any]:
         """Convert loaded data to runtime format"""
         filtered = {
             k: v

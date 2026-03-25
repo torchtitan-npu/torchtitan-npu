@@ -52,9 +52,10 @@ markers = [
 ]
 
 [tool.pyrefly]
-project-excludes = ["torchtitan/experiments", "**/tests/**"]
+project-excludes = ["**/tests/**", "CI"]
 ignore-missing-imports = ["torchao.*", "torchft"]  # optional dependencies
 search-path = ["../pytorch"]  # local built pytorch
+replace-imports-with-any = ["torch_npu", "torch.npu"]
 
 [tool.usort]
 known_first_party = ["torchtitan_npu"]

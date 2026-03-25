@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-from typing import Optional
 
 import torch
 
@@ -13,13 +12,11 @@ from torchtitan.config.manager import ConfigManager
 from torchtitan.tools.logging import init_logger, logger
 from torchtitan.train import Trainer
 
-import torchtitan_npu
-
 if __name__ == "__main__":
     init_logger()
     config_manager = ConfigManager()
     config = config_manager.parse_args()
-    trainer: Optional[Trainer] = None
+    trainer: Trainer | None = None
 
     if config.model.name == "deepseek_v32":
         from torchtitan_npu.train import (

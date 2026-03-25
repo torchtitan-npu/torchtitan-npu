@@ -1,11 +1,14 @@
 import logging
 
 from torch._inductor.lowering import lowerings
+
+# pyrefly: ignore [missing-import]
 from torch_npu._inductor.lowering import _init_set
+
+# pyrefly: ignore [missing-import]
 from torch_npu._inductor.lowering_op_list import (
     FALLBACK_LIST,
     GENERATE_LIST,
-    GENERATE_LIST2,
     LOWERING_OVERLOAD_OP,
 )
 

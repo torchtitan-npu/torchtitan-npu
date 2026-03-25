@@ -66,7 +66,7 @@ def test_build_optimizers_wrapper_rejects_unknown_optimizer(monkeypatch):
             parallel_dims=None,
             ft_manager=None,
         )
-        assert False, "Expected NotImplementedError for unsupported optimizer"
+        raise AssertionError("Expected NotImplementedError for unsupported optimizer")
     except NotImplementedError as exc:
         assert "Optimizer SGD not added" in str(exc)
 
@@ -81,7 +81,8 @@ def test_build_optimizers_wrapper_uses_swap_container(monkeypatch):
         "SwapOptimizersContainer",
         lambda model_parts, optimizer_cls, optimizer_kwargs, swap_times: calls.append(
             (model_parts, optimizer_cls, optimizer_kwargs, swap_times)
-        ) or "swap_container",
+        )
+        or "swap_container",
     )
 
     optimizer_config = types.SimpleNamespace(
@@ -108,4 +109,3 @@ def test_build_optimizers_wrapper_uses_swap_container(monkeypatch):
     assert calls[0][1] is torch.optim.AdamW
     assert calls[0][2]["lr"] == 1e-3
     assert calls[0][3] == 16
-

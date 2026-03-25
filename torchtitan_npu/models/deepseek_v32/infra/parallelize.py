@@ -289,6 +289,7 @@ def apply_non_moe_tp(
     # whether the npu_dsa kernel is enabled
     parallel_cfg = job_config.parallelism
     use_cp = (
+        # pyrefly: ignore [missing-attribute]
         parallel_cfg.enable_custom_context_parallel
         and parallel_cfg.context_parallel_degree > 1
     )
@@ -377,10 +378,12 @@ def apply_non_moe_tp(
     # NOTE: At the cost of model code change, we can accelerate Sequence Parallel
     #       by folding (and unfolding) the batch dimension and the sequence dimension.
     #       Examples can be found at https://github.com/pytorch/torchtitan/pull/437
+    # pyrefly: ignore [not-callable]
     for transformer_block in model.layers.values():
         if enable_npu_dsa:
             # NOTE: here we patch the indexer_loss computation with npu fusion kernel module
             #       then we set the specific parallelize_plan for this module to ensure the correctness of loss
+            # pyrefly: ignore [missing-attribute]
             transformer_block.attention.inner_attention.compute_dsa_indexer_loss = (
                 SparseLightningIndexerKLLoss()
             )
@@ -409,6 +412,7 @@ def apply_non_moe_tp(
             "ffn_norm": SequenceParallel(),
         }
 
+        # pyrefly: ignore [missing-attribute]
         if transformer_block.attention.q_lora_rank == 0:
             layer_plan.update(
                 {
@@ -426,6 +430,7 @@ def apply_non_moe_tp(
                 }
             )
 
+        # pyrefly: ignore [missing-attribute]
         if not transformer_block.moe_enabled:
             layer_plan.update(
                 {
@@ -440,8 +445,10 @@ def apply_non_moe_tp(
             )
 
         parallelize_module(
+            # pyrefly: ignore [bad-argument-type]
             module=transformer_block,
             device_mesh=tp_mesh,
+            # pyrefly: ignore [bad-argument-type]
             parallelize_plan=layer_plan,
         )
 
@@ -467,7 +474,9 @@ def apply_moe_ep_tp(
         Current status: tp_mesh={tp_mesh}, ep_mesh={ep_mesh}
         """
 
+    # pyrefly: ignore [not-callable]
     for transformer_block in model.layers.values():
+        # pyrefly: ignore [missing-attribute]
         if not transformer_block.moe_enabled:
             continue
 
@@ -485,9 +494,11 @@ def apply_moe_ep_tp(
                     sequence_dim=0, use_local_output=True
                 ),
             }
+            # pyrefly: ignore [missing-attribute]
             if transformer_block.moe.shared_experts is not None:
                 # input: sharded on fused batch-seq dimension (dim=0)
                 # all-gather for input, reduce-scatter for output
+                # pyrefly: ignore [no-matching-overload]
                 moe_layer_plan.update(
                     {
                         "moe.shared_experts": PrepareModuleInput(
@@ -502,8 +513,10 @@ def apply_moe_ep_tp(
                     }
                 )
             parallelize_module(
+                # pyrefly: ignore [bad-argument-type]
                 module=transformer_block,
                 device_mesh=tp_mesh,
+                # pyrefly: ignore [bad-argument-type]
                 parallelize_plan=moe_layer_plan,
             )
 
@@ -515,6 +528,7 @@ def apply_moe_ep_tp(
         elif tp_mesh is None or etp_mesh is None:
             experts_mesh = ep_mesh
             if use_deepep:
+                # pyrefly: ignore [missing-attribute]
                 score_before_experts = transformer_block.moe.score_before_experts
                 experts_plan = DeepEPExpertParallel(
                     score_before_experts=score_before_experts,
@@ -529,6 +543,7 @@ def apply_moe_ep_tp(
             experts_plan = DualPipeExpertParallel(experts_plan)
 
         parallelize_module(
+            # pyrefly: ignore [missing-attribute]
             module=transformer_block.moe.experts,
             device_mesh=experts_mesh,
             parallelize_plan=experts_plan,
@@ -547,6 +562,7 @@ def apply_distributed_indexer_loss_tracking(parallel_dims: ParallelDims):
     and Context Parallel (CP) groups, to obtain the globally accurate metric.
     """
 
+    # pyrefly: ignore [invalid-decorator]
     @staticmethod
     def distributed_track_dsa_indexer_metrics(total_acc_steps: int):
         tracker = DSAIndexerLossLoggingHelper.tracker

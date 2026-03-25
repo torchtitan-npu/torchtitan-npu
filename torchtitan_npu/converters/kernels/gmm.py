@@ -5,8 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+from typing import Any
 
 import torch
+
 import torch_npu
 from torch import nn
 from torch.distributed.tensor import DTensor
@@ -29,7 +31,8 @@ group_size_params = {
 
 class GMMFunction(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x, weight, group_list):
+    # pyrefly: ignore [bad-override]
+    def forward(ctx, x, weight, group_list) -> Any:
         ctx.save_for_backward(x, weight)
         ctx.group_list = group_list
 
@@ -45,7 +48,8 @@ class GMMFunction(torch.autograd.Function):
         return fwd_output
 
     @staticmethod
-    def backward(ctx, grad_output):
+    # pyrefly: ignore [bad-override]
+    def backward(ctx, grad_output) -> Any:
         input_tensor, weight = ctx.saved_tensors
         group_list = ctx.group_list
 
@@ -82,6 +86,7 @@ def _run_experts_grouped_mm(
     x: torch.Tensor,
     num_tokens_per_expert: torch.Tensor | None,
 ) -> torch.Tensor:
+    # pyrefly: ignore [missing-attribute]
     offsets = num_tokens_per_expert.to(torch.int64)
 
     h = npu_grouped_mm(x.bfloat16(), w13.bfloat16().transpose(-2, -1), offsets)
@@ -110,12 +115,14 @@ def npu_grouped_experts_forward(
     #       otherwise, EP will handle the padding.
     if (
         not isinstance(self.w2, DTensor)
+        # pyrefly: ignore [not-iterable]
         or "ep" not in self.w2.device_mesh.mesh_dim_names
     ):
         run_experts_fn = indices_padding_wrapper(_run_experts_grouped_mm)
         group_size_params["expert_model_parallel_size"] = 1
     else:
         run_experts_fn = _run_experts_grouped_mm
+        # pyrefly: ignore [missing-attribute]
         ep_dim_index = self.w2.device_mesh.mesh_dim_names.index("ep")
         group_size_params["expert_model_parallel_size"] = self.w2.device_mesh.shape[
             ep_dim_index
@@ -124,10 +131,12 @@ def npu_grouped_experts_forward(
     if group_size_params["g_size"] is None:
         group_size_params["num_experts"] = self.num_experts
         group_size_params["g_size"] = (
+            # pyrefly: ignore [unsupported-operation]
             group_size_params["num_experts"]
             // group_size_params["expert_model_parallel_size"]
         )
 
+    # pyrefly: ignore [bad-argument-type]
     return run_experts_fn(w13, w2, None, x, num_tokens_per_expert)
 
 
@@ -144,6 +153,7 @@ class GMMKernel(BaseConverter):
     TARGET_CLASS = "GroupedExperts"
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
 
         replacement_counts = 0
@@ -174,6 +184,7 @@ class GMMKernel(BaseConverter):
         # Initialize w13
         cls._change_existing_instances(model)
 
+        # pyrefly: ignore [bad-return]
         return replacement_counts
 
     @classmethod
@@ -203,17 +214,24 @@ class GMMKernel(BaseConverter):
         """Create parameter w13 from w1"""
         w1 = module.w1
 
+        # pyrefly: ignore [bad-index]
         num_experts = w1.shape[0]
+        # pyrefly: ignore [bad-index]
         hidden_dim = w1.shape[1]
+        # pyrefly: ignore [bad-index]
         dim = w1.shape[2]
 
+        # pyrefly: ignore [no-matching-overload]
         w13_data = torch.empty(
             num_experts, hidden_dim * 2, dim, dtype=w1.dtype, device=w1.device
         )
         module.register_parameter("w13", nn.Parameter(w13_data))
+        # pyrefly: ignore [bad-argument-type]
         module.use_grouped_mm = True
 
+        # pyrefly: ignore [bad-argument-type]
         module.w1 = None
+        # pyrefly: ignore [bad-argument-type]
         module.w3 = None
 
         logger.info(f"  {module_name}: Created w13 [{w13_data.shape}]")

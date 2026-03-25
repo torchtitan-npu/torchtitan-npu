@@ -5,9 +5,10 @@
 # LICENSE file in the root directory of this source tree.
 
 from functools import partial
+from typing import Any
 
-import torch
 import torch.nn as nn
+
 import torch_npu
 from torchtitan.components.quantization import QuantizationConverter
 from torchtitan.components.quantization.mx import (
@@ -27,7 +28,7 @@ from ..patches.quantization.quantize import grouped_quantize_, linear_quantize_
 
 
 def validate_quantization_job_config(job_config: JobConfig) -> None:
-    validate_impl = getattr(QuantizationConverter, "_validate")
+    validate_impl = QuantizationConverter._validate
     validate_impl(job_config)
 
 
@@ -69,7 +70,7 @@ def npu_quant_linear_converter_init(
     if model_compile_enabled and job_config.parallelism.tensor_parallel_degree > 1:
         raise RuntimeError("TP not yet supported with torch.compile for mxfp8")
 
-    mx_job_config: TorchMXLinearConfig = job_config.quantize.linear.mx
+    mx_job_config: Any = job_config.quantize.linear.mx
     # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8.
     config = TorchMXLinearConfig.from_recipe_name(mx_job_config.recipe_name)
     self.filter_fqns = mx_job_config.filter_fqns
@@ -102,7 +103,7 @@ def npu_quant_grouped_mm_converter_init(
             "MXFP8 is only supported on Ascend910_95 or higher architecture."
         )
 
-    mx_job_config: TorchMoETrainingConfig = job_config.quantize.grouped_mm.mx
+    mx_job_config: Any = job_config.quantize.grouped_mm.mx
     # In NPUs, recipe_name is used to distinguish between MXFP8 and HiF8.
     config = TorchMoETrainingConfig.from_recipe_name(mx_job_config.recipe_name)
     self.config = config

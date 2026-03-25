@@ -6,7 +6,7 @@
 import gc
 import logging
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import torch
 from torch.distributed.tensor import DTensor
@@ -14,7 +14,7 @@ from torch.distributed.tensor import DTensor
 logger = logging.getLogger(__name__)
 
 
-def convert_expert_format(state_dict: Dict, target_format: str) -> Dict:
+def convert_expert_format(state_dict: dict, target_format: str) -> dict:
     current_format = detect_expert_format(state_dict)
 
     if target_format == "gmm" and current_format == "standard":
@@ -30,28 +30,28 @@ def convert_expert_format(state_dict: Dict, target_format: str) -> Dict:
     return state_dict
 
 
-def detect_expert_format(state_dict: Dict) -> str:
+def detect_expert_format(state_dict: dict) -> str:
     """Detecting the expert format of state_dict"""
     for key in state_dict.keys():
-        if '.experts.' in key or 'experts.' in key:
-            if '.gate_up_proj.' in key or '.w13.' in key or key.endswith(".w13"):
+        if ".experts." in key or "experts." in key:
+            if ".gate_up_proj." in key or ".w13." in key or key.endswith(".w13"):
                 return "gmm"
-            if '.gate_proj.' in key or '.w1.' in key or key.endswith(".w1"):
+            if ".gate_proj." in key or ".w1." in key or key.endswith(".w1"):
                 return "standard"
     return "none"
 
 
-def detect_input_format_by_path(path: str) -> str:
+def detect_input_format_by_path(path: str | Path) -> str:
     """Check format of input checkpoint by path"""
-    path = Path(path)
+    path_obj = Path(path)
     dcp_markers = [".distcp", ".metadata", "__0_0.distcp"]
-    is_dcp = any((path / marker).exists() for marker in dcp_markers)
+    is_dcp = any((path_obj / marker).exists() for marker in dcp_markers)
     if not is_dcp:
         return "hf"
     return "dcp"
 
 
-def fuse_experts(state_dict: Dict) -> Dict:
+def fuse_experts(state_dict: dict) -> dict:
     """Standard -> GMM: w1 w3 to w13"""
 
     pending = {}
@@ -79,7 +79,7 @@ def fuse_experts(state_dict: Dict) -> Dict:
     return state_dict
 
 
-def split_fused_experts(state_dict: Dict) -> Dict:
+def split_fused_experts(state_dict: dict) -> dict:
     """GMM -> Standard : w13 to w1, w3"""
     result = state_dict
 
@@ -130,11 +130,13 @@ def _fuse_w1_w3_dtensor(w1: DTensor, w3: DTensor) -> DTensor:
     w1_cpu = local_w1.cpu()
     del w1, local_w1
     gc.collect()
+    # pyrefly: ignore [missing-attribute]
     torch.npu.empty_cache()
 
     w3_cpu = local_w3.cpu()
     del w3, local_w3
     gc.collect()
+    # pyrefly: ignore [missing-attribute]
     torch.npu.empty_cache()
 
     fused_cpu = torch.cat([w1_cpu, w3_cpu], dim=1)
@@ -150,7 +152,7 @@ def _fuse_w1_w3_dtensor(w1: DTensor, w3: DTensor) -> DTensor:
     )
 
 
-def _fuse_w1_w3_tensor(w1: torch.Tensor, w3: torch.Tensor) -> DTensor:
+def _fuse_w1_w3_tensor(w1: torch.Tensor, w3: torch.Tensor) -> torch.Tensor:
     """fuse DTensor"""
     device = w1.device
     dtype = w1.dtype
@@ -159,11 +161,13 @@ def _fuse_w1_w3_tensor(w1: torch.Tensor, w3: torch.Tensor) -> DTensor:
     w1_cpu = w1.cpu()
     del w1
     gc.collect()
+    # pyrefly: ignore [missing-attribute]
     torch.npu.empty_cache()
 
     w3_cpu = w3.cpu()
     del w3
     gc.collect()
+    # pyrefly: ignore [missing-attribute]
     torch.npu.empty_cache()
 
     # cpu fuse
@@ -174,7 +178,7 @@ def _fuse_w1_w3_tensor(w1: torch.Tensor, w3: torch.Tensor) -> DTensor:
     return fused_cpu.to(device=device, dtype=dtype)
 
 
-def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
+def _split_w13_dtensor(w13: DTensor) -> tuple[DTensor, DTensor]:
     """split DTensor"""
     local_tensor = w13.to_local()
     chunks = torch.chunk(local_tensor, 2, dim=1)
@@ -191,7 +195,7 @@ def _split_w13_dtensor(w13: DTensor) -> Tuple[DTensor, DTensor]:
     )
 
 
-def _split_w13_for_mapping(state_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _split_w13_for_mapping(state_dict: dict[str, Any]) -> dict[str, Any]:
     """Split w13 into w1 and w3 for HF mapping"""
     result = {}
 

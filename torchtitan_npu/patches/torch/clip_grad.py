@@ -35,7 +35,7 @@ def group_dtensors_by_layout(dtensors):
     groups = defaultdict(list)
     for dt in dtensors:
         if not isinstance(dt, DTensor):
-            key = ("non_dtensor", None, None)
+            key = ("non_dtensor", None)
         else:
             key = (dt.device_mesh, tuple(dt.placements))
         groups[key].append(dt)
@@ -43,6 +43,8 @@ def group_dtensors_by_layout(dtensors):
 
 
 def reduce_across_mesh(local_sum, mesh, placements):
+    if not placements:
+        return
     for mesh_dim, placement in enumerate(placements):
         needs_reduce = (
             hasattr(placement, "reduce_op")
@@ -61,12 +63,12 @@ def custom_total_norm(norms, norm_type, first_device):
     only supports norm type != inf
     """
     groups = group_dtensors_by_layout(norms)
-    global_total_sum = 0.0
+    global_total_sum = torch.tensor(0.0, device=first_device, dtype=torch.float32)
 
     for (mesh, placements), tensors in groups.items():
         group_local_sum = torch.tensor(0.0, device=first_device, dtype=torch.float32)
         for t in tensors:
-            t = t.to_local()
+            t = t.to_local() if isinstance(t, DTensor) else t
             group_local_sum += (
                 torch.linalg.vector_norm(t, ord=norm_type, dtype=torch.float32)
                 ** norm_type

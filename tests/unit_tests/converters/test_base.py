@@ -55,4 +55,6 @@ class RestrictedConverter(BaseConverter):
 
 
 def test_is_compatible_rejects_unsupported_model():
-    assert not RestrictedConverter.is_compatible(job_config=None, model_name="deepseek_v3")
+    assert not RestrictedConverter.is_compatible(
+        job_config=None, model_name="deepseek_v3"
+    )

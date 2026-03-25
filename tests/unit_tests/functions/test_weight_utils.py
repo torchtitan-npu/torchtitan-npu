@@ -96,4 +96,3 @@ def test_convert_expert_format_splits_dtensor_w13_with_placements(monkeypatch):
     assert captured_calls[1]["placements"] == ("shard",)
     assert result["model.layers.0.moe.experts.w1"].to_local().shape == (2, 4, 8)
     assert result["model.layers.0.moe.experts.w3"].to_local().shape == (2, 4, 8)
-

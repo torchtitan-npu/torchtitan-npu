@@ -18,11 +18,15 @@ def _create_fake_pg(common_opts, backend_opts):
     with distributed but don't care about the actual data.
     """
     return FakeProcessGroup._create_internal(
-        common_opts.group_rank, common_opts.group_size, backend_opts
+        common_opts.group_rank,
+        common_opts.group_size,
+        # pyrefly: ignore [bad-argument-count]
+        backend_opts,
     )
 
 
 dist.Backend.register_backend(
+    # pyrefly: ignore [missing-attribute]
     dist.Backend.FAKE,
     _create_fake_pg,
     extended_api=True,

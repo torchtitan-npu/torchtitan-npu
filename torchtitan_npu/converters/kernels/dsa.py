@@ -4,10 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Tuple
 
 import torch
 import torch.nn as nn
+
 import torch_npu
 
 from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
@@ -83,6 +83,7 @@ class LILossTrain(torch.autograd.Function):
     """
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(
         ctx,
         query,
@@ -171,7 +172,7 @@ class LILossTrain(torch.autograd.Function):
         return loss[0]
 
     @staticmethod
-    def backward(ctx, *grad_output) -> Tuple:
+    def backward(ctx, *grad_output) -> tuple:
         """
         Backward pass: propagate upstream gradients through the precomputed gradients.
 
@@ -285,6 +286,7 @@ def dsa_forward(
         layout="BSND",
     )
     output = output.transpose(1, 2)
+    # pyrefly: ignore [bad-return]
     return loss, output
 
 
@@ -306,18 +308,22 @@ class DSAKernel(BaseConverter):
         return super().is_compatible(job_config, model_name)
 
     @classmethod
-    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
         pkg = cls.MODEL_PACKAGE
 
-        count = replace_methods("DSV32_SDPA", "forward", dsa_forward, package=pkg)
-        logger.info(f"  [DSV32_SDPA forward] Applied {count} replacement(s)")
+        count = replace_methods(
+            "DSASparseAttention", "forward", dsa_forward, package=pkg
+        )
+        logger.info(f"  [DSASparseAttention forward] Applied {count} replacement(s)")
         logger.info(
-            f"  Only matrix absorb mode is supported, and LI Loss is enabled by default."
+            "  Only matrix absorb mode is supported, and LI Loss is enabled by default."
         )
 
         # If tp is no enabled, then the indexer_loss patch in deepseek_v32_parallelize.py won't be applied
         # The patch is applied here as a supplement
+        # pyrefly: ignore [not-callable]
         for transformer_block in model.layers.values():
+            # pyrefly: ignore [missing-attribute]
             inner_attention = transformer_block.attention.inner_attention
             if not isinstance(
                 inner_attention.compute_dsa_indexer_loss, SparseLightningIndexerKLLoss

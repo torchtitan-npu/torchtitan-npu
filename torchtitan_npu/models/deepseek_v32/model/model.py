@@ -6,11 +6,13 @@
 
 import logging
 import math
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import torch
 import torch.nn.functional as F
 from einops import rearrange
+
+# pyrefly: ignore [missing-import]
 from scipy.linalg import hadamard
 from torch import nn
 from torch.distributed.tensor import DTensor
@@ -78,6 +80,7 @@ def hadamard_transform_ref(x, scale=1.0):
     log_dim = math.ceil(math.log2(dim))
     dim_padded = 2**log_dim
     if dim != dim_padded:
+        # pyrefly: ignore [bad-argument-type]
         x = F.pad(x, (0, dim_padded - dim))
     out = F.linear(
         x,
@@ -89,6 +92,7 @@ def hadamard_transform_ref(x, scale=1.0):
 
 def rotate_activation(x: torch.Tensor) -> torch.Tensor:
     try:
+        # pyrefly: ignore [missing-import]
         from fast_hadamard_transform import hadamard_transform
     except ImportError:
         hadamard_transform = hadamard_transform_ref
@@ -137,7 +141,7 @@ class Indexer(torch.nn.Module):
         qr: torch.Tensor,
         start_pos: int,
         freqs_cis: torch.Tensor,
-        mask: Optional[torch.Tensor],
+        mask: torch.Tensor | None,
     ):
         bsz, seqlen, _ = x.size()
         end_pos = start_pos + seqlen
@@ -174,9 +178,11 @@ class Indexer(torch.nn.Module):
 class DSAIndexerLossAutoScaler(torch.autograd.Function):
     """An AutoScaler that triggers the backward pass and scales the grad for DSA indexer loss."""
 
+    # pyrefly: ignore [bad-assignment]
     main_loss_backward_scale: torch.Tensor = None
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, output: torch.Tensor, aux_loss: torch.Tensor):
         """Preserve the indexer_loss by storing it in the context to avoid garbage collection.
 
@@ -191,6 +197,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
         return output
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad_output: torch.Tensor):
         """Compute and scale the gradient for indexer loss.
 
@@ -203,6 +210,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
         """
         (loss,) = ctx.saved_tensors
         if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
+            # pyrefly: ignore [bad-assignment]
             DSAIndexerLossAutoScaler.main_loss_backward_scale = torch.tensor(
                 1.0, device=loss.device
             )
@@ -223,6 +231,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
                                   matches the scale of the main_loss.
         """
         if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
+            # pyrefly: ignore [bad-assignment]
             DSAIndexerLossAutoScaler.main_loss_backward_scale = scale
         else:
             DSAIndexerLossAutoScaler.main_loss_backward_scale.copy_(scale)
@@ -338,7 +347,7 @@ def get_attn_scores(
     return attn
 
 
-class DSV32_SDPA(torch.nn.Module):
+class DSASparseAttention(torch.nn.Module):
     """Wrapper around `F.scaled_dot_product_attention` to make it CP compatible.
 
     This wrapper is needed because `F.scaled_dot_product_attention` is not
@@ -357,6 +366,7 @@ class DSV32_SDPA(torch.nn.Module):
         self.model_args = model_args
         self.compute_dsa_indexer_loss = DSAIndexerLoss()
         if not self.sdpa_backends:
+            # pyrefly: ignore [read-only]
             self.sdpa_backends = [
                 SDPBackend.CUDNN_ATTENTION,
                 SDPBackend.FLASH_ATTENTION,
@@ -381,7 +391,12 @@ class DSV32_SDPA(torch.nn.Module):
 
         # prepare attention_mask for sparse attention according to lightning_indexer score
         index_score = bf16_index(
-            q_indexer.contiguous(), weights.unsqueeze(-1), k_indexer.contiguous()
+            # pyrefly: ignore [missing-attribute]
+            q_indexer.contiguous(),
+            # pyrefly: ignore [missing-attribute]
+            weights.unsqueeze(-1),
+            # pyrefly: ignore [missing-attribute]
+            k_indexer.contiguous(),
         )
         if attn_mask is None:
             attn_mask = torch.where(
@@ -394,11 +409,13 @@ class DSV32_SDPA(torch.nn.Module):
                 0.0,
             )
         index_score += attn_mask
+        # pyrefly: ignore [bad-argument-type]
         topk_score, topk_indices = index_score.topk(min(index_topk, end_pos), dim=-1)
         query_positions = (
             torch.arange(seqlen, device=topk_indices.device).unsqueeze(0).unsqueeze(-1)
         )
         valid_positions = topk_indices <= query_positions
+        # pyrefly: ignore [no-matching-overload]
         topk_indices = torch.where(
             valid_positions, topk_indices, torch.full_like(topk_indices, -1)
         )
@@ -426,6 +443,7 @@ class DSV32_SDPA(torch.nn.Module):
             topk_indices,
             1.0,
         )
+        # pyrefly: ignore [bad-return]
         return loss, output
 
 
@@ -468,7 +486,7 @@ class Attention(nn.Module):
             mscale = 0.1 * model_args.mscale * math.log(model_args.rope_factor) + 1.0
             self.softmax_scale = self.softmax_scale * mscale * mscale
         self.indexer = Indexer(model_args)
-        self.inner_attention = DSV32_SDPA(model_args)
+        self.indexer_sparse_attn = DSASparseAttention(model_args)
 
     def forward(
         self,
@@ -527,7 +545,7 @@ class Attention(nn.Module):
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
 
-            loss, output = self.inner_attention(
+            loss, output = self.indexer_sparse_attn(
                 q,
                 k,
                 v,
@@ -563,7 +581,7 @@ class Attention(nn.Module):
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
 
-            loss, output = self.inner_attention(
+            loss, output = self.indexer_sparse_attn(
                 q,
                 k,
                 v,
@@ -609,8 +627,10 @@ class TransformerBlockV32(TransformerBlock):
 
     def __init__(self, layer_id: int, model_args: DeepSeekV32ModelArgs):
         super().__init__(layer_id, model_args)
+        # pyrefly: ignore [bad-assignment]
         self.attention = Attention(model_args)
 
+    # pyrefly: ignore [bad-param-name-override]
     def forward(
         self,
         x: torch.Tensor,
@@ -657,8 +677,10 @@ class DeepSeekV32Model(DeepSeekV3Model):
         for layer_id in range(model_args.n_layers):
             self.layers[str(layer_id)] = TransformerBlockV32(layer_id, model_args)
         self.model_args = model_args
+        # pyrefly: ignore [bad-assignment]
         self.norm = RMSNorm(model_args.dim)
 
+    # pyrefly: ignore [bad-override]
     def forward(
         self,
         tokens: torch.Tensor,

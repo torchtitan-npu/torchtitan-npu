@@ -4,11 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 from unittest.mock import patch
 
-from torchtitan_npu.converters.registry import (
-    ConverterRegistry,
-    PatchInfo,
-    registry,
-)
+from torchtitan_npu.converters.registry import ConverterRegistry, PatchInfo, registry
 
 
 class DummyPatch:
@@ -82,4 +78,3 @@ def test_core_converter_registrations_exist():
         assert patch_info is not None, f"{name} should be registered"
         assert patch_info.name == name
         assert patch_info.patch_cls is not None
-

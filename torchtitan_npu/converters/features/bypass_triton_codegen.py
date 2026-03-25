@@ -8,10 +8,10 @@ import logging
 from functools import wraps
 
 import torch
+import torch._inductor.graph
 import torch.nn as nn
 from torch._inductor.decomposition import decompositions
 from torch._inductor.lowering import lowerings
-from torchtitan.config.job_config import Compile as CompileConfig
 
 from torchtitan_npu.patches.torch._inductor.graph import graphlowering_call_function
 
@@ -42,6 +42,7 @@ class BypassTritonCodegenKernel(BaseConverter):
     SUPPORTED_MODELS = {"deepseek_v3", "llama3"}
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         target = "apply_compile"
         pkg = "torchtitan.models"
@@ -50,13 +51,14 @@ class BypassTritonCodegenKernel(BaseConverter):
         matches.extend(find_functions(target, package=pkg_npu))
         if not matches:
             logger.info(
-                f"  No matched function apply_compile for this model, continue without patching"
+                "  No matched function apply_compile for this model, continue without patching"
             )
             return model
 
         for m in matches:
             m.replace(compile_bypass_fusion(m.func))
 
+        # pyrefly: ignore [missing-import]
         from torch_npu.op_plugin.meta._meta_registrations import (
             npu_fusion_attention_forward as original_meta_func,
         )
@@ -73,4 +75,5 @@ class BypassTritonCodegenKernel(BaseConverter):
         torch._inductor.graph.GraphLowering.call_function = graphlowering_call_function
         fix_npu_inductor()
 
+        # pyrefly: ignore [bad-return]
         return len(matches)

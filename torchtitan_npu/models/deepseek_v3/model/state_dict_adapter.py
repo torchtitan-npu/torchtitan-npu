@@ -6,7 +6,7 @@
 
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from torchtitan.models.deepseek_v3 import DeepSeekV3StateDictAdapter
 
@@ -26,7 +26,7 @@ class DeepSeekV3StateDictAdapterNpu(DeepSeekV3StateDictAdapter):
         self._input_format = "hf"
         self._input_expert_format = "standard"
 
-    def to_hf(self, state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def to_hf(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         if self._input_format == "dcp":
             return state_dict
         has_w13 = any(".moe.expert.w13" in k for k in state_dict.keys())
@@ -36,7 +36,7 @@ class DeepSeekV3StateDictAdapterNpu(DeepSeekV3StateDictAdapter):
         else:
             return super().to_hf(state_dict)
 
-    def from_hf(self, hf_state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def from_hf(self, hf_state_dict: dict[str, Any]) -> dict[str, Any]:
         """Convert loaded data to runtime format"""
         filtered = {
             k: v

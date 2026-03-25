@@ -5,17 +5,12 @@
 
 import copy
 import functools
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch.distributed._tensor.placement_types import DTensorSpec
 from torch.distributed.tensor import DTensor
-from torch.distributed.tensor._op_schema import (
-    OpSchema,
-    OpSpec,
-    OpStrategy,
-    TupleStrategy,
-)
+from torch.distributed.tensor._op_schema import OpSchema, OpSpec, OpStrategy
 from torch.distributed.tensor._ops._matrix_ops import _mm_like_strategy
 
 
@@ -65,7 +60,9 @@ def matmul_sharding(op_schema: OpSchema, fallback_handler: Callable) -> OpStrate
             f"Only support two inputs, current input num is {len(args)}"
         )
 
+    # pyrefly: ignore [missing-attribute]
     shape1 = args[0].strategies[0].output_spec.shape
+    # pyrefly: ignore [missing-attribute]
     shape2 = args[1].strategies[0].output_spec.shape
     ndim1 = len(shape1)
     ndim2 = len(shape2)
@@ -109,6 +106,7 @@ def combine_strategies_for_matmul_backward(
     # 1. Filter DX Strategies: Weight input (index 1) must match original weight
     for spec in strategy_dx.strategies:
         # matmul(dy, w.T) -> dx, check if Input 1 (Weight) matches original weight spec
+        # pyrefly: ignore [unsupported-operation]
         weight_input_spec = spec.input_specs[1]
         if weight_input_spec.placements == original_weight_spec.placements:
             valid_dx_specs.append(spec)
@@ -117,6 +115,7 @@ def combine_strategies_for_matmul_backward(
     for spec in strategy_dw.strategies:
         # matmul(x.T, dy) -> dw, check if Output matches original weight spec
         dw_output_spec = spec.output_specs
+        # pyrefly: ignore [missing-attribute]
         if dw_output_spec.placements == original_weight_spec.placements:
             valid_dw_specs.append(spec)
 
@@ -128,11 +127,13 @@ def combine_strategies_for_matmul_backward(
             # The 'dy' (GradOutput) is used in both dx calculation and dw calculation.
             # We must ensure they require the same sharding for dy.
             dy_spec_in_dx = dx_spec.input_specs[0]
+            # pyrefly: ignore [unsupported-operation]
             dy_spec_in_dw = dw_spec.input_specs[1]
             if dy_spec_in_dx.placements == dy_spec_in_dw.placements:
                 # Found a compatible pair!
                 new_input_specs = [
                     dx_spec.input_specs[0],  # dy
+                    # pyrefly: ignore [unsupported-operation]
                     dw_spec.input_specs[0],  # x
                     dx_spec.input_specs[1],  # w
                 ]
@@ -142,12 +143,15 @@ def combine_strategies_for_matmul_backward(
                 costs_dx = dx_spec.redistribute_cost
                 costs_dw = dw_spec.redistribute_cost
                 new_redistribute_cost = [
+                    # pyrefly: ignore [unsupported-operation]
                     [costs_dx[0][0] + costs_dw[1][0]],
+                    # pyrefly: ignore [unsupported-operation]
                     costs_dw[0],
                     costs_dx[1],
                 ]
 
                 new_spec = OpSpec(
+                    # pyrefly: ignore [bad-argument-type]
                     output_specs=new_output_specs,
                     input_specs=new_input_specs,
                     redistribute_cost=new_redistribute_cost,
@@ -177,8 +181,11 @@ def matmul_backward_sharding(
             f"Only support four inputs, current input num is {len(args)}"
         )
 
+    # pyrefly: ignore [missing-attribute]
     shape_dy = args[0].strategies[0].output_spec.shape
+    # pyrefly: ignore [missing-attribute]
     shape_x = args[1].strategies[0].output_spec.shape
+    # pyrefly: ignore [missing-attribute]
     shape_w = args[2].strategies[0].output_spec.shape
     ndim_dy = len(shape_dy)
     ndim_x = len(shape_x)
@@ -214,7 +221,10 @@ def matmul_backward_sharding(
 
         # get combined strategy for matmul backward
         return combine_strategies_for_matmul_backward(
-            strategy_dx, strategy_dw, args[2].strategies[0].output_spec
+            strategy_dx,
+            strategy_dw,
+            # pyrefly: ignore [missing-attribute]
+            args[2].strategies[0].output_spec,
         )
 
     # fallback to original logic.

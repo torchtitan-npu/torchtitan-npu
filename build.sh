@@ -483,9 +483,9 @@ run_function_ut() {
 
     local pytest_args="-v --tb=short --confcutdir=tests --import-mode=importlib"
     pytest_args="$pytest_args $(build_pytest_report_args "ut_functions_report")"
-    
+
     local test_target="tests/unit_tests/functions/"
-    
+
     if [[ ! -d "$test_target" ]]; then
         log_info "Function-level test directory not found, skipping..."
         return 0
@@ -514,9 +514,9 @@ run_module_ut() {
 
     local pytest_args="-v --tb=short --confcutdir=tests --import-mode=importlib"
     pytest_args="$pytest_args $(build_pytest_report_args "ut_modules_report")"
-    
+
     local test_target="tests/unit_tests/modules/"
-    
+
     if [[ ! -d "$test_target" ]]; then
         log_info "Module-level test directory not found, skipping..."
         return 0
@@ -545,9 +545,9 @@ run_feature_ut() {
 
     local pytest_args="-v --tb=short --confcutdir=tests --import-mode=importlib"
     pytest_args="$pytest_args $(build_pytest_report_args "ut_features_report")"
-    
+
     local test_target="tests/unit_tests/features/"
-    
+
     if [[ ! -d "$test_target" ]]; then
         log_info "Feature-level test directory not found, skipping..."
         return 0
@@ -792,7 +792,7 @@ run_core_smoke() {
 
     log_info "Prepared for entering"
 
-    set +e 
+    set +e
     timeout $TIMEOUT_SECONDS bash -c "
         export NGPU=$NGPU
         export CONFIG_FILE="${SMOKE_CONFIG}"
@@ -892,7 +892,7 @@ main() {
 
     log_info "Torchtitan-npu build"
 
-    if [[ "$DO_BUILD" == "true" ]] || [[ "$DO_UNIT_TEST" == "true" ]] || [[ "$DO_SMOKE_TEST" == "true" ]]; then 
+    if [[ "$DO_BUILD" == "true" ]] || [[ "$DO_UNIT_TEST" == "true" ]] || [[ "$DO_SMOKE_TEST" == "true" ]]; then
         check_environment
     fi
 

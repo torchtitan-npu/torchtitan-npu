@@ -7,10 +7,7 @@ from unittest.mock import patch
 import pytest
 from torchtitan.distributed import ParallelDims
 
-from tests.testing.parallel_dims import (
-    assert_single_rank_mesh,
-    build_parallel_dims,
-)
+from tests.testing.parallel_dims import assert_single_rank_mesh, build_parallel_dims
 
 
 def _single_rank_parallel_dims():
@@ -153,5 +150,3 @@ def test_get_mesh_requires_enabled_dimension():
 
     with pytest.raises(ValueError, match="not available"):
         parallel_dims.get_mesh("tp")
-
-

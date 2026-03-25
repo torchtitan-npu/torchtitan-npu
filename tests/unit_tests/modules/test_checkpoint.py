@@ -97,7 +97,9 @@ def test_configure_from_model_args_updates_runtime_config():
     assert config.get_adapter() is adapter
 
 
-def test_apply_patch_wraps_model_state_export_when_expert_conversion_enabled(monkeypatch):
+def test_apply_patch_wraps_model_state_export_when_expert_conversion_enabled(
+    monkeypatch,
+):
     config = checkpoint_patch.SaveConfig(
         enabled=True,
         save_format="dcp",
@@ -116,7 +118,7 @@ def test_apply_patch_wraps_model_state_export_when_expert_conversion_enabled(mon
     with runtime_patch, module_patch:
         assert checkpoint_patch.apply_patch() is True
         manager = fake_module.CheckpointManager()
-        result = getattr(manager, "_flattened_model_states_sd")()
+        result = manager._flattened_model_states_sd()
 
     assert result is converted
     assert config.is_patched() is True
@@ -158,7 +160,9 @@ def test_apply_patch_returns_false_when_disabled():
         assert checkpoint_patch.apply_patch() is False
 
 
-def test_convert_to_hf_and_save_excludes_expert_tensors_from_non_expert_branch(monkeypatch, tmp_path):
+def test_convert_to_hf_and_save_excludes_expert_tensors_from_non_expert_branch(
+    monkeypatch, tmp_path
+):
     class CountingTensor:
         def __init__(self, value):
             self.value = value
@@ -169,7 +173,9 @@ def test_convert_to_hf_and_save_excludes_expert_tensors_from_non_expert_branch(m
             return self.value
 
     class Adapter:
-        model_args = types.SimpleNamespace(moe_args=types.SimpleNamespace(num_experts=1))
+        model_args = types.SimpleNamespace(
+            moe_args=types.SimpleNamespace(num_experts=1)
+        )
 
         @staticmethod
         def to_hf(state_dict):
@@ -182,7 +188,9 @@ def test_convert_to_hf_and_save_excludes_expert_tensors_from_non_expert_branch(m
         save_file=lambda tensors, path: saved.update({"tensors": tensors, "path": path})
     )
 
-    monkeypatch.setattr(checkpoint_patch.torch.distributed, "is_initialized", lambda: False)
+    monkeypatch.setattr(
+        checkpoint_patch.torch.distributed, "is_initialized", lambda: False
+    )
     config = checkpoint_patch.SaveConfig()
     config.set_adapter(Adapter())
     monkeypatch.setattr(checkpoint_patch, "_config", config)
@@ -192,7 +200,7 @@ def test_convert_to_hf_and_save_excludes_expert_tensors_from_non_expert_branch(m
         {"safetensors.torch": fake_safetensors},
         clear=False,
     ):
-        getattr(checkpoint_patch, "_convert_to_hf_and_save")(
+        checkpoint_patch._convert_to_hf_and_save(
             {
                 "model.layers.0.moe.experts.0.w1": expert_tensor,
                 "model.layers.0.attn.weight": torch.zeros(2, 2),

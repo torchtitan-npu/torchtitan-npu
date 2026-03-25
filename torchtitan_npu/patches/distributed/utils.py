@@ -16,11 +16,10 @@ import math
 from collections.abc import Iterable
 
 import torch
-
-import torchtitan
 from torch import distributed as dist
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.tensor import DTensor
+from torchtitan.distributed import utils as distributed_utils
 
 
 @torch.no_grad()
@@ -41,7 +40,8 @@ def _clip_grad_norm_with_ep(
         if p.grad is None:
             continue
         assert isinstance(p, DTensor) and isinstance(p.grad, DTensor)
-        if "ep" in p.device_mesh.mesh_dim_names:
+        mesh_dim_names = p.device_mesh.mesh_dim_names
+        if mesh_dim_names and "ep" in mesh_dim_names:
             ep_params.append(p)
             ep_grads.append(p.grad)
         else:
@@ -83,4 +83,4 @@ def _clip_grad_norm_with_ep(
     return total_norm
 
 
-torchtitan.distributed.utils._clip_grad_norm_with_ep = _clip_grad_norm_with_ep
+distributed_utils._clip_grad_norm_with_ep = _clip_grad_norm_with_ep

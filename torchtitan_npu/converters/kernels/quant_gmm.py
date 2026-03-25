@@ -3,19 +3,17 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-import logging
-
 import torch
+
 import torch_npu
 from einops import rearrange
-from torch import nn
-from torch.distributed.tensor import DTensor
 
 from .gmm import group_size_params
 
 
 class GMMFunctionMxfp8(torch.autograd.Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, x, weight, group_list):
         group_list = torch.cumsum(group_list, dim=0)
         ctx.save_for_backward(x, weight)
@@ -43,6 +41,7 @@ class GMMFunctionMxfp8(torch.autograd.Function):
         )[0]
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad):
         x, weight = ctx.saved_tensors
         group_list = ctx.group_list
@@ -101,6 +100,7 @@ class GMMFunctionMxfp8(torch.autograd.Function):
 
 class GMMFunctionHif8(torch.autograd.Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, x, weight, group_list):
         group_list = torch.cumsum(group_list, dim=0)
         ctx.save_for_backward(x, weight)
@@ -124,6 +124,7 @@ class GMMFunctionHif8(torch.autograd.Function):
         )[0]
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad):
         x, weight = ctx.saved_tensors
         group_list = ctx.group_list
@@ -174,10 +175,14 @@ class GMMFunctionHif8(torch.autograd.Function):
     ):
         g_size = group_size_params["g_size"]
         x_quant, x_scale = torch_npu.npu_dynamic_quant(
-            x.reshape(g_size, -1), dst_type=x_dst_type
+            # pyrefly: ignore [no-matching-overload]
+            x.reshape(g_size, -1),
+            dst_type=x_dst_type,
         )
         weight_quant, weight_scale = torch_npu.npu_dynamic_quant(
-            weight.reshape(g_size, -1), dst_type=w_dst_type
+            # pyrefly: ignore [no-matching-overload]
+            weight.reshape(g_size, -1),
+            dst_type=w_dst_type,
         )
         return (
             x_quant.reshape(x.shape),

@@ -2,14 +2,15 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-from types import SimpleNamespace
 import shutil
+from types import SimpleNamespace
 
 import pytest
 import torch
 import torch.nn as nn
 
 from tests.conftest import assert_tensor_finite, stable_randn
+
 from torchtitan_npu.converters.kernels.gmm import (
     _run_experts_grouped_mm,
     npu_grouped_experts_forward,
@@ -21,7 +22,9 @@ pytestmark = pytest.mark.smoke
 
 def _expert_inputs(device, *, total_tokens=32, dim=128, hidden_dim=256, num_experts=4):
     x = stable_randn(total_tokens, dim, dtype=torch.bfloat16, device=device)
-    w13 = stable_randn(num_experts, hidden_dim * 2, dim, dtype=torch.bfloat16, device=device)
+    w13 = stable_randn(
+        num_experts, hidden_dim * 2, dim, dtype=torch.bfloat16, device=device
+    )
     w2 = stable_randn(num_experts, dim, hidden_dim, dtype=torch.bfloat16, device=device)
     num_tokens_per_expert = torch.tensor(
         [total_tokens // num_experts] * num_experts,
@@ -56,7 +59,9 @@ def test_gmm_grouped_expert_kernel_backward(npu_device):
 
 def test_gmm_grouped_experts_forward_uses_converter_layout(npu_device):
     if shutil.which("npuc") is None:
-        pytest.skip("GroupedExperts padding path requires npuc/triton compiler in the test environment")
+        pytest.skip(
+            "GroupedExperts padding path requires npuc/triton compiler in the test environment"
+        )
 
     x, w13, w2, num_tokens_per_expert = _expert_inputs(npu_device)
     module = SimpleNamespace(
@@ -69,4 +74,3 @@ def test_gmm_grouped_experts_forward_uses_converter_layout(npu_device):
 
     assert output.shape == x.shape
     assert_tensor_finite(output)
-

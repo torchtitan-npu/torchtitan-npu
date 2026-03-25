@@ -8,9 +8,9 @@ import pytest
 import torch
 
 from tests.smoke_tests.model_parallel._multi_rank import (
-    MULTI_RANK_AVAILABLE,
     FourRankMultiRankTestBase,
     mark_multi_rank_nightly,
+    MULTI_RANK_AVAILABLE,
     with_comms,
 )
 from tests.testing.parallel_dims import assert_single_rank_mesh, build_parallel_dims
@@ -25,12 +25,14 @@ def _build_parallel_dims(tp, ep, world_size=2):
 
 def _assert_tp_mesh_partition(device_type):
     from torch.distributed.device_mesh import init_device_mesh
-    from torch.distributed.tensor import Shard, distribute_tensor
+    from torch.distributed.tensor import distribute_tensor, Shard
 
     mesh = init_device_mesh(device_type, (2, 2), mesh_dim_names=("tp", "ep"))
     tp_mesh = mesh["tp"]
     tp_index = mesh.get_coordinate()[0]
-    full_tensor = torch.arange(32 * 64, device=device_type, dtype=torch.float32).reshape(32, 64)
+    full_tensor = torch.arange(
+        32 * 64, device=device_type, dtype=torch.float32
+    ).reshape(32, 64)
     distributed = distribute_tensor(full_tensor, tp_mesh, [Shard(0)])
     expected_local = full_tensor.chunk(tp_mesh.size(), dim=0)[tp_index]
 
@@ -58,9 +60,9 @@ def test_single_rank_mesh_build():
 
 
 if MULTI_RANK_AVAILABLE:
+
     @mark_multi_rank_nightly
     class TestTpEpMultiRank(FourRankMultiRankTestBase):
         @with_comms
         def test_tp_ep_dtensor_local_shape(self):
             _assert_tp_mesh_partition(self.device_type)
-

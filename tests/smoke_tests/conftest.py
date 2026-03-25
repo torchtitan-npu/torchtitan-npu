@@ -32,10 +32,10 @@ Usage:
             ...
 """
 
-import os
 import functools
+import os
 import unittest
-from typing import Optional, Callable, Any
+from collections.abc import Callable
 from contextlib import contextmanager
 
 import pytest
@@ -46,6 +46,7 @@ import torch.distributed as dist
 # ============================================================================
 # Distributed Test Base Classes (following PyTorch patterns)
 # ============================================================================
+
 
 class DistributedTestBase(unittest.TestCase):
     """
@@ -67,7 +68,7 @@ class DistributedTestBase(unittest.TestCase):
     @property
     def device_type(self) -> str:
         """Device type for distributed tests. Returns 'npu' or 'cpu'."""
-        if hasattr(torch, 'npu') and torch.npu.is_available():
+        if hasattr(torch, "npu") and torch.npu.is_available():
             return "npu"
         return "cpu"
 
@@ -143,6 +144,7 @@ def with_comms(func: Callable) -> Callable:
                 # Distributed environment is ready
                 mesh = init_device_mesh(self.device_type, (self.world_size,))
     """
+
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         # Ensure distributed is initialized
@@ -162,6 +164,7 @@ def with_comms(func: Callable) -> Callable:
 # Pytest Fixtures for Distributed Testing
 # ============================================================================
 
+
 def distributed_available() -> bool:
     """Check if distributed testing is available."""
     return dist.is_available()
@@ -169,10 +172,12 @@ def distributed_available() -> bool:
 
 def npu_available() -> bool:
     """Check if NPU is available for testing."""
-    return hasattr(torch, 'npu') and torch.npu.is_available()
+    return hasattr(torch, "npu") and torch.npu.is_available()
 
 
-def skip_on_runtime_unsupported(error: RuntimeError, unsupported_markers: tuple[str, ...], reason: str):
+def skip_on_runtime_unsupported(
+    error: RuntimeError, unsupported_markers: tuple[str, ...], reason: str
+):
     """Skip smoke tests when the current runtime/SOC does not support the requested op shape or dtype."""
     message = str(error)
     if any(marker in message for marker in unsupported_markers):
@@ -183,6 +188,7 @@ def skip_on_runtime_unsupported(error: RuntimeError, unsupported_markers: tuple[
 # ============================================================================
 # Utility Functions
 # ============================================================================
+
 
 @contextmanager
 def distributed_context(
@@ -214,7 +220,7 @@ def distributed_context(
 
 def get_device_mesh(
     mesh_dims: tuple,
-    mesh_dim_names: Optional[tuple] = None,
+    mesh_dim_names: tuple | None = None,
 ):
     """
     Create a device mesh for distributed testing.
@@ -252,6 +258,7 @@ def create_dtensor(
         DTensor
     """
     from torch.distributed.tensor import distribute_tensor
+
     return distribute_tensor(tensor, mesh, placements)
 
 
@@ -259,23 +266,28 @@ def create_dtensor(
 # Test Helpers
 # ============================================================================
 
+
 def requires_distributed(func: Callable) -> Callable:
     """Decorator to skip tests if distributed is not available."""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         if not distributed_available():
             pytest.skip("Distributed not available")
         return func(*args, **kwargs)
+
     return wrapper
 
 
 def requires_npu(func: Callable) -> Callable:
     """Decorator to skip tests if NPU is not available."""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         if not npu_available():
             pytest.skip("NPU not available")
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -288,11 +300,14 @@ def requires_world_size(min_size: int):
         def test_tp_4(self):
             # Requires at least 4 GPUs
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             if self.world_size < min_size:
                 pytest.skip(f"Requires world_size >= {min_size}, got {self.world_size}")
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator

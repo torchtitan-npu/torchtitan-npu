@@ -10,7 +10,12 @@ import pytest
 import torchtitan.distributed.utils as dist_utils
 from torchtitan.train import Trainer
 
-from torchtitan_npu.config.custom_config import JobConfig, Optimizer, Parallelism, Training
+from torchtitan_npu.config.custom_config import (
+    JobConfig,
+    Optimizer,
+    Parallelism,
+    Training,
+)
 from torchtitan_npu.patches.distributed import context_parallel_utils as cp_utils
 
 
@@ -70,7 +75,9 @@ def test_parallelism_accepts_custom_context_override():
     )
 
     assert config.enable_custom_context_parallel is True
-    assert config.custom_context_parallel_path.endswith("AscendDSAContextParallelContext")
+    assert config.custom_context_parallel_path.endswith(
+        "AscendDSAContextParallelContext"
+    )
 
 
 def test_training_defaults_expose_npu_memory_ratio():
@@ -92,7 +99,10 @@ def test_job_config_accepts_custom_sections():
     assert job_config.optimizer.swap_optimizer is True
     assert job_config.optimizer.swap_optimizer_times == 8
     assert job_config.parallelism.enable_custom_context_parallel is True
-    assert job_config.parallelism.custom_context_parallel_path == "pkg.module.ContextManager"
+    assert (
+        job_config.parallelism.custom_context_parallel_path
+        == "pkg.module.ContextManager"
+    )
     assert job_config.training.torch_npu_memory_ratio == 0.8
 
 
@@ -102,13 +112,15 @@ def test_create_cp_ctx_wrapper_uses_original_context_when_custom_disabled():
     parallel_config = Parallelism(enable_custom_context_parallel=False)
     patch_context = _build_patch_context()
 
-    setattr(patch_context, "current_parallel_config", parallel_config)
-    setattr(patch_context, "model_args", types.SimpleNamespace(n_heads=8))
+    patch_context.current_parallel_config = parallel_config
+    patch_context.model_args = types.SimpleNamespace(n_heads=8)
 
     with patch.object(cp_utils, "_patch_context", patch_context), patch.object(
         cp_utils, "_original_create_cp_ctx", lambda *args: sentinel
     ):
-        result = dist_utils.create_context_parallel_ctx(mesh, [], [], set(), "allgather")
+        result = dist_utils.create_context_parallel_ctx(
+            mesh, [], [], set(), "allgather"
+        )
 
     assert result is sentinel
 
@@ -121,10 +133,12 @@ def test_create_cp_ctx_wrapper_uses_custom_context_when_enabled(monkeypatch):
     )
     patch_context = _build_patch_context()
 
-    setattr(patch_context, "current_parallel_config", parallel_config)
-    setattr(patch_context, "model_args", types.SimpleNamespace(n_heads=8))
+    patch_context.current_parallel_config = parallel_config
+    patch_context.model_args = types.SimpleNamespace(n_heads=8)
 
-    monkeypatch.setattr(cp_utils, "load_class_from_string", lambda path: DummyContextManager)
+    monkeypatch.setattr(
+        cp_utils, "load_class_from_string", lambda path: DummyContextManager
+    )
 
     with patch.object(cp_utils, "_patch_context", patch_context):
         result = dist_utils.create_context_parallel_ctx(
@@ -146,10 +160,12 @@ def test_create_cp_ctx_wrapper_rejects_non_context_manager(monkeypatch):
     )
     patch_context = _build_patch_context()
 
-    setattr(patch_context, "current_parallel_config", parallel_config)
-    setattr(patch_context, "model_args", types.SimpleNamespace(n_heads=8))
+    patch_context.current_parallel_config = parallel_config
+    patch_context.model_args = types.SimpleNamespace(n_heads=8)
 
-    monkeypatch.setattr(cp_utils, "load_class_from_string", lambda path: InvalidContextManager)
+    monkeypatch.setattr(
+        cp_utils, "load_class_from_string", lambda path: InvalidContextManager
+    )
 
     with patch.object(cp_utils, "_patch_context", patch_context), pytest.raises(
         TypeError, match="is not a context manager"
@@ -162,8 +178,8 @@ def test_create_cp_ctx_wrapper_validates_combined_tp_cp_degree():
     parallel_config = types.SimpleNamespace(tensor_parallel_degree=2)
     patch_context = _build_patch_context()
 
-    setattr(patch_context, "current_parallel_config", parallel_config)
-    setattr(patch_context, "model_args", types.SimpleNamespace(n_heads=7))
+    patch_context.current_parallel_config = parallel_config
+    patch_context.model_args = types.SimpleNamespace(n_heads=7)
 
     with patch.object(cp_utils, "_patch_context", patch_context), pytest.raises(
         ValueError, match="does not divide the number of heads"
@@ -173,8 +189,8 @@ def test_create_cp_ctx_wrapper_validates_combined_tp_cp_degree():
 
 def test_create_cp_ctx_wrapper_clears_patch_context_after_step():
     patch_context = _build_patch_context()
-    setattr(patch_context, "current_parallel_config", None)
-    setattr(patch_context, "model_args", None)
+    patch_context.current_parallel_config = None
+    patch_context.model_args = None
 
     dummy_self = types.SimpleNamespace(
         job_config=types.SimpleNamespace(parallelism="parallel_config"),
@@ -187,6 +203,5 @@ def test_create_cp_ctx_wrapper_clears_patch_context_after_step():
         result = Trainer.forward_backward_step(dummy_self)
 
     assert result == "ok"
-    assert getattr(patch_context, "current_parallel_config") is None
-    assert getattr(patch_context, "model_args") is None
-
+    assert patch_context.current_parallel_config is None
+    assert patch_context.model_args is None

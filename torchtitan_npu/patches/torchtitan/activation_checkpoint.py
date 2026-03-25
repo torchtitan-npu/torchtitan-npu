@@ -19,7 +19,6 @@ import torchtitan.distributed.activation_checkpoint as ac_module
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper as ptd_checkpoint_wrapper,
 )
-from torch.utils import checkpoint as checkpoint_utils
 from torch.utils._python_dispatch import TorchDispatchMode
 
 

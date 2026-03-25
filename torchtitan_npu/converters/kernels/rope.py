@@ -4,10 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Tuple
 
 import torch
 import torch.nn as nn
+
 import torch_npu
 
 from ..base_converter import BaseConverter
@@ -55,7 +55,7 @@ def npu_apply_rotary_emb_deepseek(
 
 def npu_apply_rotary_emb_llama(
     xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     cos, sin = _prepare_cos_sin_from_complex(freqs_cis, xq.dtype)
     return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
         xk, cos.to(xk.dtype), sin.to(xk.dtype)
@@ -64,7 +64,7 @@ def npu_apply_rotary_emb_llama(
 
 def npu_apply_rotary_emb_qwen(
     xq: torch.Tensor, xk: torch.Tensor, rope_cache: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     cos, sin = _prepare_cos_sin_from_cache(rope_cache, xq)
     return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
         xk, cos.to(xk.dtype), sin.to(xk.dtype)
@@ -82,14 +82,15 @@ class RoPEKernel(BaseConverter):
     }
 
     @classmethod
-    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
         target = "apply_rotary_emb"
         matches = find_functions(target, model=model)
         if not matches:
-            return model
+            return 0
 
         impl = cls.get_impl_cls(model_name)
 
+        # pyrefly: ignore [bad-argument-type]
         count = replace_functions(target, impl, model=model)
 
         return count

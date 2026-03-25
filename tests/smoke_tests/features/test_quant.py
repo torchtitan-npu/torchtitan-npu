@@ -6,10 +6,13 @@ import pytest
 import torch
 
 from tests.smoke_tests.conftest import skip_on_runtime_unsupported
-from torchtitan_npu.converters.kernels.quant_gmm import GMMFunctionHif8, group_size_params
+
+from torchtitan_npu.converters.kernels.quant_gmm import (
+    GMMFunctionHif8,
+    group_size_params,
+)
 
 pytestmark = pytest.mark.smoke
-
 
 
 def test_quant_linear_mxfp8(npu_device):
@@ -89,4 +92,3 @@ def test_quant_gmm_hif8_helper_quantizes_tensor_shapes(npu_device):
     assert weight_quant.shape == weight.shape
     assert x_scale is not None
     assert weight_scale is not None
-

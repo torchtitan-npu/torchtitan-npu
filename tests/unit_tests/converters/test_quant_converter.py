@@ -64,12 +64,20 @@ def _build_grouped_mm_job_config():
 
 
 def test_quant_converter_replace():
-    from torchtitan.components.quantization.mx import MXGroupedMMConverter, MXLinearConverter
+    from torchtitan.components.quantization.mx import (
+        MXGroupedMMConverter,
+        MXLinearConverter,
+    )
 
     assert MXLinearConverter.__init__ == quant_converter.npu_quant_linear_converter_init
     assert MXLinearConverter.convert == quant_converter.npu_quant_linear_converter
-    assert MXGroupedMMConverter.__init__ == quant_converter.npu_quant_grouped_mm_converter_init
-    assert MXGroupedMMConverter.convert == quant_converter.npu_quant_grouped_mm_converter
+    assert (
+        MXGroupedMMConverter.__init__
+        == quant_converter.npu_quant_grouped_mm_converter_init
+    )
+    assert (
+        MXGroupedMMConverter.convert == quant_converter.npu_quant_grouped_mm_converter
+    )
 
 
 def test_npu_quant_linear_converter_init_sets_runtime_fields(monkeypatch):
@@ -81,7 +89,9 @@ def test_npu_quant_linear_converter_init_sets_runtime_fields(monkeypatch):
     converter = SimpleNamespace()
     job_config = _build_linear_job_config()
 
-    quant_converter.npu_quant_linear_converter_init(converter, job_config, parallel_dims=object())
+    quant_converter.npu_quant_linear_converter_init(
+        converter, job_config, parallel_dims=object()
+    )
 
     assert converter.enabled is True
     assert converter.filter_fqns == ["attention"]
@@ -96,7 +106,9 @@ def test_npu_quant_linear_converter_calls_linear_quantize(monkeypatch):
         spy.record,
     )
 
-    converter = SimpleNamespace(enabled=True, config={"recipe": "mxfp8"}, filter_fqns=["attention"])
+    converter = SimpleNamespace(
+        enabled=True, config={"recipe": "mxfp8"}, filter_fqns=["attention"]
+    )
     model = object()
 
     quant_converter.npu_quant_linear_converter(converter, model)
@@ -122,7 +134,9 @@ def test_npu_quant_grouped_mm_converter_calls_grouped_quantize(monkeypatch):
     converter = SimpleNamespace()
     job_config = _build_grouped_mm_job_config()
 
-    quant_converter.npu_quant_grouped_mm_converter_init(converter, job_config, parallel_dims=object())
+    quant_converter.npu_quant_grouped_mm_converter_init(
+        converter, job_config, parallel_dims=object()
+    )
 
     model = object()
     quant_converter.npu_quant_grouped_mm_converter(converter, model)

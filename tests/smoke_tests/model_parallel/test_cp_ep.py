@@ -26,9 +26,9 @@ import torch.nn as nn
 
 from tests.conftest import assert_tensor_finite
 from tests.smoke_tests.model_parallel._multi_rank import (
-    MULTI_RANK_AVAILABLE,
     FourRankMultiRankTestBase,
     mark_multi_rank_nightly,
+    MULTI_RANK_AVAILABLE,
     with_comms,
 )
 from tests.testing.parallel_dims import (
@@ -47,7 +47,7 @@ def _build_parallel_dims(*, cp=1, tp=1, ep=1, world_size=1):
 
 def _assert_mesh_partition(device_type, mesh_dim_names, shard_dim_name, tensor_shape):
     from torch.distributed.device_mesh import init_device_mesh
-    from torch.distributed.tensor import Shard, distribute_tensor
+    from torch.distributed.tensor import distribute_tensor, Shard
 
     mesh = init_device_mesh(device_type, (2, 2), mesh_dim_names=mesh_dim_names)
     shard_mesh = mesh[shard_dim_name]
@@ -158,6 +158,7 @@ def test_get_optional_mesh_single_rank():
 # torchrun --nproc_per_node=4 -m pytest tests/smoke_tests/model_parallel/test_cp_ep.py -v
 
 if MULTI_RANK_AVAILABLE:
+
     @mark_multi_rank_nightly
     class TestCpEpMultiRank(FourRankMultiRankTestBase):
         """Test CP+EP operations with multiple ranks.
@@ -177,7 +178,7 @@ if MULTI_RANK_AVAILABLE:
 def test_dsa_cp_context(npu_device):
     try:
         from torchtitan_npu.distributed.context_parallel.dsa_cp import (
-            AscendDSAContextParallelContext
+            AscendDSAContextParallelContext,
         )
 
         assert AscendDSAContextParallelContext is not None
@@ -217,7 +218,10 @@ def test_valid_parallel_config():
 
         valid_configs = [
             {"enable_custom_context_parallel": False},
-            {"enable_custom_context_parallel": True, "custom_context_parallel_path": "module.Class"},
+            {
+                "enable_custom_context_parallel": True,
+                "custom_context_parallel_path": "module.Class",
+            },
         ]
 
         for config in valid_configs:
@@ -226,5 +230,3 @@ def test_valid_parallel_config():
 
     except ImportError:
         pytest.skip("Custom config module not available")
-
-

@@ -3,14 +3,14 @@
 torchtitan_npu 在 `torchtitan_npu/converters/kernels` 下定义了多个 torchtitan ModelConverter 。在启动模型训练任务时，它们会根据用户配置，自动将模型中的原始模块替换为基于 NPU 融合算子的实现，从而实现模型在 NPU 平台上的亲和适配。
 
 ## 如何配置
-所有融合算子均通过在训练配置 TOML 文件 （例如 `torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml`，或实际启动训练时 `--job.config_file` 所指向的路径）的 `[model]` 节中的 `converters` 列表中添加对应的配置项来启用。 
+所有融合算子均通过在训练配置 TOML 文件 （例如 `torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml`，或实际启动训练时 `--job.config_file` 所指向的路径）的 `[model]` 节中的 `converters` 列表中添加对应的配置项来启用。
 示例：
 ```toml
 [model]
 name = "deepseek_v32"
 flavor = "debugmodel"
 hf_assets_path = "./assets/hf/DeepSeek-V3.2"
-converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"] 
+converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"]
 ```
 
 当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：

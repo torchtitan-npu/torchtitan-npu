@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 import torch
 
@@ -30,7 +30,7 @@ class MXLinearConfig:
 
     @staticmethod
     def from_recipe_name(
-        recipe_name: Union[MXLinearRecipeName, str],
+        recipe_name: MXLinearRecipeName | str,
     ) -> "MXLinearConfig":
         """
         Input: 'MXLinearRecipeName' value, or a string representing a 'MXLinearRecipeName' value
@@ -61,7 +61,7 @@ class MoETrainingConfig:
 
     @staticmethod
     def from_recipe_name(
-        recipe_name: Union[MoEGroupedRecipeName, str],
+        recipe_name: MoEGroupedRecipeName | str,
     ) -> "MoETrainingConfig":
         """
         Input: 'MoEGroupedRecipeName' value, or a string representing a 'MoEGroupedRecipeName' value

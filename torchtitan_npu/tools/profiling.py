@@ -18,6 +18,7 @@ def is_profile_enabled(profiling_config: ProfilingConfig) -> bool:
     """Check if profiling is enabled for the current rank."""
     if not profiling_config.enable_profiling:
         return False
+    # pyrefly: ignore [missing-attribute]
     profile_ranks = profiling_config.profile_ranks
     if profile_ranks == [-1]:
         return True
@@ -28,11 +29,17 @@ def _log_profiling_config(rank: int, profiling_config: ProfilingConfig) -> None:
     """Log profiling configuration for the current rank."""
     logger.info(
         f"Profiling enabled for rank {rank} with config: "
+        # pyrefly: ignore [missing-attribute]
         f"profile_step_start={profiling_config.profile_step_start}, "
+        # pyrefly: ignore [missing-attribute]
         f"profile_step_end={profiling_config.profile_step_end}, "
+        # pyrefly: ignore [missing-attribute]
         f"profile_ranks={profiling_config.profile_ranks}, "
+        # pyrefly: ignore [missing-attribute]
         f"profile_record_shapes={profiling_config.profile_record_shapes}, "
+        # pyrefly: ignore [missing-attribute]
         f"profile_with_memory={profiling_config.profile_with_memory}, "
+        # pyrefly: ignore [missing-attribute]
         f"profile_with_stack={profiling_config.profile_with_stack}, "
         f"profile_freq={profiling_config.profile_freq}, "
         f"profiler_active={profiling_config.profiler_active}, "
@@ -52,6 +59,7 @@ def maybe_enable_profiling(
         yield None
         return
 
+    # pyrefly: ignore [missing-attribute]
     if not torch.npu.is_available():
         raise RuntimeError("Only NPU is supported currently")
     import torch_npu
@@ -60,7 +68,9 @@ def maybe_enable_profiling(
     rank = torch.distributed.get_rank()
     _log_profiling_config(rank, profiling_config)
 
+    # pyrefly: ignore [missing-attribute]
     profile_step_start = profiling_config.profile_step_start
+    # pyrefly: ignore [missing-attribute]
     profile_step_end = profiling_config.profile_step_end
     if profile_step_start > 0 and profile_step_end > 0:
         active = profile_step_end - profile_step_start
@@ -75,7 +85,7 @@ def maybe_enable_profiling(
         repeat = 0
 
     if wait < 0:
-        logger.warn(
+        logger.warning(
             f"profile_step_start must be greater than {global_step} + 2, "
             f"or profile_freq must be greater or equal to warmup + active, but "
             f"got wait={wait}, profiling will be skipped."
@@ -85,6 +95,7 @@ def maybe_enable_profiling(
 
     logger.info(f"Profiling active. Traces will be saved at {trace_dir}")
     os.makedirs(trace_dir, exist_ok=True)
+    # pyrefly: ignore [missing-attribute]
     enable_online_parse = profiling_config.enable_online_parse
     if enable_online_parse:
         on_trace_ready_handler = torch_npu.profiler.tensorboard_trace_handler(trace_dir)
@@ -106,8 +117,11 @@ def maybe_enable_profiling(
             wait=wait, warmup=warmup, active=active, repeat=repeat
         ),
         on_trace_ready=on_trace_ready_handler,
+        # pyrefly: ignore [missing-attribute]
         record_shapes=profiling_config.profile_record_shapes,
+        # pyrefly: ignore [missing-attribute]
         profile_memory=profiling_config.profile_with_memory,
+        # pyrefly: ignore [missing-attribute]
         with_stack=profiling_config.profile_with_stack,
         experimental_config=experimental_config,
     ) as torch_profiler:

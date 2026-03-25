@@ -34,7 +34,7 @@ def test_custom_context_parallel_rejects_mismatched_buffer_dims():
             buffers=[buffer],
             buffer_seq_dims=[],
         )
-        assert False, "Expected ValueError for mismatched buffers and dims"
+        raise AssertionError("Expected ValueError for mismatched buffers and dims")
     except ValueError as exc:
         assert "same number of elements" in str(exc)
 
@@ -51,7 +51,7 @@ def test_custom_context_parallel_rejects_unknown_no_restore_buffer():
             buffer_seq_dims=[1],
             no_restore_buffers={foreign_buffer},
         )
-        assert False, "Expected ValueError for invalid no_restore_buffers"
+        raise AssertionError("Expected ValueError for invalid no_restore_buffers")
     except ValueError as exc:
         assert "subset of `buffers`" in str(exc)
 
@@ -77,8 +77,8 @@ def test_group_dtensors_by_layout_groups_non_dtensors_together():
     grouped = clip_grad.group_dtensors_by_layout([tensor_a, tensor_b])
 
     assert len(grouped) == 1
-    assert ("non_dtensor", None, None) in grouped
-    assert grouped[("non_dtensor", None, None)] == [tensor_a, tensor_b]
+    assert ("non_dtensor", None) in grouped
+    assert grouped[("non_dtensor", None)] == [tensor_a, tensor_b]
 
 
 def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
@@ -102,7 +102,7 @@ def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
         fake_checkpoint_wrapper,
     )
 
-    result = getattr(upstream_activation_checkpoint, "_apply_full_ac")(module, ac_config)
+    result = upstream_activation_checkpoint._apply_full_ac(module, ac_config)
     contexts = captured["context_fn"]()
 
     assert result == "wrapped"
@@ -114,4 +114,3 @@ def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
     assert len(contexts) == 2
     assert all(hasattr(ctx, "__enter__") for ctx in contexts)
     assert all(hasattr(ctx, "__exit__") for ctx in contexts)
-

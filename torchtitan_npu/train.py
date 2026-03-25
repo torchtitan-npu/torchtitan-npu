@@ -83,7 +83,7 @@ def _patch_init_for_dsa_set_loss_scale():
         else:
             num_microbatches = global_batch_size // batch_degree
 
-        DSAIndexerLossAutoScaler.set_loss_scale(1.0 / num_microbatches)
+        DSAIndexerLossAutoScaler.set_loss_scale(torch.tensor(1.0 / num_microbatches))
 
     titan_train.Trainer.__init__ = wrapper_init
 
@@ -92,7 +92,7 @@ def _patch_for_train_npu_memory():
     _original = titan_train.Trainer.train
 
     def wrapper_train(self):
-        torch.npu.empty_cache()
+        torch.npu.empty_cache()  # pyrefly: ignore[missing-attribute]
         memory_ratio = self.job_config.training.torch_npu_memory_ratio
         if not (0.0 < memory_ratio <= 1.0):
             logger.warning(
@@ -100,7 +100,9 @@ def _patch_for_train_npu_memory():
                 "(must be in (0.0, 1.0]), falling back to default value 1.0"
             )
             memory_ratio = 1.0
-        torch.npu.set_per_process_memory_fraction(memory_ratio)
+        torch.npu.set_per_process_memory_fraction(  # pyrefly: ignore[missing-attribute]
+            memory_ratio
+        )
         logger.info(
             f"[NPU Memory Config] Set process memory usage upper limit to {memory_ratio}"
         )

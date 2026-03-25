@@ -55,9 +55,11 @@ class PermuteKernel(BaseConverter):
     MOE_PACKAGE = "torchtitan.models.moe"
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         pkg = cls.MOE_PACKAGE
 
         count = replace_methods("MoE", "forward", _npu_moe_forward, package=pkg)
 
+        # pyrefly: ignore [bad-return]
         return count

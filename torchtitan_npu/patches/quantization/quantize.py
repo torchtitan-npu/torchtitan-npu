@@ -7,27 +7,11 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import re
-import types
-import warnings
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from functools import partial
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    OrderedDict as OrderedDictType,
-    Tuple,
-    Type,
-    Union,
-)
+from collections.abc import Callable
+from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.utils.parametrize as parametrize
 
 from torchtitan_npu.converters.convert_utils import replace_functions
 from torchtitan_npu.converters.kernels.quant_gmm import (
@@ -40,8 +24,8 @@ from .quant_config import MoEGroupedRecipeName, MXLinearConfig
 
 logger = logging.getLogger(__name__)
 
-_QUANTIZE_CONFIG_HANDLER: Dict[
-    Type[Any],
+_QUANTIZE_CONFIG_HANDLER: dict[
+    type[Any],
     Callable[[torch.nn.Module, Any], torch.nn.Module],
 ] = {}
 
@@ -67,7 +51,7 @@ def _replace_with_custom_fn_if_matches_filter(
     replacement_fn,
     filter_fn,
     cur_fqn="",
-    extra_args: Optional[Tuple[Any, ...]] = (),
+    extra_args: tuple[Any, ...] = (),
 ) -> None:
     if filter_fn(model, cur_fqn[:-1]):
         model = replacement_fn(model, *extra_args)
@@ -91,14 +75,14 @@ def _replace_with_custom_fn_if_matches_filter(
 def linear_quantize_(
     model: torch.nn.Module,
     config,
-    filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = _is_linear,
+    filter_fn: Callable[[torch.nn.Module, str], bool] | None = _is_linear,
 ):
     """
     Convert the weight of linear modules in the model with 'config', model is modified inplace
     Args:
         model (torch.nn.Module): input model
         config: a workflow configuration object.
-        filter_fn (Optional[Callable[torch.nn.Module, str], bool]): function that takes a nn.Module instance
+        filter_fn (Callable[[torch.nn.Module, str], bool] | None): function that takes a nn.Module instance
         and fully qualified name of the module, returns True if  we want to run 'config' on the weight of the module.
     """
     filter_fn = _is_linear if filter_fn is None else filter_fn
@@ -115,7 +99,7 @@ def linear_quantize_(
 def grouped_quantize_(
     model: torch.nn.Module,
     config,
-    filter_fn: Optional[Callable[[torch.nn.Module, str], bool]] = None,
+    filter_fn: Callable[[torch.nn.Module, str], bool] | None = None,
     recipe_name=None,
 ):
     TARGET_PACKAGE = "torchtitan_npu.converter.kernels.gmm"

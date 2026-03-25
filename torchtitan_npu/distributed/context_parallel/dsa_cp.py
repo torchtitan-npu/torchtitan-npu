@@ -7,14 +7,13 @@ import functools
 
 import torch
 import torch.distributed as dist
+
 import torch_npu
 from torch.distributed._tensor import DTensor, Partial, Replicate, Shard
 
-from torchtitan_npu.converters.kernels.dsa import (
-    LILossTrain,
-    SparseLightningIndexerKLLoss,
-)
-from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
+from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
+
+from torchtitan_npu.models.deepseek_v32.model.model import DSASparseAttention
 from torchtitan_npu.patches.distributed.custom_context_parallel import (
     CustomContextParallelContext,
 )
@@ -28,6 +27,7 @@ class AllgatherOnSequence(torch.autograd.Function):
     """Allgather with backward on sequence dim of BSND tensor."""
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, tensor, mesh):
         group = mesh.get_group()
         cp_rank = dist.get_rank(group=group)
@@ -51,6 +51,7 @@ class AllgatherOnSequence(torch.autograd.Function):
         return tensor_global
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad_output):
         if grad_output is None:
             return None, None
@@ -76,11 +77,13 @@ class ToLocalWithPartialGrad(torch.autograd.Function):
     """DTensor to local with specified partial grad from backward."""
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, dtensor, mesh):
         ctx.mesh = mesh
         return dtensor.to_local()
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad_output):
         if grad_output is None:
             return None, None
@@ -132,6 +135,7 @@ def dsa_forward_with_cp(
 
     # to ensure causal attn in npu_lightning_indexer, should slice the key tensor
     cp_rank = dist.get_rank(group=self.cp_mesh.get_group())
+    # pyrefly: ignore [missing-attribute]
     s_local = k_indexer.shape[1]
     slice_end = s_local * (cp_rank + 1)
 
@@ -209,6 +213,7 @@ def dsa_forward_with_cp(
         sparse_mode=3,  # mask is rightDownCausal mode
     )
     output = output.transpose(1, 2)
+    # pyrefly: ignore [bad-return]
     return loss, output
 
 
@@ -223,7 +228,7 @@ def patch_dsa_forward_check():
         return dsa_forward_with_cp(self, *args, **kwargs)
 
     # patch the forward with dsa cp version
-    DSV32_SDPA.forward = _forward_wrapper
+    DSASparseAttention.forward = _forward_wrapper
 
 
 class AscendDSAContextParallelContext(CustomContextParallelContext):
@@ -235,6 +240,6 @@ class AscendDSAContextParallelContext(CustomContextParallelContext):
         super().__enter__()
 
     def apply_patches(self):
-        DSV32_SDPA.cp_mesh = self.mesh
+        DSASparseAttention.cp_mesh = self.mesh
         # inner_attention forward will be patched with the CP version
         patch_dsa_forward_check()

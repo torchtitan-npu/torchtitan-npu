@@ -32,7 +32,7 @@ export PYTHONUNBUFFERED=1
 
 # TODO change to your device ips
 IPs=('192.168.xxx.xxx' '192.168.xxx.xxx')
-# TODO change 192.168 to your local IP 
+# TODO change 192.168 to your local IP
 LOCAL_HOST=`ifconfig|grep "inet 192.168"| awk '{print $2}'`
 # if you have not ifconfig , use the following command
 # LOCAL_HOST=$(ip addr show ${Network_Interface} | grep "inet " | grep -v "127.0.0.1" | awk '{print $2}' | cut -d'/' -f1)

@@ -4,7 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import functools
-from typing import List, Optional, Set
 
 import torch
 from torch.distributed.device_mesh import DeviceMesh
@@ -22,6 +21,7 @@ class AllToAll(torch.autograd.Function):
     """
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, input_tensor, mesh, scatter_dim, gather_dim):
         ctx.mesh = mesh
         ctx.scatter_dim = scatter_dim
@@ -43,6 +43,7 @@ class AllToAll(torch.autograd.Function):
         return output
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad_output):
         # All-to-all in reverse: swap scatter and gather dims
         world_size = ctx.mesh.size()
@@ -100,9 +101,9 @@ class UlyssesContextParallelContext(CustomContextParallelContext):
         self,
         mesh: DeviceMesh,
         *,
-        buffers: Optional[List[torch.Tensor]] = None,
-        buffer_seq_dims: Optional[List[int]] = None,
-        no_restore_buffers: Optional[Set[torch.Tensor]] = None,
+        buffers: list[torch.Tensor] | None = None,
+        buffer_seq_dims: list[int] | None = None,
+        no_restore_buffers: set[torch.Tensor] | None = None,
         load_balance: bool = False,
     ):
         super().__init__(

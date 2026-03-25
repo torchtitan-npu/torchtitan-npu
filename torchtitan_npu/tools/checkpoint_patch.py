@@ -8,8 +8,9 @@ import json
 import logging
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 import torch
 
@@ -22,11 +23,11 @@ logger = logging.getLogger(__name__)
 class SaveConfig:
     enabled: bool = False
     save_format: str = "dcp"
-    save_expert_format: Optional[str] = None
-    hf_save_dir: Optional[str] = None
+    save_expert_format: str | None = None
+    hf_save_dir: str | None = None
     num_experts: int = 0
 
-    _adapter: Optional[Any] = field(default=None, repr=False)
+    _adapter: Any | None = field(default=None, repr=False)
     _patched: bool = field(default=False, repr=False)
 
     def reset(self):
@@ -53,11 +54,11 @@ class SaveConfig:
 
 _config = SaveConfig()
 
-_original_save: Optional[Callable] = None
-_original_model_states_sd: Optional[Callable] = None
+_original_save: Callable | None = None
+_original_model_states_sd: Callable | None = None
 
 
-def configure_from_model_args(model_args: Any, adapter: Optional[Any] = None):
+def configure_from_model_args(model_args: Any, adapter: Any | None = None):
     def get_config(attr: str, default):
         val = getattr(model_args, attr, None)
         return val if val is not None else default
@@ -73,7 +74,7 @@ def is_enabled() -> bool:
     return _config.enabled
 
 
-def _convert_state_dict_for_save(state_dict: Dict[str, Any]) -> Dict[str, Any]:
+def _convert_state_dict_for_save(state_dict: dict[str, Any]) -> dict[str, Any]:
     """Convert state_dict to Expert format according to configuration."""
     if not _config.save_expert_format:
         return state_dict
@@ -91,10 +92,10 @@ def _convert_state_dict_for_save(state_dict: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_total_experts() -> int:
     model_args = getattr(_config.get_adapter(), "model_args", None)
-    return model_args.moe_args.num_experts
+    return model_args.moe_args.num_experts  # pyrefly: ignore[missing-attribute]
 
 
-def _convert_to_hf_and_save(state_dict: Dict[str, Any], output_dir: str):
+def _convert_to_hf_and_save(state_dict: dict[str, Any], output_dir: str):
     """Convert to HF format and save. Support EP saving"""
 
     is_distributed = torch.distributed.is_initialized()
@@ -117,6 +118,7 @@ def _convert_to_hf_and_save(state_dict: Dict[str, Any], output_dir: str):
         experts_per_rank = (
             total_experts // world_size if total_experts > 0 and world_size > 1 else 0
         )
+        # pyrefly: ignore [missing-attribute]
         hf_state_dict = _config.get_adapter().to_hf(model_state_dict)
 
         # Separate expert and non-expert weights
@@ -309,13 +311,9 @@ def apply_patch() -> bool:
         # Patch "_flattened_model_states_sd" expert conversion
         if hasattr(CheckpointManager, "_flattened_model_states_sd"):
             if _original_model_states_sd is None:
-                _original_model_states_sd = getattr(
-                    CheckpointManager, "_flattened_model_states_sd"
-                )
-            setattr(
-                CheckpointManager,
-                "_flattened_model_states_sd",
-                _create_patched_model_states_sd(_original_model_states_sd),
+                _original_model_states_sd = CheckpointManager._flattened_model_states_sd
+            CheckpointManager._flattened_model_states_sd = (
+                _create_patched_model_states_sd(_original_model_states_sd)
             )
 
         # Patch "save" file saving

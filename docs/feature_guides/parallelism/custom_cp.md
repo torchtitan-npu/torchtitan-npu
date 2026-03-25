@@ -49,4 +49,3 @@ context_parallel_degree = 2
 enable_custom_context_parallel = true
 custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"
 ```
-

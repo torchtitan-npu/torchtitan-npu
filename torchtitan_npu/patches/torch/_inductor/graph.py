@@ -1,8 +1,10 @@
 import logging
 import operator
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import torch
+import torch.fx.operator_schemas
 from torch._decomp import get_decompositions
 from torch._inductor import config
 from torch._inductor.exc import (

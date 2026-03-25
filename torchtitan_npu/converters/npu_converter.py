@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import List, Set, Type, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import torch.nn as nn
 
@@ -20,19 +20,21 @@ if TYPE_CHECKING:
 
 class NPUConverter(ModelConverter):
 
-    _patch_cls: Type["BaseConverter"] = None
-    _patch_name: str = None
-    _supported_models: Set[str] = None
+    _patch_cls: type["BaseConverter"] | None = None
+    _patch_name: str | None = None
+    _supported_models: set[str] | None = None
 
     def __init__(self, job_config: JobConfig, parallel_dims: ParallelDims):
         self.job_config = job_config
         self.parallel_dims = parallel_dims
         self.model_name = job_config.model.name
 
-    def convert(self, model: nn.Module) -> nn.Module:
+    def convert(self, model: nn.Module) -> nn.Module:  # pyrefly: ignore [bad-override]
         self._validate_compatibility()
 
         try:
+            if self._patch_cls is None:
+                raise RuntimeError("Missing patch class for NPUConverter")
             count = self._patch_cls.apply(model, self.model_name)
         except Exception as e:
             raise RuntimeError(
@@ -46,10 +48,12 @@ class NPUConverter(ModelConverter):
             logger.warning(f"[NPU-CONVERTER] Applied no '{self._patch_name}' converter")
         return model
 
-    def post_optimizer_hook(self, model: Union[nn.Module, List[nn.Module]]):
+    def post_optimizer_hook(self, model: nn.Module | list[nn.Module]):
         pass
 
     def _validate_compatibility(self):
+        if self._patch_cls is None:
+            raise RuntimeError("Missing patch class for NPUConverter")
         if not self._patch_cls.is_compatible(self.job_config, self.model_name):
             raise ValueError(
                 f"Patch '{self._patch_name}' is NOT compatible with model '{self.model_name}' \n"

@@ -1,3 +1,4 @@
-torchtitan==0.2.2	 
-torch>=2.10.0	 
+torchtitan==0.2.1
+torch>=2.10.0
 torch_npu>=2.10.0rc2
+scipy

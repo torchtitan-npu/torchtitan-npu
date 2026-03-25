@@ -7,8 +7,8 @@ import inspect
 import logging
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Type
 
 import torch.nn as nn
 
@@ -68,9 +68,7 @@ class MethodMatch:
             logger.info(f"   {self.full_path}")
 
 
-def _get_package(
-    model: Optional[nn.Module] = None, package: Optional[str] = None
-) -> str:
+def _get_package(model: nn.Module | None = None, package: str | None = None) -> str:
     if package:
         return package
     if model:
@@ -78,7 +76,7 @@ def _get_package(
     raise ValueError("Must provide either model or package")
 
 
-def find_modules(model: nn.Module, pattern: str) -> List[ModuleMatch]:
+def find_modules(model: nn.Module, pattern: str) -> list[ModuleMatch]:
     regex = re.compile(pattern)
     return [
         ModuleMatch(
@@ -94,9 +92,9 @@ def find_modules(model: nn.Module, pattern: str) -> List[ModuleMatch]:
 
 def find_functions(
     func_name: str,
-    model: Optional[nn.Module] = None,
-    package: Optional[str] = None,
-) -> List[FunctionMatch]:
+    model: nn.Module | None = None,
+    package: str | None = None,
+) -> list[FunctionMatch]:
     pkg = _get_package(model, package)
     result = []
     for path, mod in sys.modules.items():
@@ -111,9 +109,9 @@ def find_functions(
 def find_methods(
     class_name: str,
     method_name: str,
-    model: Optional[nn.Module] = None,
-    package: Optional[str] = None,
-) -> List[MethodMatch]:
+    model: nn.Module | None = None,
+    package: str | None = None,
+) -> list[MethodMatch]:
     pkg = _get_package(model, package)
     matches = []
 
@@ -153,8 +151,8 @@ def replace_modules(model: nn.Module, pattern: str, factory: Callable) -> int:
 def replace_functions(
     func_name: str,
     new_func: Callable,
-    model: Optional[nn.Module] = None,
-    package: Optional[str] = None,
+    model: nn.Module | None = None,
+    package: str | None = None,
 ) -> int:
     matches = find_functions(func_name, model=model, package=package)
     for m in matches:
@@ -166,8 +164,8 @@ def replace_methods(
     class_name: str,
     method_name: str,
     new_method: Callable,
-    model: Optional[nn.Module] = None,
-    package: Optional[str] = None,
+    model: nn.Module | None = None,
+    package: str | None = None,
 ) -> int:
     matches = find_methods(class_name, method_name, model=model, package=package)
     for m in matches:

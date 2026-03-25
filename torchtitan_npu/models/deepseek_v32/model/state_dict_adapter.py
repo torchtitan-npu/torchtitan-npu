@@ -4,11 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-import torch
-from torch.distributed.checkpoint import HuggingFaceStorageReader
-from torch.distributed.tensor import DTensor
+from torch.distributed.checkpoint.hf_storage import HuggingFaceStorageReader
 
 from torchtitan.models.deepseek_v3 import DeepSeekV3StateDictAdapter
 
@@ -22,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
-    def __init__(self, model_args, hf_assets_path: Optional[str] = None):
+    def __init__(self, model_args, hf_assets_path: str | None = None):
         super().__init__(model_args, hf_assets_path)
 
         # key mapping
@@ -38,6 +36,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
         # apply checkpoint patch
         self._setup_checkpoint_patch(model_args)
 
+    # pyrefly: ignore [bad-override]
     def get_hf_storage_reader(self, path: str, from_quantized: bool = False):
         self._input_format = detect_input_format_by_path(path)
 
@@ -48,7 +47,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
 
             return FileSystemReader(path)
 
-    def to_hf(self, state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def to_hf(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Create a load plan/ Convert to HF format"""
         if self._input_format == "dcp":
             return state_dict
@@ -61,7 +60,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
         else:
             return super().to_hf(state_dict)
 
-    def from_hf(self, hf_state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def from_hf(self, hf_state_dict: dict[str, Any]) -> dict[str, Any]:
         """Convert loaded data to runtime format"""
         filtered = {
             k: v

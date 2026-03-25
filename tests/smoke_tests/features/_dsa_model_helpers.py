@@ -9,8 +9,9 @@ import torch_npu
 
 from torchtitan.models.deepseek_v3.model.model import precompute_freqs_cis
 from torchtitan.models.moe.moe import MoEArgs
+
 from torchtitan_npu.models.deepseek_v32.model.args import DeepSeekV32ModelArgs
-from torchtitan_npu.models.deepseek_v32.model.model import Attention, apply_rotary_emb
+from torchtitan_npu.models.deepseek_v32.model.model import apply_rotary_emb, Attention
 
 
 @dataclass
@@ -80,7 +81,9 @@ def _build_attention_tensors(attention, args, batch_size, seq_len, device):
     )
     q_pe = apply_rotary_emb(q_pe, freqs_cis)
     kv = attention.wkv_a(x)
-    kv, k_pe = torch.split(kv, [attention.kv_lora_rank, attention.qk_rope_head_dim], dim=-1)
+    kv, k_pe = torch.split(
+        kv, [attention.kv_lora_rank, attention.qk_rope_head_dim], dim=-1
+    )
     k_pe = apply_rotary_emb(k_pe.unsqueeze(2), freqs_cis)
     return AttentionTensorState(
         x=x,
@@ -97,12 +100,14 @@ def _build_query_key_tensors(attention, attention_state):
     wkv_b_weight = attention.wkv_b.weight.reshape(
         -1, attention.qk_nope_head_dim + attention.v_head_dim, attention.kv_lora_rank
     )
-    w_uk = wkv_b_weight[:, :attention.qk_nope_head_dim, :]
+    w_uk = wkv_b_weight[:, : attention.qk_nope_head_dim, :]
     query = torch.einsum("bshq,hqr->bshr", attention_state.q_nope, w_uk)
     key = attention_state.kv.unsqueeze(2)
     value = attention_state.kv.unsqueeze(2)
     if query.shape[2] not in (64, 128):
-        raise AssertionError(f"DSA helper produced invalid query head count: {query.shape}")
+        raise AssertionError(
+            f"DSA helper produced invalid query head count: {query.shape}"
+        )
     return query, key, value
 
 
@@ -163,9 +168,15 @@ def _build_softmax_stats(attention, kernel_inputs, batch_size, seq_len):
 
 
 def run_lightning_indexer_smoke(npu_device, *, batch_size=1, seq_len=128):
-    q_indexer = torch.randn(batch_size, seq_len, 64, 128, dtype=torch.bfloat16, device=npu_device)
-    k_indexer = torch.randn(batch_size, seq_len, 1, 128, dtype=torch.bfloat16, device=npu_device)
-    weights = torch.randn(batch_size, seq_len, 64, dtype=torch.bfloat16, device=npu_device)
+    q_indexer = torch.randn(
+        batch_size, seq_len, 64, 128, dtype=torch.bfloat16, device=npu_device
+    )
+    k_indexer = torch.randn(
+        batch_size, seq_len, 1, 128, dtype=torch.bfloat16, device=npu_device
+    )
+    weights = torch.randn(
+        batch_size, seq_len, 64, dtype=torch.bfloat16, device=npu_device
+    )
     return torch_npu.npu_lightning_indexer(
         q_indexer,
         k_indexer,
@@ -175,11 +186,15 @@ def run_lightning_indexer_smoke(npu_device, *, batch_size=1, seq_len=128):
     )
 
 
-def build_model_backed_dsa_inputs(device, *, batch_size=1, seq_len=2048, requires_grad=False):
+def build_model_backed_dsa_inputs(
+    device, *, batch_size=1, seq_len=2048, requires_grad=False
+):
     args = _build_dsa_args(seq_len)
     attention = Attention(args).to(device=device, dtype=torch.bfloat16)
     attention.eval()
-    attention_state = _build_attention_tensors(attention, args, batch_size, seq_len, device)
+    attention_state = _build_attention_tensors(
+        attention, args, batch_size, seq_len, device
+    )
     query, key, value = _build_query_key_tensors(attention, attention_state)
     kernel_inputs = _build_indexer_outputs(attention, attention_state)
     kernel_inputs.query = query
@@ -187,7 +202,9 @@ def build_model_backed_dsa_inputs(device, *, batch_size=1, seq_len=2048, require
     kernel_inputs.value = value
     kernel_inputs.query_rope = attention_state.q_pe
     kernel_inputs.key_rope = attention_state.k_pe
-    softmax_max, softmax_sum = _build_softmax_stats(attention, kernel_inputs, batch_size, seq_len)
+    softmax_max, softmax_sum = _build_softmax_stats(
+        attention, kernel_inputs, batch_size, seq_len
+    )
 
     query_indexer = kernel_inputs.query_indexer.detach()
     key_indexer = kernel_inputs.key_indexer.detach()

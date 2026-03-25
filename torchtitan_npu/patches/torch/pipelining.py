@@ -1,9 +1,11 @@
 # Copyright (c) Meta Platforms Inc. and affiliates
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import torch
-from torch.distributed.fsdp import FSDPModule, fully_shard
+import torch.distributed.pipelining.stage
+from torch.distributed.fsdp import FSDPModule
 from torch.distributed.pipelining._backward import (
     stage_backward,
     stage_backward_input,

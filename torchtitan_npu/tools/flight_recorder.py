@@ -7,8 +7,8 @@
 import os
 from functools import wraps
 
-import torchtitan
 from torchtitan.config import Comm as CommConfig
+from torchtitan.distributed import utils as distributed_utils
 from torchtitan.distributed.utils import init_distributed
 from torchtitan.tools.logging import logger
 
@@ -43,6 +43,4 @@ def init_distributed_with_hccl_flight_recorder(
     return init_distributed(comm_config, *args, **kwargs)
 
 
-torchtitan.distributed.utils.init_distributed = (
-    init_distributed_with_hccl_flight_recorder
-)
+distributed_utils.init_distributed = init_distributed_with_hccl_flight_recorder

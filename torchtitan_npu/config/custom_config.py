@@ -112,7 +112,11 @@ class Profiling(BaseProfiling):
 
 @dataclass
 class JobConfig(BaseJobConfig):
-    optimizer: Optimizer = None
-    parallelism: Parallelism = None
-    training: Training = None
-    profiling: Profiling = None
+    # pyrefly: ignore [bad-override]
+    optimizer: Optimizer = field(default_factory=Optimizer)
+    # pyrefly: ignore [bad-override]
+    parallelism: Parallelism = field(default_factory=Parallelism)
+    # pyrefly: ignore [bad-override]
+    training: Training = field(default_factory=Training)
+    # pyrefly: ignore [bad-override]
+    profiling: Profiling = field(default_factory=Profiling)

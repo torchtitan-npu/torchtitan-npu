@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from tests.conftest import assert_tensor_finite, stable_randn
+
 from torchtitan_npu.converters.kernels.rope import (
     npu_apply_rotary_emb_deepseek,
     npu_apply_rotary_emb_llama,
@@ -51,4 +52,3 @@ def test_rope_qwen(npu_device):
 
     assert q_out.shape == xq.shape
     assert k_out.shape == xk.shape
-

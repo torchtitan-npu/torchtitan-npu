@@ -40,6 +40,8 @@ def assert_single_rank_mesh(parallel_dims, optional_meshes=()):
     if world_mesh is None:
         raise AssertionError("World mesh should not be None")
     if world_mesh.size() != 1:
-        raise AssertionError(f"Expected single-rank world mesh, got size={world_mesh.size()}")
+        raise AssertionError(
+            f"Expected single-rank world mesh, got size={world_mesh.size()}"
+        )
     assert_optional_meshes_none(parallel_dims, optional_meshes)
     return world_mesh

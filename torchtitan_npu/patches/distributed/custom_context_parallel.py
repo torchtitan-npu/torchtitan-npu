@@ -4,10 +4,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates
 # Developed by Huawei Technologies Co., Ltd. based on Meta Platforms, Inc. and affiliates TorchTitan
 
-from typing import Generator, List, Optional, Set
-
 import torch
-import torch.nn as nn
 import torchtitan
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.tensor.experimental._context_parallel._attention import (
@@ -15,6 +12,7 @@ from torch.distributed.tensor.experimental._context_parallel._attention import (
 )
 
 
+# pyrefly: ignore [implicit-import]
 _original_create_cp_ctx = torchtitan.distributed.utils.create_context_parallel_ctx
 
 
@@ -32,9 +30,9 @@ class CustomContextParallelContext:
         self,
         mesh: DeviceMesh,
         *,
-        buffers: Optional[List[torch.Tensor]] = None,
-        buffer_seq_dims: Optional[List[int]] = None,
-        no_restore_buffers: Optional[Set[torch.Tensor]] = None,
+        buffers: list[torch.Tensor] | None = None,
+        buffer_seq_dims: list[int] | None = None,
+        no_restore_buffers: set[torch.Tensor] | None = None,
         load_balance: bool = False
     ):
         self.mesh = mesh
@@ -76,11 +74,14 @@ class CustomContextParallelContext:
                 load_balance_indices = None
 
             shards = _context_parallel_buffers(
-                self.mesh, self.buffers, self.buffer_seq_dims, load_balance_indices
+                self.mesh,
+                self.buffers,  # pyrefly: ignore [bad-argument-type]
+                self.buffer_seq_dims,
+                load_balance_indices,
             )
 
             for buffer, shard in zip(self.buffers, shards):
-                shard_clone = shard.clone()
+                shard_clone = shard.clone()  # pyrefly: ignore [missing-attribute]
                 buffer.resize_(shard_clone.shape)
                 buffer.copy_(shard_clone)
 
