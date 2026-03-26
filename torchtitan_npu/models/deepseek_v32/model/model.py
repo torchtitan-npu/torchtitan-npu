@@ -20,6 +20,10 @@ from torch.nn.attention import sdpa_kernel, SDPBackend
 from torchtitan.models.deepseek_v3.model.model import DeepSeekV3Model, TransformerBlock
 from torchtitan.protocols.model import AttentionMasksType
 
+from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
+    _indexer_loss_need_compute,
+)
+
 from .args import DeepSeekV32ModelArgs
 
 logger = logging.getLogger()
@@ -603,7 +607,10 @@ class Attention(nn.Module):
         ).contiguous()  # (bsz, seqlen, n_heads, v_head_dim)
         output = output.view(bsz, seqlen, -1)  # (bsz, seqlen, n_heads * v_head_dim)
         output = self.wo(output)
-        DSAIndexerLossLoggingHelper.save_loss_to_tracker(loss, layer_id, self.n_layers)
+        if _indexer_loss_need_compute():
+            DSAIndexerLossLoggingHelper.save_loss_to_tracker(
+                loss, layer_id, self.n_layers
+            )
         output = DSAIndexerLossAutoScaler.apply(output, loss)
         return output  # (bsz, seqlen, dim)
 
