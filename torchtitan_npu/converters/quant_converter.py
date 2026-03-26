@@ -34,7 +34,8 @@ def validate_quantization_job_config(job_config: JobConfig) -> None:
 
 def is_a5():
     try:
-        return "Ascend910_95" in torch_npu.npu.get_device_name()
+        device_name = torch_npu.npu.get_device_name()
+        return "Ascend950" in device_name or "Ascend910_95" in device_name
     except Exception:
         return False
 
@@ -60,7 +61,7 @@ def npu_quant_linear_converter_init(
     self.enabled = False
     if not is_a5():
         raise RuntimeError(
-            "MXFP8 is only supported on Ascend910_95 or higher architecture."
+            "[MXFP8/Hif8] is only supported on Ascend950 or higher architecture."
         )
 
     # TP not yet supported with torch.compile
@@ -100,7 +101,7 @@ def npu_quant_grouped_mm_converter_init(
     self.enabled = False
     if not is_a5():
         raise RuntimeError(
-            "MXFP8 is only supported on Ascend910_95 or higher architecture."
+            "[MXFP8/Hif8] is only supported on Ascend950 or higher architecture."
         )
 
     mx_job_config: Any = job_config.quantize.grouped_mm.mx
@@ -111,7 +112,7 @@ def npu_quant_grouped_mm_converter_init(
     self.moe_fqns = job_config.quantize.grouped_mm.mx.fqns
     self.recipe_name = job_config.quantize.grouped_mm.mx.recipe_name
     self.enabled = True
-    logger.info("MXFP8 MoE training enabled")
+    logger.info(f"{self.recipe_name} MoE training enabled")
 
 
 def npu_quant_grouped_mm_converter(self, model: nn.Module):
