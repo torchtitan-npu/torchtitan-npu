@@ -492,7 +492,7 @@ class Attention(nn.Module):
             mscale = 0.1 * model_args.mscale * math.log(model_args.rope_factor) + 1.0
             self.softmax_scale = self.softmax_scale * mscale * mscale
         self.indexer = Indexer(model_args)
-        self.indexer_sparse_attn = DSASparseAttention(model_args)
+        self.inner_attention = DSASparseAttention(model_args)
 
     def forward(
         self,
@@ -551,7 +551,7 @@ class Attention(nn.Module):
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
 
-            loss, output = self.indexer_sparse_attn(
+            loss, output = self.inner_attention(
                 q,
                 k,
                 v,
@@ -587,7 +587,7 @@ class Attention(nn.Module):
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
 
-            loss, output = self.indexer_sparse_attn(
+            loss, output = self.inner_attention(
                 q,
                 k,
                 v,
