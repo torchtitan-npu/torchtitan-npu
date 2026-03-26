@@ -123,8 +123,13 @@ def _build_indexer_outputs(attention, attention_state):
         query_indexer.detach(),
         key_indexer.detach(),
         weights.detach(),
+        actual_seq_lengths_query=None,
+        actual_seq_lengths_key=None,
+        layout_query="BSND",
+        layout_key="BSND",
         sparse_count=attention.indexer.index_topk,
         sparse_mode=3,
+        return_value=True,
     )
     return DsaKernelInputs(
         query=None,
@@ -181,8 +186,13 @@ def run_lightning_indexer_smoke(npu_device, *, batch_size=1, seq_len=128):
         q_indexer,
         k_indexer,
         weights,
+        actual_seq_lengths_query=None,
+        actual_seq_lengths_key=None,
+        layout_query="BSND",
+        layout_key="BSND",
         sparse_count=16,
         sparse_mode=3,
+        return_value=True,
     )
 
 
