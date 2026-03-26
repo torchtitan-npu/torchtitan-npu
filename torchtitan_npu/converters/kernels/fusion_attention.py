@@ -67,7 +67,7 @@ class FusionAttentionKernel(BaseConverter):
 
     @classmethod
     # pyrefly: ignore [bad-override]
-    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
+    def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
 
         count = 0
         count += replace_modules(

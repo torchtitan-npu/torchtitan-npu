@@ -151,7 +151,7 @@ class Indexer(torch.nn.Module):
             q, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1
         )
         # rope in indexer is not interleaved
-        q_pe = apply_rotary_emb(q_pe, freqs_cis, False)
+        q_pe = apply_rotary_emb(q_pe, freqs_cis, interleaved=False)
         q = torch.cat([q_pe, q_nope], dim=-1)
         k = self.wk(x)
         k = self.k_norm(k)
@@ -159,7 +159,9 @@ class Indexer(torch.nn.Module):
             k, [self.rope_head_dim, self.head_dim - self.rope_head_dim], dim=-1
         )
         # rope in indexer is not interleaved
-        k_pe = apply_rotary_emb(k_pe.unsqueeze(2), freqs_cis, False).squeeze(2)
+        k_pe = apply_rotary_emb(
+            k_pe.unsqueeze(2), freqs_cis, interleaved=False
+        ).squeeze(2)
         k = torch.cat([k_pe, k_nope], dim=-1).unsqueeze(2)
         q = rotate_activation(q)
         k = rotate_activation(k)

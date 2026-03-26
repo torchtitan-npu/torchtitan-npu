@@ -35,8 +35,14 @@ def _prepare_cos_sin_from_cache(rope_cache: torch.Tensor, x: torch.Tensor):
 
 
 def npu_apply_rotary_emb_deepseek(
-    x: torch.Tensor, freqs_cis: torch.Tensor, interleaved: bool = True
+    x: torch.Tensor,
+    freqs_cis: torch.Tensor,
+    positions: torch.Tensor | None = None,
+    interleaved: bool = True,
 ) -> torch.Tensor:
+    if positions is not None:
+        raise NotImplementedError("only 'positions=None' is currently supported")
+
     dtype = x.dtype
     shape = x.shape
 
@@ -54,20 +60,38 @@ def npu_apply_rotary_emb_deepseek(
 
 
 def npu_apply_rotary_emb_llama(
-    xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    freqs_cis: torch.Tensor,
+    positions: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    cos, sin = _prepare_cos_sin_from_complex(freqs_cis, xq.dtype)
-    return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
-        xk, cos.to(xk.dtype), sin.to(xk.dtype)
+    if positions is not None:
+        raise NotImplementedError("only 'positions=None' is currently supported")
+
+    xq_ = xq.float()
+    xk_ = xk.float()
+    cos, sin = _prepare_cos_sin_from_complex(freqs_cis, xq_.dtype)
+    return torch_npu.npu_rotary_mul(xq_, cos, sin, rotary_mode="interleave").type_as(
+        xq
+    ), torch_npu.npu_rotary_mul(
+        xk_, cos.to(xk_.dtype), sin.to(xk_.dtype), rotary_mode="interleave"
+    ).type_as(
+        xk
     )
 
 
 def npu_apply_rotary_emb_qwen(
-    xq: torch.Tensor, xk: torch.Tensor, rope_cache: torch.Tensor
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    rope_cache: torch.Tensor,
+    positions: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    if positions is not None:
+        raise NotImplementedError("only 'positions=None' is currently supported")
+
     cos, sin = _prepare_cos_sin_from_cache(rope_cache, xq)
     return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
-        xk, cos.to(xk.dtype), sin.to(xk.dtype)
+        xk, cos, sin
     )
 
 

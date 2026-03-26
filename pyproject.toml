@@ -58,4 +58,4 @@ search-path = ["../pytorch"]  # local built pytorch
 replace-imports-with-any = ["torch_npu", "torch.npu"]
 
 [tool.usort]
-known_first_party = ["torchtitan_npu"]
+known_first_party = ["torchtitan_npu", "tests"]
