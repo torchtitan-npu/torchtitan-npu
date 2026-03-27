@@ -8,8 +8,10 @@ import logging
 
 from torchtitan.config import JobConfig
 from torchtitan.models import deepseek_v3
-from torchtitan.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
 from torchtitan.models.moe import MoEArgs
+
+from torchtitan_npu.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
+
 
 logger = logging.getLogger(__name__)
 

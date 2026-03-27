@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass
 
-from torchtitan.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
+from torchtitan_npu.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
 
 
 # Reference: https://github.com/deepseek-ai/DeepSeek-V3/blob/main/inference/model.py
