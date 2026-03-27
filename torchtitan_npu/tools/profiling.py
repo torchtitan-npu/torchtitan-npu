@@ -10,8 +10,8 @@ import os
 import torch
 
 from torchtitan.config import Profiling as ProfilingConfig
-from torchtitan.tools import profiling
 from torchtitan.tools.logging import logger
+import torchtitan.train as train_module
 
 
 def is_profile_enabled(profiling_config: ProfilingConfig) -> bool:
@@ -129,4 +129,4 @@ def maybe_enable_profiling(
         yield torch_profiler
 
 
-profiling.maybe_enable_profiling = maybe_enable_profiling
+train_module.maybe_enable_profiling = maybe_enable_profiling
