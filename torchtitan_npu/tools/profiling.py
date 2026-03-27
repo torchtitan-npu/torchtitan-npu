@@ -8,10 +8,10 @@ import contextlib
 import os
 
 import torch
+import torchtitan.train as train_module
 
 from torchtitan.config import Profiling as ProfilingConfig
 from torchtitan.tools.logging import logger
-import torchtitan.train as train_module
 
 
 def is_profile_enabled(profiling_config: ProfilingConfig) -> bool:

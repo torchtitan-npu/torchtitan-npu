@@ -6,10 +6,11 @@
 import copy
 import functools
 from collections.abc import Callable
+from typing import cast
 
 import torch
 from torch.distributed._tensor.placement_types import DTensorSpec
-from torch.distributed.tensor import DTensor
+from torch.distributed.tensor import DeviceMesh, DTensor
 from torch.distributed.tensor._op_schema import OpSchema, OpSpec, OpStrategy
 from torch.distributed.tensor._ops._matrix_ops import _mm_like_strategy
 
@@ -100,71 +101,161 @@ def combine_strategies_for_matmul_backward(
     They must match the original_weight_spec.
     """
 
-    valid_dx_specs = []
-    valid_dw_specs = []
+    valid_dx_specs = list(strategy_dx.strategies)
+    valid_dw_specs = list(strategy_dw.strategies)
 
-    # 1. Filter DX Strategies: Weight input (index 1) must match original weight
-    for spec in strategy_dx.strategies:
-        # matmul(dy, w.T) -> dx, check if Input 1 (Weight) matches original weight spec
-        # pyrefly: ignore [unsupported-operation]
-        weight_input_spec = spec.input_specs[1]
-        if weight_input_spec.placements == original_weight_spec.placements:
-            valid_dx_specs.append(spec)
+    # Find Best Pairs according to the minimax communication cost and Construct Backward Specs
+    min_cost = float("inf")
+    best_spec: OpSpec | None = None
 
-    # 2. Filter DW Strategies: Output (dW) must match original weight
-    for spec in strategy_dw.strategies:
-        # matmul(x.T, dy) -> dw, check if Output matches original weight spec
-        dw_output_spec = spec.output_specs
-        # pyrefly: ignore [missing-attribute]
-        if dw_output_spec.placements == original_weight_spec.placements:
-            valid_dw_specs.append(spec)
-
-    # 3. Find Matching Pairs and Construct Backward Specs
-    combined_strategies = []
     for dx_spec in valid_dx_specs:
         for dw_spec in valid_dw_specs:
+            if dx_spec is None or dx_spec.input_specs is None:
+                continue
+            if dw_spec is None or dw_spec.input_specs is None:
+                continue
+            if len(dx_spec.input_specs) < 2 or len(dw_spec.input_specs) < 2:
+                continue
+
+            costs_dx = dx_spec.redistribute_cost
+            costs_dw = dw_spec.redistribute_cost
+
+            if costs_dx is None or costs_dw is None:
+                continue
+
             # Consistency Check:
             # The 'dy' (GradOutput) is used in both dx calculation and dw calculation.
             # We must ensure they require the same sharding for dy.
             dy_spec_in_dx = dx_spec.input_specs[0]
-            # pyrefly: ignore [unsupported-operation]
             dy_spec_in_dw = dw_spec.input_specs[1]
-            if dy_spec_in_dx.placements == dy_spec_in_dw.placements:
-                # Found a compatible pair!
+            if dy_spec_in_dx.placements != dy_spec_in_dw.placements:
+                continue
+            # Found a compatible pair!
+            total_cost = (
+                costs_dx[0][0] + costs_dw[1][0] + costs_dw[0][0] + costs_dx[1][0]
+            )
+            if total_cost < min_cost:
+                min_cost = total_cost
                 new_input_specs = [
                     dx_spec.input_specs[0],  # dy
-                    # pyrefly: ignore [unsupported-operation]
                     dw_spec.input_specs[0],  # x
                     dx_spec.input_specs[1],  # w
                 ]
-                new_output_specs = (dx_spec.output_specs, dw_spec.output_specs)
-
+                new_output_specs: tuple[DTensorSpec | None, ...] = (
+                    cast(DTensorSpec, dx_spec.output_specs),
+                    cast(DTensorSpec, dw_spec.output_specs),
+                )
                 # Combine redistribute costs for dy, x and w
-                costs_dx = dx_spec.redistribute_cost
-                costs_dw = dw_spec.redistribute_cost
                 new_redistribute_cost = [
-                    # pyrefly: ignore [unsupported-operation]
                     [costs_dx[0][0] + costs_dw[1][0]],
-                    # pyrefly: ignore [unsupported-operation]
                     costs_dw[0],
                     costs_dx[1],
                 ]
 
-                new_spec = OpSpec(
-                    # pyrefly: ignore [bad-argument-type]
+                best_spec = OpSpec(
                     output_specs=new_output_specs,
                     input_specs=new_input_specs,
                     redistribute_cost=new_redistribute_cost,
                 )
-                combined_strategies.append(new_spec)
 
-    if not combined_strategies:
+    if not best_spec:
         raise RuntimeError(
             "No compatible matmul_backward strategy found when Weight is not redistributed!"
             f" The input info is: {strategy_dx=}, {strategy_dw=}, {original_weight_spec=}"
         )
 
-    return OpStrategy(combined_strategies)
+    return OpStrategy([best_spec])
+
+
+def _matmul_backward_3d(
+    op_schema: OpSchema,
+    mesh: DeviceMesh,
+    shape_dy: tuple,
+    shape_x: tuple,
+    shape_w: tuple,
+) -> tuple[OpStrategy, OpStrategy]:
+    """
+    Generate sharding strategies for 3D matmul backward.
+
+    For 3D matmul backward (batched matmul), we have:
+    - dy: (b, m, k) gradient of output
+    - x: (b, m, n) input tensor
+    - w: (n, k) weight tensor
+    - dx: gradient w.r.t x, computed as dy @ w -> (b, m, n)
+    - dw: gradient w.r.t w, computed as x @ dy -> (n, k)
+    """
+
+    # generate sharding strategies for: dy @ w -> dx
+    if shape_dy[2] != shape_w[1]:
+        raise NotImplementedError(
+            f"Input shapes are not 'bmk'(dy) and 'nk'(w): {shape_dy=}, {shape_w=}."
+        )
+    equation_dx = "bmk,nk->bmn"
+    op_schema_dx = copy.copy(op_schema)
+    op_schema_dx.args_schema = (
+        op_schema_dx.args_schema[0],
+        op_schema_dx.args_schema[2],
+    )
+    strategy_dx = _mm_like_strategy(equation_dx, mesh, op_schema_dx)
+
+    # generate sharding strategies for: x @ dy -> dw
+    if shape_dy[0] != shape_x[0] or shape_dy[1] != shape_x[1]:
+        raise NotImplementedError(
+            f"Input shapes are not 'bmn'(x) and 'bmk'(dy): {shape_x=}, {shape_dy=}."
+        )
+    equation_dw = "bmn,bmk->nk"
+    op_schema_dw = copy.copy(op_schema)
+    op_schema_dw.args_schema = (
+        op_schema_dw.args_schema[1],
+        op_schema_dw.args_schema[0],
+    )
+    strategy_dw = _mm_like_strategy(equation_dw, mesh, op_schema_dw)
+
+    return (strategy_dx, strategy_dw)
+
+
+def _matmul_backward_2d(
+    op_schema: OpSchema,
+    mesh: DeviceMesh,
+    shape_dy: tuple,
+    shape_x: tuple,
+    shape_w: tuple,
+) -> tuple[OpStrategy, OpStrategy]:
+    """
+    Generate sharding strategies for 2D matmul backward.
+
+    For 2D matmul backward, we have:
+    - dy: (m, k) gradient of output
+    - x: (m, n) input tensor
+    - w: (n, k) weight tensor
+    - dx: gradient w.r.t x, computed as dy @ w.T -> (m, n)
+    - dw: gradient w.r.t w, computed as x.T @ dy -> (n, k)
+    """
+    # generate sharding strategies for: dy @ w -> dx
+    if shape_dy[1] != shape_w[1]:
+        raise NotImplementedError(
+            f"dy[..., k] must match w[..., k] for 2D case: {shape_dy=}, {shape_w=}."
+        )
+    equation_dx = "mk,nk->mn"
+    op_schema_dx = copy.copy(op_schema)
+    op_schema_dx.args_schema = (
+        op_schema_dx.args_schema[0],
+        op_schema_dx.args_schema[2],
+    )
+    strategy_dx = _mm_like_strategy(equation_dx, mesh, op_schema_dx)
+
+    if shape_x[1] != shape_w[0]:
+        raise NotImplementedError(
+            f"x[..., n] must match w[n, ...]: {shape_x=}, {shape_w=}."
+        )
+    equation_dw = "mn,mk->nk"
+    op_schema_dw = copy.copy(op_schema)
+    op_schema_dw.args_schema = (
+        op_schema_dw.args_schema[1],
+        op_schema_dw.args_schema[0],
+    )
+    strategy_dw = _mm_like_strategy(equation_dw, mesh, op_schema_dw)
+    return strategy_dx, strategy_dw
 
 
 def matmul_backward_sharding(
@@ -193,31 +284,22 @@ def matmul_backward_sharding(
 
     # generate sharding strategies for dx and dw computation, then combine them to get final strategies for backward
     if ndim_dy == 3 and ndim_x == 3 and ndim_w == 2:
-        # generate sharding strategies for: dy @ w -> dx
-        if shape_dy[2] != shape_w[1]:
-            raise NotImplementedError(
-                f"Input shapes are not 'bmk'(dy) and 'nk'(w): {shape_dy=}, {shape_w=}."
-            )
-        equation_dx = "bmk,nk->bmn"
-        op_schema_dx = copy.copy(op_schema)
-        op_schema_dx.args_schema = (
-            op_schema_dx.args_schema[0],
-            op_schema_dx.args_schema[2],
+        strategy_dx, strategy_dw = _matmul_backward_3d(
+            op_schema, mesh, shape_dy, shape_x, shape_w
         )
-        strategy_dx = _mm_like_strategy(equation_dx, mesh, op_schema_dx)
+        # get combined strategy for matmul backward
+        return combine_strategies_for_matmul_backward(
+            strategy_dx,
+            strategy_dw,
+            # pyrefly: ignore [missing-attribute]
+            args[2].strategies[0].output_spec,
+        )
 
-        # generate sharding strategies for: x @ dy -> dw
-        if shape_dy[0] != shape_x[0] or shape_dy[1] != shape_x[1]:
-            raise NotImplementedError(
-                f"Input shapes are not 'bmn'(x) and 'bmk'(dy): {shape_x=}, {shape_dy=}."
-            )
-        equation_dw = "bmn,bmk->nk"
-        op_schema_dw = copy.copy(op_schema)
-        op_schema_dw.args_schema = (
-            op_schema_dw.args_schema[1],
-            op_schema_dw.args_schema[0],
+    # generate sharding strategies for 2D matmul
+    if ndim_dy == 2 and ndim_x == 2 and ndim_w == 2:
+        strategy_dx, strategy_dw = _matmul_backward_2d(
+            op_schema, mesh, shape_dy, shape_x, shape_w
         )
-        strategy_dw = _mm_like_strategy(equation_dw, mesh, op_schema_dw)
 
         # get combined strategy for matmul backward
         return combine_strategies_for_matmul_backward(
