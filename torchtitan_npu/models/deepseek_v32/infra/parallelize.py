@@ -66,6 +66,23 @@ _op_sac_save_list = {
 }
 
 
+class AwaitRowwiseParallel(RowwiseParallel):
+    @staticmethod
+    def _prepare_output_fn(output_layouts, use_local_output, mod, outputs, device_mesh):
+        # Rowwise sharding produces partial output, depending on output layouts:
+        # 1. to replicate -> allreduce
+        # 2. to shard -> reduce_scatter
+        if outputs.placements != output_layouts:
+            outputs = outputs.redistribute(placements=output_layouts, async_op=True)
+
+        # wait for async redistribution to complete
+        real_tensor = outputs._local_tensor
+        torch.ops._c10d_functional.wait_tensor(real_tensor)
+
+        # back to local tensor if use_local_output is True
+        return outputs.to_local() if use_local_output else outputs
+
+
 class PrepareModuleInputOutputWithBwdAllReduce(PrepareModuleInputOutput):
     """
     Extension of PrepareModuleInputOutput that registers backward hooks on specified inputs
@@ -295,6 +312,10 @@ def apply_non_moe_tp(
     )
     enable_npu_dsa = "npu_dsa" in job_config.model.converters or use_cp
     enable_mla_absorb = getattr(model.model_args, "enable_mla_absorb", True)
+    enable_activation_checkpoint = job_config.activation_checkpoint.mode in [
+        "full",
+        "selective",
+    ]
 
     # 1. Parallelize the embedding and shard its outputs (which are the first
     # transformer block's inputs)
@@ -319,11 +340,13 @@ def apply_non_moe_tp(
 
     (
         rowwise_parallel,
+        await_rowwise_parallel,
         colwise_parallel,
         prepare_module_input,
         prepare_module_input_output,
     ) = (
         RowwiseParallel,
+        AwaitRowwiseParallel,
         ColwiseParallel,
         PrepareModuleInput,
         PrepareModuleInputOutput,
@@ -432,6 +455,15 @@ def apply_non_moe_tp(
 
         # pyrefly: ignore [missing-attribute]
         if not transformer_block.moe_enabled:
+            # Select the appropriate parallel strategy:
+            # Use AwaitRowwiseParallel when activation checkpoint is enabled to handle
+            # async redistribution. The custom implementation ensures wait_tensor() is called
+            # on _local_tensor to prevent memory leaks caused by incomplete async operations.
+            safe_rowwise_parallel = (
+                await_rowwise_parallel
+                if enable_activation_checkpoint
+                else rowwise_parallel
+            )
             layer_plan.update(
                 {
                     "feed_forward": prepare_module_input(
@@ -439,7 +471,7 @@ def apply_non_moe_tp(
                         desired_input_layouts=(Replicate(),),
                     ),
                     "feed_forward.w1": colwise_parallel(),
-                    "feed_forward.w2": rowwise_parallel(output_layouts=Shard(1)),
+                    "feed_forward.w2": safe_rowwise_parallel(output_layouts=Shard(1)),
                     "feed_forward.w3": colwise_parallel(),
                 }
             )
