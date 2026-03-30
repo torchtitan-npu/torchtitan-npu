@@ -63,6 +63,30 @@ deepseek_v3.deepseekv3_args["671B_debug_16die"] = DeepSeekV3ModelArgs(
     v_head_dim=128,
 )
 
+deepseek_v3.deepseekv3_args["671B_debug_128die"] = DeepSeekV3ModelArgs(
+    vocab_size=129280,
+    dim=7168,
+    inter_dim=18432,
+    moe_inter_dim=2048,
+    n_layers=61,
+    n_dense_layers=3,
+    n_heads=128,
+    moe_args=MoEArgs(
+        num_experts=256,
+        num_shared_experts=1,
+        top_k=8,
+        score_func="sigmoid",
+        route_norm=True,
+        route_scale=2.5,
+        score_before_experts=False,
+    ),
+    q_lora_rank=1536,
+    kv_lora_rank=512,
+    qk_nope_head_dim=128,
+    qk_rope_head_dim=64,
+    v_head_dim=128,
+)
+
 
 def update_from_config(self, job_config: JobConfig, **kwargs) -> None:
     seq_len = job_config.training.seq_len

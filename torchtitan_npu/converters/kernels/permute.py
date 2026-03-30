@@ -25,6 +25,11 @@ def _npu_moe_forward(self, x):
         x, self.expert_bias
     )
 
+    if self.shared_experts is not None:
+        out = self.shared_experts(x)
+    else:
+        out = torch.zeros_like(x)
+
     with torch.no_grad():
         self.tokens_per_expert.add_(num_tokens_per_expert)
 
@@ -32,11 +37,6 @@ def _npu_moe_forward(self, x):
     routed_input, sorted_indices = torch_npu.npu_moe_token_permute(x, indices)
 
     routed_output = self.experts(routed_input, num_tokens_per_expert)
-
-    if self.shared_experts is not None:
-        out = self.shared_experts(x)
-    else:
-        out = torch.zeros_like(x)
 
     unpermuted = torch_npu.npu_moe_token_unpermute(
         routed_output,

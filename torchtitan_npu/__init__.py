@@ -24,6 +24,8 @@ def _apply_patches():
     # patching models
     from .models import deepseek_v3, llama3  # noqa: F401
 
+    from .models.deepseek_v3.infra import parallelize  # noqa: F401
+
     # patching context_parallel utils
     from .patches.distributed import context_parallel_utils  # noqa: F401
 
@@ -43,7 +45,7 @@ def _apply_patches():
     # patching fake process group
     from .patches.torch.testing._internal.distributed import fake_pg  # noqa: F401
 
-    # patching torch_npupu
+    # patching torch_npu
     from .patches.torch_npu import custom_shardings  # noqa: F401
 
     # patching torchtitan
