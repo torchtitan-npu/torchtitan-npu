@@ -29,6 +29,8 @@ from torch.optim.optimizer import _use_grad_for_differentiable
 from torchtitan.components.optimizer import OptimizersContainer
 from torchtitan.tools.utils import get_device_info
 
+from torchtitan_npu.patches.optimizer.muon_optimizer import build_muon_hybrid_optimizers
+
 
 logger = logging.getLogger(__name__)
 
@@ -335,6 +337,24 @@ def swap_optimizer_step(self, closure=None):
 def _build_optimizers_wrapper(
     model_parts, optimizer_config, parallel_dims, ft_manager=None
 ):
+    if getattr(optimizer_config, "name", None) == "Muon":
+        # Muon optimizer does not currently support multi-device.
+        is_distributed = torch.distributed.is_initialized()
+        world_size = torch.distributed.get_world_size() if is_distributed else 1
+        if world_size > 1:
+            raise NotImplementedError(
+                "Muon optimizer currently only support single device"
+            )
+        # Muon optimizer does not currently support swap optimizer.
+        if getattr(optimizer_config, "swap_optimizer", False):
+            raise ValueError(
+                "Muon optimizer does not support swap_optimizer. "
+                "Please set swap_optimizer=false in your config."
+            )
+        return build_muon_hybrid_optimizers(
+            model_parts, optimizer_config, parallel_dims, ft_manager
+        )
+
     if getattr(optimizer_config, "swap_optimizer", False):
         # patch optimizer step functions
         torch.optim.AdamW.step = swap_optimizer_step

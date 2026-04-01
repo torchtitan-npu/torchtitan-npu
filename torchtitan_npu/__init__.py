@@ -49,7 +49,11 @@ def _apply_patches():
     from .patches.torch_npu import custom_shardings  # noqa: F401
 
     # patching torchtitan
-    from .patches.torchtitan import activation_checkpoint, hf_datasets  # noqa: F401
+    from .patches.torchtitan import (  # noqa: F401
+        activation_checkpoint,
+        hf_datasets,
+        lr_scheduler,
+    )
 
     # patching tools
     from .tools import flight_recorder, profiling  # noqa: F401

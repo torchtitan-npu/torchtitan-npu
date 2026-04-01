@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from torchtitan.config.job_config import (
     JobConfig as BaseJobConfig,
@@ -32,6 +33,28 @@ class Optimizer(BaseOptimizer):
     A higher value creates more, smaller slices, further reducing peak memory usage during the optimizer step.
     """
     swap_optimizer_times: int = 16
+
+    # Muon-specific parameters (used when name is "Muon")
+    """
+    Learning rate for Muon optimizer. If None, falls back to lr.
+    """
+    muon_lr: float | None = None
+
+    """Momentum factor for Muon optimizer"""
+    muon_momentum: float = 0.95
+
+    """Whether to use Nesterov momentum for Muon"""
+    muon_enable_nesterov: bool = True
+
+    """Number of Newton-Schulz iteration steps for Muon"""
+    muon_ns_steps: int = 5
+
+    """
+    Learning rate adjustment function for Muon. Options:
+    - None or "original": Use sqrt(max(1, A/B)) ratio (muon_lr is used if specified)
+    - "match_rms_adamw": Use 0.2 * sqrt(max(A, B)) ratio (muon_lr is ignored, uses base lr)
+    """
+    muon_adjust_lr_fn: Literal["original", "match_rms_adamw"] | None = "match_rms_adamw"
 
 
 @dataclass
