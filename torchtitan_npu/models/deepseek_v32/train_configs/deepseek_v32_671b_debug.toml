@@ -68,7 +68,6 @@ context_parallel_degree = 1
 [checkpoint]
 enable = false
 folder = "path/to/checkpoint"
-load_step = 0
 # initial_load_model_only = true
 # initial_load_in_hf = true
 # initial_load_path = "/path/to/hf-weight"
