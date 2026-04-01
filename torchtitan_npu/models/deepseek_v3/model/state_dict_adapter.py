@@ -29,7 +29,7 @@ class DeepSeekV3StateDictAdapterNpu(DeepSeekV3StateDictAdapter):
     def to_hf(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         if self._input_format == "dcp":
             return state_dict
-        has_w13 = any(".moe.expert.w13" in k for k in state_dict.keys())
+        has_w13 = any(".moe.experts.w13" in k for k in state_dict.keys())
         if has_w13:
             working_state = _split_w13_for_mapping(state_dict)
             return super().to_hf(working_state)

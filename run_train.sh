@@ -27,7 +27,13 @@ if [ -n "$COMM_MODE" ]; then
     NGPU="${NGPU}" LOCAL_RANK=0 python3 -m "${TRAIN_FILE}" --job.config_file "${CONFIG_FILE}" "$@" --comm.mode=${COMM_MODE} --training.steps=1
 else
     # Normal training with torchrun
-    PYTORCH_ALLOC_CONF="expandable_segments:True" \
+    PYTORCH_NPU_ALLOC_CONF="expandable_segments:True" \
+    CUDA_DEVICE_MAX_CONNECTIONS=1 \
+    CPU_AFFINITY_CONF=1 \
+    TASK_QUEUE_ENABLE=2 \
+    HCCL_CONNECT_TIMEOUT=3600 \
+    STREAMS_PER_DEVICE=32 \
+    MULTI_STREAM_MEMORY_RESERVE=2 \
     TORCHFT_LIGHTHOUSE=${TORCHFT_LIGHTHOUSE} \
     torchrun --nproc_per_node=${NGPU} --rdzv_backend c10d --rdzv_endpoint="localhost:0" \
     --local-ranks-filter ${LOG_RANK} --role rank --tee 3 \

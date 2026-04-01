@@ -157,6 +157,16 @@ def parallelize_deepseekv32(
         ({parallel_dims.tp}) and 2 * CP degree ({parallel_dims.cp}).
         """
 
+    assert (
+        parallel_dims.fsdp_enabled
+    ), "Mixed precision training for deepseek_v32 is only supported when fsdp is enabled. "
+
+    assert not (
+        "npu_gmm" in job_config.model.converters
+        and not parallel_dims.ep_enabled
+        and parallel_dims.tp_enabled
+    ), "npu_gmm is not supported when only tp is enabled. "
+
     attn_type = getattr(model.model_args, "attn_type", "sdpa")
     if job_config.parallelism.context_parallel_degree > 1 and attn_type != "sdpa":
         raise NotImplementedError(

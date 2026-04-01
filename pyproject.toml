@@ -3,13 +3,28 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+# ---- All project specifications ---- #
 [project]
 name = "torchtitan_npu"
-version = "0.2.2"
+description = "Ascend End-to-End Large Model Training Adaptation Framework Based on torchtitan"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    { name = "Huawei Hisilicon" },
+]
+keywords = ["pytorch", "training", "llm", "npu", "ascend"]
 dependencies = [
     "torch",
     "torch_npu",
 ]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://gitcode.com/cann/torchtitan-npu"
+Documentation = "https://gitcode.com/cann/torchtitan-npu/tree/master/docs"
+Issues = "https://gitcode.com/cann/torchtitan-npu/issues"
+Repository = "https://gitcode.com/cann/torchtitan-npu.git"
 
 [project.optional-dependencies]
 testing = [
@@ -27,9 +42,8 @@ dev = [
     "pyrefly==0.45.1",
 ]
 
-[tool.setuptools.packages.find]
-include = ["torchtitan_npu*"]
-exclude = ["CI*", "test_reports*", "cloudcache*", "third_party*"]
+[tool.setuptools.dynamic]
+version = {file = "assets/version.txt"}
 
 [tool.codespell]
 skip = ["*.json"]
@@ -39,6 +53,11 @@ ignore-words-list = ["cann"]
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["torchtitan_npu*"]
+exclude = ["CI*", "test_reports*", "cloudcache*", "third_party*"]
 
 [tool.pytest.ini_options]
 addopts = ["--showlocals", "-v", "--tb=short", "--import-mode=importlib"]

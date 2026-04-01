@@ -29,11 +29,11 @@ from .model.state_dict_adapter import DeepSeekV32StateDictAdapter
 deepseekv32_args = {
     "debugmodel": DeepSeekV32ModelArgs(
         vocab_size=129280,
-        dim=7168,
-        inter_dim=18432,
-        moe_inter_dim=2048,
-        n_layers=1,
-        n_dense_layers=1,
+        dim=128,
+        inter_dim=1024,
+        moe_inter_dim=128,
+        n_layers=4,
+        n_dense_layers=3,
         n_heads=128,
         moe_args=MoEArgs(
             num_experts=8,

@@ -1,6 +1,6 @@
 [job]
 dump_folder = "./outputs"
-description = "DeepSeek-V3.2 671B model training"
+description = "DeepSeek-V3 671B model training"
 print_config = true
 custom_config_module = "torchtitan_npu.config.custom_config"
 
@@ -14,11 +14,6 @@ profile_record_shapes = true
 profile_with_memory = false
 profile_with_stack = false
 
-# ignored them when profile_step_start and profile_step_end are set
-# profile_freq = 10
-# profiler_active = 1
-# profiler_warmup = 1
-
 enable_memory_snapshot = false
 save_memory_snapshot_folder = "memory_snapshot"
 
@@ -30,68 +25,59 @@ save_tb_folder = "tb"
 enable_wandb = false
 
 [model]
-name = "deepseek_v32"
+name = "deepseek_v3"
 flavor = "671B_debug_128die"
-hf_assets_path = "/data/models/DeepSeek-V3.2-bf16"
-converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm", "npu_rope"]
+hf_assets_path = "./assets/hf/DeepSeek-V3.1-Base"
+converters = ["npu_rms_norm", "npu_permute", "npu_gmm", "npu_rope"]
 
 [optimizer]
 name = "AdamW"
-lr = 7.3e-6
-eps = 1e-6
-weight_decay = 0.1
-beta2 = 0.95
-swap_optimizer = true   # swap optimizer between host and device to save device memory during training
+lr = 2.2e-4
+eps = 1e-8
+swap_optimizer = true
 swap_optimizer_times = 16
 
 [lr_scheduler]
 warmup_steps = 200  # lr scheduler warm up, normally 20% of the train steps
 decay_ratio = 0.8  # lr scheduler decay ratio, 80% of the train steps
 decay_type = "cosine"
-min_lr_factor = 1
+min_lr_factor = 0.1
 
 [training]
 local_batch_size = 1
-global_batch_size = 128 # It is recommended to enable gbs gradient accumulation only when PP equals 1
-seq_len = 32768
+global_batch_size = 1024
+seq_len = 4096
 max_norm = 1.0  # grad norm clipping
 steps = 1000
-dataset = "enwiki-eod"  # supported datasets: c4_test (2K), c4 (177M) , enwiki-eod
+dataset = "enwiki-eod"  # supported datasets: c4_test (2K), c4 (177M)
 dataset_path = "./tests/assets/enwiki"  # change to your dataset path
 torch_npu_memory_ratio = 1.0
 
 [parallelism]
 data_parallel_replicate_degree = 1
 data_parallel_shard_degree = -1
-fsdp_reshard_after_forward = "always" # default / never / always
+fsdp_reshard_after_forward = "always" # default / never / always  we use always to save memory
 tensor_parallel_degree = 4
 enable_async_tensor_parallel = false
 pipeline_parallel_degree = 1
-pipeline_parallel_schedule = "Interleaved1F1B"
-expert_parallel_degree = 64
+pipeline_parallel_schedule = "1F1B"  # "Interleaved1F1B"
+expert_parallel_degree = 128
 expert_tensor_parallel_degree = 1
-context_parallel_degree = 8
-enable_custom_context_parallel = true
-custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"
 
 [checkpoint]
 enable = false
 folder = "checkpoint"
-interval = 10000
+interval = 500
 last_save_model_only = true
 export_dtype = "float32"
 async_mode = "disabled"  # ["disabled", "async", "async_with_pinned_mem]"
-initial_load_path = "/data/model/DeepSeek-V3.2-bf16"
-initial_load_in_hf = true
-# initial_load_in_hf_quantized = true
-load_step = 0
 
 [activation_checkpoint]
-mode = "full"  # ["none", "selective", "full"]
+mode = "full"  # ["none", "selective", "full"]  # NOTE: use full ac
 selective_ac_option = 'op'  # 'int' = ac every positive int layer or 'op', ac based on ops policy
 
 [compile]
-enable = false
+enable = false  # NOTE: do not use inductor compile
 components = ["loss"] # ["model", "loss"]
 
 [quantize.linear.float8]
@@ -103,4 +89,4 @@ filter_fqns = ["output", "router.gate"]
 fqns = ["experts"]
 
 [comm]
-trace_buf_size = 0 # 0 means disable flight recorder , >0 means enable it
+trace_buf_size = 0

@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 import torchtitan.components.metrics as metrics_module
+import torchtitan.tools.utils as titan_tools_utils
 from torchtitan.tools.logging import logger
 
 
@@ -33,6 +34,23 @@ def load_class_from_string(class_path: str):
         ) from e
 
     return cls
+
+
+_original_get_peak_flops = titan_tools_utils.get_peak_flops
+
+
+def _patched_get_peak_flops(device_name: str) -> float:
+    if "Ascend910_9392" in device_name:
+        return 353.8944e12  # total: 376T Cube: 353T
+    elif "Ascend910B1" in device_name:
+        return 373.88e12  # total: 400T Cube: 373T
+    elif "Ascend910B2" in device_name:
+        return 353.8944e12  # total: 376T Cube: 353T
+    elif "Ascend910B3" in device_name:
+        return 294.912e12  # total: 313T Cube: 294T
+    elif "Ascend910B4" in device_name:
+        return 245.76e12  # total: 280T Cube: 245T
+    return _original_get_peak_flops(device_name)
 
 
 # Adapted from https://github.com/pytorch/torchtitan/blob/v0.2.1/torchtitan/components/metrics.py
@@ -110,3 +128,6 @@ def _patched_metrics_processor_log(
 
 # patch for step time print
 metrics_module.MetricsProcessor.log = _patched_metrics_processor_log
+
+# patch for Ascend peak flops
+titan_tools_utils.get_peak_flops = _patched_get_peak_flops

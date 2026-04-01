@@ -8,20 +8,22 @@ import logging
 
 from torchtitan.config import JobConfig
 from torchtitan.models import deepseek_v3
+from torchtitan.models.deepseek_v3 import get_train_spec
 from torchtitan.models.moe import MoEArgs
 
 from torchtitan_npu.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
+from .infra.parallelize import _parallelize_deepseekv3_wrapper
 
 
 logger = logging.getLogger(__name__)
 
 deepseek_v3.deepseekv3_args["671B_debug"] = DeepSeekV3ModelArgs(
     vocab_size=129280,
-    dim=7168,
-    inter_dim=18432,
-    moe_inter_dim=2048,
-    n_layers=2,
-    n_dense_layers=1,
+    dim=128,
+    inter_dim=512,
+    moe_inter_dim=128,
+    n_layers=4,
+    n_dense_layers=3,
     n_heads=128,
     moe_args=MoEArgs(
         num_experts=8,
@@ -99,5 +101,13 @@ def update_from_config(self, job_config: JobConfig, **kwargs) -> None:
     self.moe_impl = job_config.parallelism.expert_parallel_comm_backend
     self.moe_args._debug_force_load_balance = job_config.debug.moe_force_load_balance
 
+
+def get_train_spec_wrapper():
+    train_spec = get_train_spec()
+    train_spec.parallelize_fn = _parallelize_deepseekv3_wrapper
+    return train_spec
+
+
+deepseek_v3.get_train_spec = get_train_spec_wrapper
 
 DeepSeekV3ModelArgs.update_from_config = update_from_config
