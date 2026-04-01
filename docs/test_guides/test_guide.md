@@ -25,6 +25,75 @@ ONLY_EXTENDED_SMOKE=true sh build.sh -s --generate-report
 ONLY_UPSTREAM_SMOKE=true sh build.sh -s --generate-report
 ```
 
+### Integration Test
+
+`tests/smoke_tests/integration_test.py` is the entry point for end-to-end integration tests, used to validate:
+- New model functionality support
+- Feature compatibility
+- Parallelism strategy compatibility
+
+#### Running
+
+```bash
+# Via build.sh (runs core + extended smoke by default)
+ONLY_CORE_SMOKE=true sh build.sh -s --generate-report
+
+# Run integration_test.py directly
+python tests/smoke_tests/integration_test.py output_dir \
+    --test_name all \
+    --ngpu 2
+```
+
+#### Command-line Arguments
+
+| Argument | Default | Description |
+|------|--------|------|
+| `output_dir` | None (required) | Output directory for test results |
+| `--config_path` | `./tests/smoke_tests/base_test.toml` | Base config file path |
+| `--test_name` | `all` | Specific test case name |
+| `--ngpu` | `2` | Maximum GPU count |
+
+#### OverrideDefinitions Usage
+
+`OverrideDefinitions` is the configuration class for defining integration test cases:
+
+```python
+OverrideDefinitions(
+    override_args=[[...]],  # Required: command-line argument list
+    test_descr="...",        # Required: test description
+    test_name="...",         # Required: test name
+    ngpu=2,                  # Optional: required GPU count
+    disabled=False,          # Optional: whether disabled
+)
+```
+
+#### Steps to Add a New Test Case
+
+1. Open `tests/smoke_tests/integration_test.py`
+2. Add a new configuration to the `smoke_cases` list in `generate_smoke_tests()`:
+```python
+OverrideDefinitions(
+    [
+        [
+            "--model.name your_model",
+            "--model.flavor your_flavor",
+            "--parallelism.tensor_parallel_degree 2",
+        ],
+    ],
+    "Your Model TP Test",
+    "your_model_tp",
+    ngpu=2,
+)
+```
+3. Run tests to verify:
+```bash
+python tests/smoke_tests/integration_test.py ./outputs --test_name your_model_tp
+```
+
+#### base_test.toml Configuration
+
+`tests/smoke_tests/base_test.toml` is the base configuration for integration tests. All tests run based on this configuration file, and parameters in `override_args` override identically-named parameters in the base configuration.
+
 ### Model Parallel Commands
 ```bash
 # Basic model-parallel smoke
@@ -39,7 +108,7 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
 |---|---|
 | `build.sh -u` | You changed hardware-independent logic such as converters, config, helpers, or patches |
 | `build.sh -s` | You changed real NPU execution paths or wrapper behavior and want the default core + extended smoke set |
-| `ONLY_CORE_SMOKE=true` | You changed the minimal training path |
+| `ONLY_CORE_SMOKE=true` | You changed the minimal training path (i.e., end-to-end integration tests defined in integration_test) |
 | `ONLY_EXTENDED_SMOKE=true` | You changed local feature or model-parallel behavior |
 | `ONLY_UPSTREAM_SMOKE=true` | You changed logic that depends on reused torchtitan upstream integration, or want to run the heavier upstream smoke path separately |
 

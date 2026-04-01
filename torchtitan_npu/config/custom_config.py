@@ -87,6 +87,12 @@ class Training(BaseTraining):
 
     torch_npu_memory_ratio: float = 1.0
 
+    """Number of tokens to predict at once using multi-token prediction"""
+    num_mtp_modules: int = 0
+
+    """Weight of multi-token prediction loss term"""
+    mtp_loss_weight: float = 0.3
+
 
 @dataclass
 class Profiling(BaseProfiling):

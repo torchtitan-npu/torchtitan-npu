@@ -485,7 +485,15 @@ def apply_non_moe_tp(
                     "feed_forward.w3": colwise_parallel(),
                 }
             )
-
+        # pyrefly: ignore [missing-attribute]
+        if transformer_block.layer_id >= model.model_args.n_layers:
+            layer_plan.update(
+                {
+                    "enorm": SequenceParallel(),
+                    "hnorm": SequenceParallel(),
+                    "eh_proj": SequenceParallel(use_local_output=True),
+                }
+            )
         parallelize_module(
             # pyrefly: ignore [bad-argument-type]
             module=transformer_block,

@@ -5,6 +5,8 @@
 
 from dataclasses import dataclass
 
+from torchtitan.config import JobConfig
+
 from torchtitan_npu.models.deepseek_v3.model.args import DeepSeekV3ModelArgs
 
 
@@ -25,3 +27,9 @@ class DeepSeekV32ModelArgs(DeepSeekV3ModelArgs):
     save_patch_enabled: bool = False
     # pyrefly: ignore [bad-override]
     moe_impl: str = "standard"
+    num_mtp_modules: int = 0
+
+    def update_from_config(self, job_config: JobConfig, **kwargs) -> None:
+        super().update_from_config(job_config)
+        if hasattr(job_config.training, "num_mtp_modules"):
+            self.num_mtp_modules = job_config.training.num_mtp_modules

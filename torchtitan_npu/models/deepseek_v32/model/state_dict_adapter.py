@@ -24,7 +24,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
         super().__init__(model_args, hf_assets_path)
 
         # key mapping
-        self._setup_v32_mappings()
+        self._setup_v32_mappings(model_args)
 
         # configs
         self.use_gmm = getattr(model_args.moe_args, "use_grouped_mm", False)
@@ -96,7 +96,7 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
                 f"Failed to setup checkpoint patch, training will continue with original saving configs: {e}"
             )
 
-    def _setup_v32_mappings(self):
+    def _setup_v32_mappings(self, model_args):
         """Deepseek V32 key mapping"""
         # MLA:
         self.from_hf_map.pop("model.layers.{}.self_attn.q_proj.weight", None)
@@ -118,3 +118,13 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
                 "model.layers.{}.self_attn.indexer.weights_proj.weight": "layers.{}.attention.indexer.weights_proj.weight",
             }
         )
+
+        # MTP
+        if model_args.num_mtp_modules > 0:
+            self.from_hf_map.update(
+                {
+                    "model.layers.{}.enorm.weight": "layers.{}.enorm.weight",
+                    "model.layers.{}.hnorm.weight": "layers.{}.hnorm.weight",
+                    "model.layers.{}.eh_proj.weight": "layers.{}.eh_proj.weight",
+                }
+            )

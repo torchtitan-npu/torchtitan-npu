@@ -40,13 +40,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}"
 OUTPUT_DIR="${PROJECT_ROOT}/output"
 REPORT_DIR="${PROJECT_ROOT}/test_reports"
+INTEGRATION_REPORT_DIR="${PROJECT_ROOT}/test_reports/integration_tests"
 TITAN_VERSION="v0.2.2"
 TITAN_DIR="${PROJECT_ROOT}/third_party/torchtitan"
 
 # Default configuration
 NGPU=2
 SMOKE_STEP=10
-SMOKE_CONFIG="${PROJECT_ROOT}/tests/smoke_tests/smoke_test.toml"
 TIMEOUT_SECONDS=${TIMEOUT_SECONDS:-300}
 ONLY_CORE_SMOKE=${ONLY_CORE_SMOKE:-false}
 ONLY_EXTENDED_SMOKE=${ONLY_EXTENDED_SMOKE:-false}
@@ -781,11 +781,19 @@ run_core_smoke() {
 
     local smoke_log="${REPORT_DIR}/smoke_test.log"
     local start_time=$(date +%s)
-
+    local integration_test="${PROJECT_ROOT}/tests/smoke_tests/integration_test.py"
     echo " Verifying torchtitan "
     python -c "import torchtitan; print('torchtitan ok')"
 
     echo " Done "
+
+    # Clone torchtitan source if not exists
+    if [ ! -d "$TITAN_DIR" ]; then
+        log_info "Cloning torchtitan source..."
+        mkdir -p third_party
+        git clone --branch $TITAN_VERSION --depth 1 \
+            https://gitcode.com/GitHub_Trending/to/torchtitan.git $TITAN_DIR
+    fi
 
     cd "$PROJECT_ROOT"
     chmod +x ./run_train.sh
@@ -794,9 +802,7 @@ run_core_smoke() {
 
     set +e
     timeout $TIMEOUT_SECONDS bash -c "
-        export NGPU=$NGPU
-        export CONFIG_FILE="${SMOKE_CONFIG}"
-        ./run_train.sh
+        python "${integration_test}" "${INTEGRATION_REPORT_DIR}"
     " 2>&1 | tee "$smoke_log"
     local exit_code=${PIPESTATUS[0]}
     set -e

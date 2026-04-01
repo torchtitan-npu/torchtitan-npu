@@ -18,6 +18,13 @@ def _apply_patches():
     _initialized = True
     import torchtitan.models as titan_models
 
+    # patching torchtitan
+    from torchtitan_npu.patches.torchtitan import (  # noqa: F401
+        activation_checkpoint,
+        hf_datasets,
+        loss,
+    )
+
     # patching mxfp8/hif8
     from .converters import quant_converter  # noqa: F401
 
@@ -47,13 +54,6 @@ def _apply_patches():
 
     # patching torch_npu
     from .patches.torch_npu import custom_shardings  # noqa: F401
-
-    # patching torchtitan
-    from .patches.torchtitan import (  # noqa: F401
-        activation_checkpoint,
-        hf_datasets,
-        lr_scheduler,
-    )
 
     # patching tools
     from .tools import flight_recorder, profiling  # noqa: F401

@@ -4,12 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets import load_dataset
+from torchtitan.hf_datasets import text_datasets as text_datasets_utils
 from torchtitan.hf_datasets.text_datasets import (
     _process_c4_text,
+    build_text_dataloader,
     DatasetConfig,
     DATASETS,
 )
-
 from torchtitan.tools.logging import init_logger, logger
 
 init_logger()
@@ -45,3 +46,36 @@ else:
     logger.info(
         f"[Dataset Patch] No new datasets to add, current supported: {list(DATASETS.keys())}"
     )
+
+
+# Adapted from
+# https://github.com/pytorch/torchtitan/blob/v0.2.1/torchtitan/hf_datasets/text_datasets.py
+def mtp_build_text_dataloader(
+    dp_world_size,
+    dp_rank,
+    tokenizer,
+    job_config,
+    infinite: bool = True,
+):
+    if (
+        hasattr(job_config.training, "num_mtp_modules")
+        and job_config.training.num_mtp_modules > 0
+    ):
+        if job_config.model.name in ["deepseek_v32"]:
+            job_config.training.seq_len += job_config.training.num_mtp_modules
+            result = build_text_dataloader(
+                dp_world_size, dp_rank, tokenizer, job_config, infinite
+            )
+            job_config.training.seq_len -= job_config.training.num_mtp_modules
+        else:
+            raise AssertionError(
+                "Multi Token Prediction Module only can be used for deepseek_v32 model now!"
+            )
+    else:
+        result = build_text_dataloader(
+            dp_world_size, dp_rank, tokenizer, job_config, infinite
+        )
+    return result
+
+
+text_datasets_utils.build_text_dataloader = mtp_build_text_dataloader
