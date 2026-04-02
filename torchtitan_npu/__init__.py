@@ -34,7 +34,10 @@ def _apply_patches():
     from .models.deepseek_v3.infra import parallelize  # noqa: F401
 
     # patching context_parallel utils
-    from .patches.distributed import context_parallel_utils  # noqa: F401
+    from .patches.distributed import (  # noqa: F401
+        cp_input_sharding,
+        custom_context_parallel,
+    )
 
     # patching optimizer
     from .patches.optimizer import swap_optimizer  # noqa: F401

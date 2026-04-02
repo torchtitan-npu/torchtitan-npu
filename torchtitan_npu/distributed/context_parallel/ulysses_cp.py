@@ -10,7 +10,7 @@ from torch.distributed.device_mesh import DeviceMesh
 from torchtitan.models.attention import ScaledDotProductAttentionWrapper
 
 from torchtitan_npu.patches.distributed.custom_context_parallel import (
-    CustomContextParallelContext,
+    CustomContextParallelContext,  # pyrefly: ignore [missing-module-attribute]
 )
 
 
@@ -164,4 +164,6 @@ class UlyssesContextParallelContext(CustomContextParallelContext):
 
             return output
 
-        ScaledDotProductAttentionWrapper.forward = patched_forward
+        ScaledDotProductAttentionWrapper.forward = (
+            patched_forward  # pyrefly: ignore [bad-assignment]
+        )

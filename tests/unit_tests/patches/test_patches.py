@@ -8,52 +8,9 @@ from unittest.mock import patch
 import torch
 import torchtitan.distributed.activation_checkpoint as upstream_activation_checkpoint
 
-from torchtitan_npu.patches.distributed.custom_context_parallel import (
-    CustomContextParallelContext,
-)
 from torchtitan_npu.patches.quantization import quantize
 from torchtitan_npu.patches.torch import clip_grad
 from torchtitan_npu.patches.torchtitan import activation_checkpoint
-
-
-class DummyMesh:
-    def __init__(self, size_value):
-        self.size_value = size_value
-
-    def size(self):
-        return self.size_value
-
-
-def test_custom_context_parallel_rejects_mismatched_buffer_dims():
-    mesh = DummyMesh(2)
-    buffer = torch.randn(2, 4)
-
-    try:
-        CustomContextParallelContext(
-            mesh,
-            buffers=[buffer],
-            buffer_seq_dims=[],
-        )
-        raise AssertionError("Expected ValueError for mismatched buffers and dims")
-    except ValueError as exc:
-        assert "same number of elements" in str(exc)
-
-
-def test_custom_context_parallel_rejects_unknown_no_restore_buffer():
-    mesh = DummyMesh(2)
-    buffer = torch.randn(2, 4)
-    foreign_buffer = torch.randn(2, 4)
-
-    try:
-        CustomContextParallelContext(
-            mesh,
-            buffers=[buffer],
-            buffer_seq_dims=[1],
-            no_restore_buffers={foreign_buffer},
-        )
-        raise AssertionError("Expected ValueError for invalid no_restore_buffers")
-    except ValueError as exc:
-        assert "subset of `buffers`" in str(exc)
 
 
 def test_register_quantize_module_handler_registers_handler():
@@ -79,6 +36,12 @@ def test_group_dtensors_by_layout_groups_non_dtensors_together():
     assert len(grouped) == 1
     assert ("non_dtensor", None) in grouped
     assert grouped[("non_dtensor", None)] == [tensor_a, tensor_b]
+
+
+def test_group_dtensors_by_layout_handles_empty_input():
+    grouped = clip_grad.group_dtensors_by_layout([])
+
+    assert grouped == {}
 
 
 def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
@@ -120,3 +83,19 @@ def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
     assert len(contexts) == 2
     assert all(hasattr(ctx, "__enter__") for ctx in contexts)
     assert all(hasattr(ctx, "__exit__") for ctx in contexts)
+
+
+def test_register_quantize_module_handler_overrides_existing_handler():
+    class DummyConfig:
+        pass
+
+    def old_handler(module, config):
+        return module
+
+    def new_handler(module, config):
+        return module
+
+    handler_registry = {DummyConfig: old_handler}
+    with patch.object(quantize, "_QUANTIZE_CONFIG_HANDLER", handler_registry):
+        quantize.register_quantize_module_handler(DummyConfig)(new_handler)
+        assert handler_registry[DummyConfig] is new_handler

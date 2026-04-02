@@ -13,6 +13,15 @@ from torchtitan.tools.logging import init_logger, logger
 init_logger()
 
 
+def get_grad_accumulation_steps(trainer) -> int:
+    ga_steps = trainer.gradient_accumulation_steps
+    if trainer.parallel_dims.pp_enabled:
+        local_bs = trainer.job_config.training.local_batch_size
+        micro_bs = trainer.job_config.parallelism.pipeline_parallel_microbatch_size
+        return ga_steps * (local_bs // micro_bs)
+    return ga_steps
+
+
 def _patch_train_step_for_dsv32_indexer_loss():
     _original_train_step = titan_train.Trainer.train_step
 
@@ -32,19 +41,8 @@ def _patch_train_step_for_dsv32_indexer_loss():
 
             # Align logging frequency with the core metrics processor
             if self.metrics_processor.should_log(self.step):
-                ga_steps = self.gradient_accumulation_steps
-                if self.parallel_dims.pp_enabled:
-                    local_bs = self.job_config.training.local_batch_size
-                    micro_bs = (
-                        self.job_config.parallelism.pipeline_parallel_microbatch_size
-                    )
-                    pp_microbatches = local_bs // micro_bs
-                    total_acc_steps = ga_steps * pp_microbatches
-                else:
-                    total_acc_steps = ga_steps
-                # Pass the total gradient accumulation steps from the Trainer instance
                 DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics(
-                    total_acc_steps=total_acc_steps
+                    total_acc_steps=get_grad_accumulation_steps(self)
                 )
             else:
                 # Crucial: Clear tracker silently if this step is not being logged
@@ -64,24 +62,20 @@ def _patch_init_for_dsa_set_loss_scale():
     def wrapper_init(self, job_config: JobConfig):
         _original(self, job_config)
 
-        if not self.parallel_dims.pp_enabled:
-            return
+        from torchtitan_npu.models.deepseek_v32.model.model import (
+            DSAIndexerLossAutoScaler,
+        )
 
-        import torchtitan_npu.models.deepseek_v32.model.model as dsv32_model
+        loss_degree = 1
+        if getattr(self.parallel_dims, "dp_cp_enabled", False):
+            loss_mesh = self.parallel_dims.get_optional_mesh("loss")
+            if loss_mesh is not None:
+                loss_degree = loss_mesh.size()
 
-        if self.parallel_dims.dp_enabled:
-            batch_mesh = self.parallel_dims.get_mesh("batch")
-            batch_degree = batch_mesh.size()
-        else:
-            batch_degree = 1
-
-        global_batch_size = job_config.training.global_batch_size
-        if global_batch_size < 0:
-            num_microbatches = job_config.training.local_batch_size
-        else:
-            num_microbatches = global_batch_size // batch_degree
-
-        dsv32_model.LOSS_SCALE = torch.tensor(1.0 / num_microbatches)
+        scale = 1.0 / float(get_grad_accumulation_steps(self) * loss_degree)
+        DSAIndexerLossAutoScaler.set_loss_scale(
+            torch.tensor(scale, device=self.device, dtype=torch.float32)
+        )
 
     titan_train.Trainer.__init__ = wrapper_init
 

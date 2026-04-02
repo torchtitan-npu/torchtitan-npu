@@ -47,24 +47,10 @@ ATTR_NAME = "_run_cmd"
 setattr(test_module, ATTR_NAME, patched_run_cmd)
 
 
-def generate_smoke_tests() -> List[OverrideDefinitions]:
-    """
-    Generate a list of test configurations for model parallelism.
-    This suite is designed to test the model parallelism features of the system,
-    covering various model parallelism patterns and supported models.
-
-    Returns:
-        A list of OverrideDefinitions objects representing different test scenarios.
-    """
-    smoke_cases = [
-        # Model Base Test Case for Deepseek V32
+def _base_tests() -> List[OverrideDefinitions]:
+    return [
         OverrideDefinitions(
-            [
-                [
-                    "--model.name deepseek_v32",
-                    "--model.flavor tinymodel",
-                ],
-            ],
+            [["--model.name deepseek_v32", "--model.flavor tinymodel"]],
             "DeepSeek V32 BASE",
             "deepseek_v32_base",
             ngpu=2,
@@ -77,7 +63,7 @@ def generate_smoke_tests() -> List[OverrideDefinitions]:
                     "--model.flavor tinymodel",
                     "--training.num_mtp_modules 1",
                     "--training.mtp_loss_weight 0.3",
-                ],
+                ]
             ],
             "DeepSeek V32 MTP",
             "deepseek_v32_mtp",
@@ -85,7 +71,51 @@ def generate_smoke_tests() -> List[OverrideDefinitions]:
         ),
     ]
 
-    return smoke_cases
+
+def _cp_dsa_tests() -> List[OverrideDefinitions]:
+    return [
+        OverrideDefinitions(
+            [
+                [
+                    "--model.name deepseek_v32",
+                    "--model.flavor tinymodel",
+                    "--model.converters npu_dsa",
+                    "--parallelism.context_parallel_degree 2",
+                ]
+            ],
+            "DeepSeek V32 CP DSA",
+            "deepseek_v32_cp_dsa",
+            ngpu=2,
+        ),
+        # CP DSA + MTP Test Case for DeepSeek V32
+        OverrideDefinitions(
+            [
+                [
+                    "--model.name deepseek_v32",
+                    "--model.flavor tinymodel",
+                    "--model.converters npu_dsa",
+                    "--parallelism.context_parallel_degree 2",
+                    "--training.num_mtp_modules 1",
+                    "--training.mtp_loss_weight 0.3",
+                ]
+            ],
+            "DeepSeek V32 CP DSA MTP",
+            "deepseek_v32_cp_dsa_mtp",
+            ngpu=2,
+        ),
+    ]
+
+
+def generate_smoke_tests() -> List[OverrideDefinitions]:
+    """
+    Generate a list of test configurations for model parallelism.
+    This suite is designed to test the model parallelism features of the system,
+    covering various model parallelism patterns and supported models.
+
+    Returns:
+        A list of OverrideDefinitions objects representing different test scenarios.
+    """
+    return _base_tests() + _cp_dsa_tests()
 
 
 _TEST_SUITES_FUNCTION = {

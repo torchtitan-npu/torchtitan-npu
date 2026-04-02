@@ -173,25 +173,20 @@ class LILossTrain(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, *grad_output) -> tuple:
-        """
-        Backward pass: propagate upstream gradients through the precomputed gradients.
-
-        Args:
-            ctx: Context object with saved tensors from forward pass.
-            grad_output: Gradient output.
-
-        Returns:
-            tuple: Gradients.
-        """
         d_query_index, d_key_index, d_weights = ctx.saved_tensors
-        grad_scale = grad_output[0]
-        if torch.ne(grad_scale, torch.tensor(1.0, device=grad_scale.device)):
-            d_query_index = d_query_index * grad_scale
-            d_key_index = d_key_index * grad_scale
-            d_weights = d_weights * grad_scale
-
-        res_list = [None] * 12
-        return None, None, d_query_index, d_key_index, d_weights, *res_list
+        if grad_output[0] != 1.0:
+            d_query_index = d_query_index * grad_output[0]
+            d_key_index = d_key_index * grad_output[0]
+            d_weights = d_weights * grad_output[0]
+        backward_grads = (
+            None,
+            None,
+            d_query_index,
+            d_key_index,
+            d_weights,
+            *([None] * 12),
+        )
+        return backward_grads
 
 
 def dsa_forward(
@@ -216,7 +211,9 @@ def dsa_forward(
         )
 
     # Fuse LILossTrain includes LIG
-    topk_indices, _ = torch_npu.npu_lightning_indexer(
+    # NOTE: set return_value=False to avoid torch.compile / DTensor meta path failure
+    # ("when return_value is true, not support pytorch compile").
+    ret = torch_npu.npu_lightning_indexer(
         q_indexer,
         k_indexer,
         weights,
@@ -226,8 +223,9 @@ def dsa_forward(
         layout_key="BSND",
         sparse_count=index_topk,
         sparse_mode=3,
-        return_value=True,
+        return_value=False,
     )
+    topk_indices = ret[0] if isinstance(ret, tuple) else ret
 
     # To BSND
     q = q.transpose(1, 2)
@@ -286,8 +284,7 @@ def dsa_forward(
         layout="BSND",
     )
     output = output.transpose(1, 2)
-    # pyrefly: ignore [bad-return]
-    return loss, output
+    return loss, output  # pyrefly: ignore [bad-return]
 
 
 @register_npu_converter("npu_dsa")
@@ -309,12 +306,10 @@ class DSAKernel(BaseConverter):
 
     @classmethod
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
-        pkg = cls.MODEL_PACKAGE
-
         count = replace_methods(
-            "DSASparseAttention", "forward", dsa_forward, package=pkg
+            "DSV32_SDPA", "forward", dsa_forward, package=cls.MODEL_PACKAGE
         )
-        logger.info(f"  [DSASparseAttention forward] Applied {count} replacement(s)")
+        logger.info(f"  [DSV32_SDPA forward] Applied {count} replacement(s)")
         logger.info(
             "  Only matrix absorb mode is supported, and LI Loss is enabled by default."
         )

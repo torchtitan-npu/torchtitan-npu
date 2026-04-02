@@ -209,6 +209,30 @@ def parallelize_deepseekv32(
         )
         maybe_enable_async_tp(job_config, tp_mesh)
 
+    if parallel_dims.cp_enabled:
+        # pyrefly: ignore [missing-import]
+        from torchtitan.distributed.context_parallel import apply_cp_to_attention_module
+
+        cp_attn_type = attn_type
+        if attn_type == "sdpa" and "npu_dsa" in job_config.model.converters:
+            cp_attn_type = "dsa"
+            logger.info(
+                "CP: npu_dsa converter is active, overriding attn_type 'sdpa' -> 'dsa' "
+                "for context parallel to avoid DTensor dispatcher intercepting "
+                "npu_lightning_indexer."
+            )
+
+        apply_cp_to_attention_module(
+            [
+                block.attention.inner_attention  # pyrefly: ignore [missing-attribute]
+                for block in model.layers.values()  # pyrefly: ignore [not-callable]
+            ],
+            parallel_dims.get_mesh("cp"),
+            cp_attn_type,
+            job_config=job_config,  # pyrefly: ignore [unexpected-keyword]
+            model_args=model.model_args,  # pyrefly: ignore [unexpected-keyword]
+        )
+
     # Check if using DeepEP for MoE communication
     if job_config.parallelism.expert_parallel_comm_backend == "deepep":
         if not parallel_dims.ep_enabled:
@@ -391,8 +415,8 @@ def apply_non_moe_tp(
         )
 
     indexer_plan = prepare_module_input(
-        input_layouts=(Replicate(), Replicate(), None, Replicate(), None),
-        desired_input_layouts=(Replicate(), Replicate(), None, Replicate(), None),
+        input_layouts=(Replicate(), Replicate(), None, Replicate(), None, None),
+        desired_input_layouts=(Replicate(), Replicate(), None, Replicate(), None, None),
         use_local_output=True,
     )
 

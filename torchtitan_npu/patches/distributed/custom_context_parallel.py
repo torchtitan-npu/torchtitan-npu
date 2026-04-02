@@ -1,94 +1,72 @@
 # Adapted from
-# https://github.com/pytorch/pytorch/blob/v2.9.0/torch/distributed/tensor/experimental/_attention.py
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/distributed/context_parallel.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 # Copyright (c) Meta Platforms, Inc. and affiliates
 # Developed by Huawei Technologies Co., Ltd. based on Meta Platforms, Inc. and affiliates TorchTitan
+from __future__ import annotations
 
-import torch
-import torchtitan
+from collections.abc import Sequence
+
+import torch.nn as nn
+
+# pyrefly: ignore [missing-import]
+import torchtitan.distributed.context_parallel as titan_cp
 from torch.distributed.device_mesh import DeviceMesh
-from torch.distributed.tensor.experimental._context_parallel._attention import (
-    _context_parallel_buffers,
-)
 
 
-# pyrefly: ignore [implicit-import]
-_original_create_cp_ctx = torchtitan.distributed.utils.create_context_parallel_ctx
+_orig_apply_cp_to_attention_module = titan_cp.apply_cp_to_attention_module
 
 
-class CustomContextParallelContext:
-    """
-    A base class providing basic Context Parallelism (CP) capabilities.
-
-    This class is designed to manage tensor operations within a distributed environment
-    defined by a DeviceMesh. Upon entering the context, it shards specified tensors
-    along a given sequence dimension. Upon exiting, it restores the specified tensors
-    to their original state. This class does not perform any additional operations.
-    """
-
-    def __init__(
-        self,
-        mesh: DeviceMesh,
-        *,
-        buffers: list[torch.Tensor] | None = None,
-        buffer_seq_dims: list[int] | None = None,
-        no_restore_buffers: set[torch.Tensor] | None = None,
-        load_balance: bool = False
-    ):
-        self.mesh = mesh
-        self.buffers = [] if buffers is None else buffers
-        self.buffer_seq_dims = [] if buffer_seq_dims is None else buffer_seq_dims
-        self.no_restore_buffers = (
-            set() if no_restore_buffers is None else no_restore_buffers
+def validate_dsa_converters(*, job_config: object | None) -> None:
+    if job_config is None:
+        raise ValueError(
+            '[dsa] attention_type="dsa" requires job_config (with model.converters) '
+            "to be passed into apply_cp_to_attention_module."
         )
-        self.load_balance = load_balance
+    model_cfg = getattr(job_config, "model", None)
+    converters = (
+        getattr(model_cfg, "converters", None) if model_cfg is not None else None
+    )
+    if not converters or "npu_dsa" not in converters:
+        raise ValueError(
+            '[dsa] attention_type="dsa" requires "npu_dsa" in job_config.model.converters. '
+            f"Got converters={converters!r}."
+        )
 
-        if len(self.buffers) != len(self.buffer_seq_dims):
-            raise ValueError(
-                "`seq_dims` must have the same number of elements as `buffers`."
+
+def apply_cp_to_attention_module(
+    attention_modules: Sequence[nn.Module],
+    cp_mesh: DeviceMesh,
+    attention_type: str,
+    *,
+    job_config: object | None = None,
+    model_args: object | None = None,
+) -> None:
+    if attention_type == "dsa":
+        validate_dsa_converters(job_config=job_config)
+
+        from torch.distributed.tensor.experimental._attention import _ContextParallel
+
+        from torchtitan_npu.distributed.context_parallel.dsa_cp import (
+            patch_dsa_for_context_parallel,
+        )
+
+        patch_dsa_for_context_parallel(cp_mesh=cp_mesh, model_args=model_args)
+        cp_plan = _ContextParallel(
+            seq_dim=2, attention_type=_ContextParallel.AttentionType.SDPA
+        )
+
+        for attention_module in attention_modules:
+            titan_cp.parallelize_module(  # type: ignore[attr-defined]
+                module=attention_module, device_mesh=cp_mesh, parallelize_plan=cp_plan
             )
+    else:
+        _orig_apply_cp_to_attention_module(
+            attention_modules=attention_modules,
+            cp_mesh=cp_mesh,
+            attention_type=attention_type,
+        )
+    return None
 
-        for buffer in self.no_restore_buffers:
-            if not any(b is buffer for b in self.buffers):
-                raise ValueError("`no_restore_buffers` must be a subset of `buffers`.")
 
-        self.original_buffers = []
-
-    @torch.no_grad()
-    def __enter__(self):
-        # slice input tensors on sequence dim
-        self.original_buffers = [
-            None if b in self.no_restore_buffers else b.clone() for b in self.buffers
-        ]
-
-        if len(self.buffers) > 0:
-            device = self.buffers[0].device
-            seq_length = self.buffers[0].shape[self.buffer_seq_dims[0]]
-            cp_world_size = self.mesh.size()
-
-            if self.load_balance:
-                raise NotImplementedError(
-                    "Load balance for context parallel is not supported now."
-                )
-            else:
-                load_balance_indices = None
-
-            shards = _context_parallel_buffers(
-                self.mesh,
-                self.buffers,  # pyrefly: ignore [bad-argument-type]
-                self.buffer_seq_dims,
-                load_balance_indices,
-            )
-
-            for buffer, shard in zip(self.buffers, shards):
-                shard_clone = shard.clone()  # pyrefly: ignore [missing-attribute]
-                buffer.resize_(shard_clone.shape)
-                buffer.copy_(shard_clone)
-
-    @torch.no_grad()
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # restore specified tensors
-        for buffer, original_buffer in zip(self.buffers, self.original_buffers):
-            if original_buffer is not None:
-                buffer.resize_(original_buffer.shape)
-                buffer.copy_(original_buffer)
+titan_cp.apply_cp_to_attention_module = apply_cp_to_attention_module
