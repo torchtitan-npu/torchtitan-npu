@@ -67,9 +67,7 @@ def _patch_init_for_dsa_set_loss_scale():
         if not self.parallel_dims.pp_enabled:
             return
 
-        from torchtitan_npu.models.deepseek_v32.model.model import (
-            DSAIndexerLossAutoScaler,
-        )
+        import torchtitan_npu.models.deepseek_v32.model.model as dsv32_model
 
         if self.parallel_dims.dp_enabled:
             batch_mesh = self.parallel_dims.get_mesh("batch")
@@ -83,7 +81,7 @@ def _patch_init_for_dsa_set_loss_scale():
         else:
             num_microbatches = global_batch_size // batch_degree
 
-        DSAIndexerLossAutoScaler.set_loss_scale(torch.tensor(1.0 / num_microbatches))
+        dsv32_model.LOSS_SCALE = torch.tensor(1.0 / num_microbatches)
 
     titan_train.Trainer.__init__ = wrapper_init
 

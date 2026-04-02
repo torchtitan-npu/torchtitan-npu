@@ -14,8 +14,6 @@ from enum import Enum
 
 import torch.nn as nn
 
-import torchtitan.distributed.activation_checkpoint as ac_module
-
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper as ptd_checkpoint_wrapper,
 )
@@ -84,6 +82,3 @@ def _patched_apply_full_ac(module: nn.Module, ac_config) -> nn.Module:
         early_stop=ac_config.early_stop,
         debug=ac_config.debug,
     )
-
-
-ac_module._apply_full_ac = _patched_apply_full_ac

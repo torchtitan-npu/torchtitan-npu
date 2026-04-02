@@ -13,6 +13,9 @@ import logging
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    CheckpointWrapper,
+)
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.tensor import Partial, Replicate, Shard
 from torch.distributed.tensor.parallel import (
@@ -24,6 +27,7 @@ from torch.distributed.tensor.parallel import (
     SequenceParallel,
 )
 from torchtitan.config import JobConfig, TORCH_DTYPE_MAP
+from torchtitan.config.job_config import Compile as CompileConfig
 from torchtitan.distributed import NoParallel, ParallelDims
 from torchtitan.distributed.activation_checkpoint import apply_ac
 from torchtitan.distributed.dual_pipe_v import (
@@ -38,11 +42,15 @@ from torchtitan.distributed.expert_parallel import (
 )
 from torchtitan.distributed.tensor_parallel import maybe_enable_async_tp
 from torchtitan.models.llama3.infra.parallelize import apply_ddp
-from torchtitan.models.llama4.infra.parallelize import apply_compile, apply_fsdp
+from torchtitan.models.llama4.infra.parallelize import apply_fsdp
+from torchtitan.models.moe import moe as moe_module
 
 from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
-from torchtitan_npu.models.deepseek_v32.model.model import DSAIndexerLossLoggingHelper
-
+from torchtitan_npu.converters.kernels.rms_norm import NPURMSNorm
+from torchtitan_npu.models.deepseek_v32.model.model import (
+    Attention,
+    DSAIndexerLossLoggingHelper,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -430,23 +438,25 @@ def apply_non_moe_tp(
             # NOTE: use_local_output=False make the output to be a DTensor instead of a plain Tensor
             # so that the intermedidate results k is generated as a DTensor and its gradient is
             # correctly handled by the autograd engine.
-            "attention.wkv_a": NoParallel(use_local_output=False),
-            "attention.wkv_b": colwise_parallel(use_local_output=False),
-            "attention.kv_norm": NoParallel(use_local_output=False),
+            "attention.pre_attention.wkv_a": NoParallel(use_local_output=False),
+            "attention.pre_attention.wkv_b": colwise_parallel(use_local_output=False),
+            "attention.pre_attention.kv_norm": NoParallel(use_local_output=False),
             # the indxer module params are not parallelized
-            "attention.indexer": indexer_plan,
-            "attention.indexer.wq_b": NoParallel(use_local_output=True),
-            "attention.indexer.wk": NoParallel(use_local_output=True),
-            "attention.indexer.k_norm": NoParallel(use_local_output=True),
-            "attention.indexer.weights_proj": NoParallel(use_local_output=True),
+            "attention.pre_attention.indexer": indexer_plan,
+            "attention.pre_attention.indexer.wq_b": NoParallel(use_local_output=True),
+            "attention.pre_attention.indexer.wk": NoParallel(use_local_output=True),
+            "attention.pre_attention.indexer.k_norm": NoParallel(use_local_output=True),
+            "attention.pre_attention.indexer.weights_proj": NoParallel(
+                use_local_output=True
+            ),
             "attention.inner_attention": attention_kernel_plan,
             "attention.inner_attention.compute_dsa_indexer_loss": indexer_loss_plan,
-            "attention.wo": rowwise_parallel(output_layouts=Shard(1)),
+            "attention.post_attention.wo": rowwise_parallel(output_layouts=Shard(1)),
             "ffn_norm": SequenceParallel(),
         }
 
         # pyrefly: ignore [missing-attribute]
-        if transformer_block.attention.q_lora_rank == 0:
+        if transformer_block.attention.pre_attention.q_lora_rank == 0:
             layer_plan.update(
                 {
                     "attention.wq": colwise_parallel(
@@ -457,9 +467,13 @@ def apply_non_moe_tp(
         else:
             layer_plan.update(
                 {
-                    "attention.wq_a": NoParallel(use_local_output=False),
-                    "attention.wq_b": colwise_parallel(use_local_output=False),
-                    "attention.q_norm": NoParallel(use_local_output=False),
+                    "attention.pre_attention.wq_a": NoParallel(use_local_output=False),
+                    "attention.pre_attention.wq_b": colwise_parallel(
+                        use_local_output=False
+                    ),
+                    "attention.pre_attention.q_norm": NoParallel(
+                        use_local_output=False
+                    ),
                 }
             )
 
@@ -651,3 +665,74 @@ def apply_distributed_indexer_loss_tracking(parallel_dims: ParallelDims):
     DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics = (
         distributed_track_dsa_indexer_metrics
     )
+
+
+def apply_compile(model: nn.Module, compile_config: CompileConfig, ep_enabled: bool):
+    """
+    Apply torch.compile to each TransformerBlock, which makes compilation efficient due to
+    repeated structure. Alternatively one can compile the whole model (after applying DP).
+    """
+    # NOTE: This flag is needed for torch.compile to avoid graph breaking on dynamic shapes in token-choice MoE
+    # but it is experimental.
+    torch._dynamo.config.capture_scalar_outputs = True
+    # Workaround for https://github.com/pytorch/pytorch/issues/166926
+    # pyrefly: ignore [missing-attribute]
+    torch._C._dynamo.eval_frame._set_lru_cache(False)
+    # pyrefly: ignore [missing-attribute]
+    for layer_id, transformer_block in model.layers.named_children():
+        if isinstance(transformer_block, CheckpointWrapper):
+            # TODO: Make CheckpointWrapper a transparent wrapper
+            # unwrap so that .named_children() works
+            block = transformer_block._checkpoint_wrapped_module
+        else:
+            block = transformer_block
+
+        for attr_name, submod in block.named_children():
+            assert getattr(block, attr_name) == getattr(transformer_block, attr_name)
+
+            if isinstance(submod, moe_module.MoE):
+                # avoid graph breaking on the GroupedExperts' FSDP hooks
+                # by wrapping each submod's forward instead of their __call__
+                moe = submod
+                for attr_name, submod in moe.named_children():
+                    if attr_name == "experts":
+                        # NOTE: We don't compile token dispatch and token combine due to an issue on B200:
+                        # https://github.com/pytorch/torchtitan/issues/1940
+                        continue
+                    setattr(
+                        moe,
+                        attr_name,
+                        torch.compile(
+                            submod, backend=compile_config.backend, fullgraph=True
+                        ),
+                    )
+            elif isinstance(submod, Attention):
+                attention = submod
+                for attr_name, submod in attention.named_children():
+                    if attr_name == "inner_attention":
+                        continue
+                    setattr(
+                        attention,
+                        attr_name,
+                        torch.compile(
+                            submod, backend=compile_config.backend, fullgraph=True
+                        ),
+                    )
+            elif isinstance(submod, NPURMSNorm):
+                continue
+            else:
+                setattr(
+                    block,
+                    attr_name,
+                    torch.compile(
+                        submod, backend=compile_config.backend, fullgraph=True
+                    ),
+                )
+
+        # pyrefly: ignore [missing-attribute]
+        model.layers.register_module(layer_id, transformer_block)
+
+    # NOTE: We don't compile for loop code path due to an issue with unbacked symints:
+    # https://github.com/pytorch/pytorch/issues/166460
+
+    logger.info("Compiling each TransformerBlock with torch.compile")

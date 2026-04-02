@@ -72,17 +72,27 @@ def _build_dsa_args(seq_len):
 def _build_attention_tensors(attention, args, batch_size, seq_len, device):
     x = torch.zeros(batch_size, seq_len, args.dim, dtype=torch.bfloat16, device=device)
     freqs_cis = precompute_freqs_cis(args).to(device)[:seq_len]
-    qr = attention.q_norm(attention.wq_a(x))
-    q = attention.wq_b(qr).view(batch_size, seq_len, -1, attention.qk_head_dim)
+    qr = attention.pre_attention.q_norm(attention.pre_attention.wq_a(x))
+    q = attention.pre_attention.wq_b(qr).view(
+        batch_size, seq_len, -1, attention.pre_attention.qk_head_dim
+    )
     q_nope, q_pe = torch.split(
         q,
-        [attention.qk_nope_head_dim, attention.qk_rope_head_dim],
+        [
+            attention.pre_attention.qk_nope_head_dim,
+            attention.pre_attention.qk_rope_head_dim,
+        ],
         dim=-1,
     )
     q_pe = apply_rotary_emb(q_pe, freqs_cis)
-    kv = attention.wkv_a(x)
+    kv = attention.pre_attention.wkv_a(x)
     kv, k_pe = torch.split(
-        kv, [attention.kv_lora_rank, attention.qk_rope_head_dim], dim=-1
+        kv,
+        [
+            attention.pre_attention.kv_lora_rank,
+            attention.pre_attention.qk_rope_head_dim,
+        ],
+        dim=-1,
     )
     k_pe = apply_rotary_emb(k_pe.unsqueeze(2), freqs_cis)
     return AttentionTensorState(
@@ -91,16 +101,18 @@ def _build_attention_tensors(attention, args, batch_size, seq_len, device):
         qr=qr,
         q_nope=q_nope,
         q_pe=q_pe,
-        kv=attention.kv_norm(kv),
+        kv=attention.pre_attention.kv_norm(kv),
         k_pe=k_pe,
     )
 
 
 def _build_query_key_tensors(attention, attention_state):
-    wkv_b_weight = attention.wkv_b.weight.reshape(
-        -1, attention.qk_nope_head_dim + attention.v_head_dim, attention.kv_lora_rank
+    wkv_b_weight = attention.pre_attention.wkv_b.weight.reshape(
+        -1,
+        attention.pre_attention.qk_nope_head_dim + attention.pre_attention.v_head_dim,
+        attention.pre_attention.kv_lora_rank,
     )
-    w_uk = wkv_b_weight[:, : attention.qk_nope_head_dim, :]
+    w_uk = wkv_b_weight[:, : attention.pre_attention.qk_nope_head_dim, :]
     query = torch.einsum("bshq,hqr->bshr", attention_state.q_nope, w_uk)
     key = attention_state.kv.unsqueeze(2)
     value = attention_state.kv.unsqueeze(2)
@@ -112,7 +124,7 @@ def _build_query_key_tensors(attention, attention_state):
 
 
 def _build_indexer_outputs(attention, attention_state):
-    query_indexer, weights, key_indexer, _ = attention.indexer(
+    query_indexer, weights, key_indexer, _ = attention.pre_attention.indexer(
         attention_state.x.detach(),
         attention_state.qr.detach(),
         0,
@@ -127,7 +139,7 @@ def _build_indexer_outputs(attention, attention_state):
         actual_seq_lengths_key=None,
         layout_query="BSND",
         layout_key="BSND",
-        sparse_count=attention.indexer.index_topk,
+        sparse_count=attention.pre_attention.indexer.index_topk,
         sparse_mode=3,
         return_value=True,
     )
@@ -161,7 +173,7 @@ def _build_softmax_stats(attention, kernel_inputs, batch_size, seq_len):
         actual_seq_lengths_kv=actual_seq_len,
         query_rope=kernel_inputs.query_rope.detach(),
         key_rope=kernel_inputs.key_rope.detach(),
-        scale_value=attention.softmax_scale,
+        scale_value=attention.pre_attention.softmax_scale,
         sparse_block_size=1,
         layout_query="BSND",
         layout_kv="BSND",

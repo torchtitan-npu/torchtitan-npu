@@ -8,15 +8,29 @@ import os
 
 import torch
 
+import torchtitan.distributed.activation_checkpoint as activation_checkpoint_module
+
 from torchtitan.config.manager import ConfigManager
 from torchtitan.tools.logging import init_logger, logger
 from torchtitan.train import Trainer
+
+from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
+    _patched_apply_full_ac,
+)
+
 
 if __name__ == "__main__":
     init_logger()
     config_manager = ConfigManager()
     config = config_manager.parse_args()
     trainer: Trainer | None = None
+
+    if config.compile.enable and config.activation_checkpoint != "none":
+        logger.warning(
+            "There might be performance issues with activation checkpointing and torch.compile enabled!"
+        )
+    else:
+        activation_checkpoint_module._apply_full_ac = _patched_apply_full_ac
 
     if config.model.name == "deepseek_v32":
         from torchtitan_npu.train import (

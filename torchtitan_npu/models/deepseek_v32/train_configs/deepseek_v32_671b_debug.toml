@@ -33,7 +33,7 @@ enable_wandb = false
 name = "deepseek_v32"
 flavor = "debugmodel"
 hf_assets_path = "./assets/hf/DeepSeek-V3.2"
-converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm", "npu_rope"]
+converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"]
 
 [optimizer]
 name = "AdamW"
@@ -47,10 +47,10 @@ decay_type = "cosine"
 min_lr_factor = 0.1
 
 [training]
-local_batch_size = 2
+local_batch_size = 4
 seq_len = 2048
 max_norm = 1.0  # grad norm clipping
-steps = 20
+steps = 10_000
 dataset = "c4_test"
 
 [parallelism]
@@ -77,7 +77,7 @@ export_dtype = "float32"
 async_mode = "disabled"  # ["disabled", "async", "async_with_pinned_mem]"
 
 [activation_checkpoint]
-mode = "full"  # ["none", "selective", "full"]
+mode = "selective"  # ["none", "selective", "full"]
 selective_ac_option = 'op'  # 'int' = ac every positive int layer or 'op', ac based on ops policy
 
 [compile]

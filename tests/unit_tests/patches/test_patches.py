@@ -82,6 +82,12 @@ def test_group_dtensors_by_layout_groups_non_dtensors_together():
 
 
 def test_activation_checkpoint_patch_wraps_upstream_apply_full_ac(monkeypatch):
+
+    # Now this patch is set manually in entry.py.
+    upstream_activation_checkpoint._apply_full_ac = (
+        activation_checkpoint._patched_apply_full_ac
+    )
+
     captured = {}
     module = torch.nn.Linear(2, 2)
     ac_config = SimpleNamespace(

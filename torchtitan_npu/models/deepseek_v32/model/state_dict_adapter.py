@@ -93,31 +93,18 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
 
         except Exception as e:
             logger.error(
-                f"Failed to setup checkpoint patch, training will continue with original saving configs: {e}"
+                f"Failed to setup checkpoint patch, training will continue with original "
+                f"saving configs: {e}"
             )
 
     def _setup_v32_mappings(self, model_args):
-        """Deepseek V32 key mapping"""
-        # MLA:
-        self.from_hf_map.pop("model.layers.{}.self_attn.q_proj.weight", None)
-        self.from_hf_map.update(
-            {
-                "model.layers.{}.self_attn.q_a_proj.weight": "layers.{}.attention.wq_a.weight",
-                "model.layers.{}.self_attn.q_a_layernorm.weight": "layers.{}.attention.q_norm.weight",
-                "model.layers.{}.self_attn.q_b_proj.weight": "layers.{}.attention.wq_b.weight",
-            }
-        )
-
-        # Indexer
-        self.from_hf_map.update(
-            {
-                "model.layers.{}.self_attn.indexer.wq_b.weight": "layers.{}.attention.indexer.wq_b.weight",
-                "model.layers.{}.self_attn.indexer.wk.weight": "layers.{}.attention.indexer.wk.weight",
-                "model.layers.{}.self_attn.indexer.k_norm.weight": "layers.{}.attention.indexer.k_norm.weight",
-                "model.layers.{}.self_attn.indexer.k_norm.bias": "layers.{}.attention.indexer.k_norm.bias",
-                "model.layers.{}.self_attn.indexer.weights_proj.weight": "layers.{}.attention.indexer.weights_proj.weight",
-            }
-        )
+        """
+        Setup key maps for DeepSeek V3.2 with attention split to
+        pre-attention, inner_attention, and post_attention.
+        """
+        self._setup_attention_q_mappings()
+        self._setup_indexer_mappings()
+        self._setup_attention_kvo_mappings()
 
         # MTP
         if model_args.num_mtp_modules > 0:
@@ -128,3 +115,58 @@ class DeepSeekV32StateDictAdapter(DeepSeekV3StateDictAdapter):
                     "model.layers.{}.eh_proj.weight": "layers.{}.eh_proj.weight",
                 }
             )
+
+    def _setup_attention_q_mappings(self):
+        self.from_hf_map.pop("model.layers.{}.self_attn.q_proj.weight", None)
+        self.from_hf_map.update(
+            {
+                "model.layers.{}.self_attn.q_a_proj.weight": (
+                    "layers.{}.attention.pre_attention.wq_a.weight"
+                ),
+                "model.layers.{}.self_attn.q_a_layernorm.weight": (
+                    "layers.{}.attention.pre_attention.q_norm.weight"
+                ),
+                "model.layers.{}.self_attn.q_b_proj.weight": (
+                    "layers.{}.attention.pre_attention.wq_b.weight"
+                ),
+            }
+        )
+
+    def _setup_indexer_mappings(self):
+        self.from_hf_map.update(
+            {
+                "model.layers.{}.self_attn.indexer.wq_b.weight": (
+                    "layers.{}.attention.pre_attention.indexer.wq_b.weight"
+                ),
+                "model.layers.{}.self_attn.indexer.wk.weight": (
+                    "layers.{}.attention.pre_attention.indexer.wk.weight"
+                ),
+                "model.layers.{}.self_attn.indexer.k_norm.weight": (
+                    "layers.{}.attention.pre_attention.indexer.k_norm.weight"
+                ),
+                "model.layers.{}.self_attn.indexer.k_norm.bias": (
+                    "layers.{}.attention.pre_attention.indexer.k_norm.bias"
+                ),
+                "model.layers.{}.self_attn.indexer.weights_proj.weight": (
+                    "layers.{}.attention.pre_attention.indexer.weights_proj.weight"
+                ),
+            }
+        )
+
+    def _setup_attention_kvo_mappings(self):
+        self.from_hf_map.update(
+            {
+                "model.layers.{}.self_attn.kv_a_proj_with_mqa.weight": (
+                    "layers.{}.attention.pre_attention.wkv_a.weight"
+                ),
+                "model.layers.{}.self_attn.kv_a_layernorm.weight": (
+                    "layers.{}.attention.pre_attention.kv_norm.weight"
+                ),
+                "model.layers.{}.self_attn.kv_b_proj.weight": (
+                    "layers.{}.attention.pre_attention.wkv_b.weight"
+                ),
+                "model.layers.{}.self_attn.o_proj.weight": (
+                    "layers.{}.attention.post_attention.wo.weight"
+                ),
+            }
+        )

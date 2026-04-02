@@ -39,7 +39,7 @@ def compile_bypass_fusion(func):
 @register_npu_converter("npu_bypass_triton_codegen")
 class BypassTritonCodegenKernel(BaseConverter):
 
-    SUPPORTED_MODELS = {"deepseek_v3", "llama3"}
+    SUPPORTED_MODELS = {"deepseek_v3", "deepseek_v32", "llama3"}
 
     @classmethod
     # pyrefly: ignore [bad-override]

@@ -95,11 +95,8 @@ def hadamard_transform_ref(x, scale=1.0):
 
 
 def rotate_activation(x: torch.Tensor) -> torch.Tensor:
-    try:
-        # pyrefly: ignore [missing-import]
-        from fast_hadamard_transform import hadamard_transform
-    except ImportError:
-        hadamard_transform = hadamard_transform_ref
+
+    hadamard_transform = hadamard_transform_ref
     hidden_size = x.size(-1)
     return hadamard_transform(x, scale=hidden_size**-0.5)
 
@@ -181,6 +178,9 @@ class Indexer(torch.nn.Module):
         self.k_norm.reset_parameters()
 
 
+LOSS_SCALE = torch.tensor(1.0)
+
+
 class DSAIndexerLossAutoScaler(torch.autograd.Function):
     """An AutoScaler that triggers the backward pass and scales the grad for DSA indexer loss."""
 
@@ -215,32 +215,9 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
                                                gradient.
         """
         (loss,) = ctx.saved_tensors
-        if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
-            # pyrefly: ignore [bad-assignment]
-            DSAIndexerLossAutoScaler.main_loss_backward_scale = torch.tensor(
-                1.0, device=loss.device
-            )
-        dsa_indexer_loss_backward_scale = (
-            DSAIndexerLossAutoScaler.main_loss_backward_scale
-        )
-        scaled_dsa_indexer_loss_grad = (
-            torch.ones_like(loss) * dsa_indexer_loss_backward_scale
-        )
+        LOSS_SCALE.to(device=loss.device)
+        scaled_dsa_indexer_loss_grad = torch.ones_like(loss) * LOSS_SCALE
         return grad_output, scaled_dsa_indexer_loss_grad
-
-    @staticmethod
-    def set_loss_scale(scale: torch.Tensor):
-        """set the scale of the indexer loss.
-
-        Args:
-            scale (torch.Tensor): The scale value to set. Please ensure that the scale passed in
-                                  matches the scale of the main_loss.
-        """
-        if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
-            # pyrefly: ignore [bad-assignment]
-            DSAIndexerLossAutoScaler.main_loss_backward_scale = scale
-        else:
-            DSAIndexerLossAutoScaler.main_loss_backward_scale.copy_(scale)
 
 
 class DSAIndexerLossLoggingHelper:
@@ -453,7 +430,7 @@ class DSASparseAttention(torch.nn.Module):
         return loss, output
 
 
-class Attention(nn.Module):
+class PreAttention(nn.Module):
     """
     Multi-head attention (MLA) module.
     """
@@ -485,14 +462,13 @@ class Attention(nn.Module):
             self.n_heads * (self.qk_nope_head_dim + self.v_head_dim),
             bias=False,
         )
-        self.wo = nn.Linear(self.n_heads * self.v_head_dim, self.dim, bias=False)
         self.softmax_scale = self.qk_head_dim**-0.5
 
         if model_args.max_seq_len > model_args.original_seq_len:
             mscale = 0.1 * model_args.mscale * math.log(model_args.rope_factor) + 1.0
             self.softmax_scale = self.softmax_scale * mscale * mscale
         self.indexer = Indexer(model_args)
-        self.inner_attention = DSASparseAttention(model_args)
+        self.enable_mla_absorb = model_args.enable_mla_absorb
 
     def forward(
         self,
@@ -550,18 +526,18 @@ class Attention(nn.Module):
             q_indexer, weights, k_indexer, end_pos = self.indexer(
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
-
-            loss, output = self.inner_attention(
+            return (
                 q,
                 k,
                 v,
-                attn_mask=attention_masks,
-                scale=self.softmax_scale,
-                q_indexer=q_indexer,
-                k_indexer=k_indexer,
-                weights=weights,
-                end_pos=end_pos,
-                index_topk=self.indexer.index_topk,
+                attention_masks,
+                self.softmax_scale,
+                q_indexer,
+                k_indexer,
+                weights,
+                end_pos,
+                self.indexer.index_topk,
+                None,
             )
         else:
             kv = self.kv_norm(kv)
@@ -580,25 +556,60 @@ class Attention(nn.Module):
             q = torch.cat([q_nope, q_pe], dim=-1)
 
             q = q.transpose(1, 2)  # (bsz, n_heads, seqlen, qk_head_dim)
-            k = k.transpose(1, 2)  # (bsz, n_heads, 1, qk_head_dim)
-            v = v.transpose(1, 2)  # (bsz, n_heads, 1, v_head_dim)
+            k = k.transpose(1, 2)  # (bsz, 1, seqlen, qk_head_dim)
+            v = v.transpose(1, 2)  # (bsz, 1, seqlen, v_head_dim)
 
             q_indexer, weights, k_indexer, end_pos = self.indexer(
                 x.detach(), qr.detach(), 0, freqs_cis, attention_masks
             )
 
-            loss, output = self.inner_attention(
+            return (
                 q,
                 k,
                 v,
-                attn_mask=attention_masks,
-                scale=self.softmax_scale,
-                q_indexer=q_indexer,
-                k_indexer=k_indexer,
-                weights=weights,
-                end_pos=end_pos,
-                index_topk=self.indexer.index_topk,
+                attention_masks,
+                self.softmax_scale,
+                q_indexer,
+                k_indexer,
+                weights,
+                end_pos,
+                self.indexer.index_topk,
+                w_uv_t,
             )
+
+    def init_weights(self, init_std: float):
+        linear_list = [
+            self.wkv_a,
+            self.wkv_b,
+        ]
+        linear_list.extend([self.wq_a, self.wq_b])
+        for linear in linear_list:
+            nn.init.trunc_normal_(linear.weight, mean=0.0, std=0.02)
+        self.indexer.init_weights(init_std)
+        self.kv_norm.reset_parameters()
+        if self.q_lora_rank > 0:
+            self.q_norm.reset_parameters()
+
+
+class PostAttention(nn.Module):
+    def __init__(self, model_args: DeepSeekV32ModelArgs):
+        super().__init__()
+        self.enable_mla_absorb = model_args.enable_mla_absorb
+        self.wo = nn.Linear(
+            model_args.n_heads * model_args.v_head_dim, model_args.dim, bias=False
+        )
+        self.n_layers = model_args.n_layers
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        output: torch.Tensor,
+        w_uv_t: torch.Tensor,
+        loss: torch.Tensor,
+        layer_id: int,
+    ):
+        bsz, seqlen, _ = x.size()
+        if self.enable_mla_absorb:
             output = torch.einsum("bhsr,hrv->bhsv", output, w_uv_t)
 
         # Reshape and project output
@@ -615,18 +626,55 @@ class Attention(nn.Module):
         return output  # (bsz, seqlen, dim)
 
     def init_weights(self, init_std: float):
-        linear_list = [
-            self.wkv_a,
-            self.wkv_b,
-        ]
-        linear_list.extend([self.wq_a, self.wq_b])
-        for linear in linear_list:
-            nn.init.trunc_normal_(linear.weight, mean=0.0, std=0.02)
         nn.init.trunc_normal_(self.wo.weight, mean=0.0, std=init_std)
-        self.indexer.init_weights(init_std)
-        self.kv_norm.reset_parameters()
-        if self.q_lora_rank > 0:
-            self.q_norm.reset_parameters()
+
+
+class Attention(nn.Module):
+    def __init__(self, model_args: DeepSeekV32ModelArgs):
+        super().__init__()
+        self.pre_attention = PreAttention(model_args)
+        self.inner_attention = DSASparseAttention(model_args)
+        self.post_attention = PostAttention(model_args)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        freqs_cis: torch.Tensor,
+        attention_masks: AttentionMasksType | None,
+        layer_id,
+        positions: torch.Tensor | None = None,
+    ):
+        (
+            q,
+            k,
+            v,
+            attention_masks,
+            softmax_scale,
+            q_indexer,
+            k_indexer,
+            weights,
+            end_pos,
+            index_topk,
+            w_uv_t,
+        ) = self.pre_attention(x, freqs_cis, attention_masks, layer_id, positions)
+        loss, output = self.inner_attention(
+            q,
+            k,
+            v,
+            attn_mask=attention_masks,
+            scale=softmax_scale,
+            q_indexer=q_indexer,
+            k_indexer=k_indexer,
+            weights=weights,
+            end_pos=end_pos,
+            index_topk=index_topk,
+        )
+        final_output = self.post_attention(x, output, w_uv_t, loss, layer_id)
+        return final_output
+
+    def init_weights(self, init_std: float):
+        self.pre_attention.init_weights(init_std)
+        self.post_attention.init_weights(init_std)
 
 
 class TransformerBlockV32(TransformerBlock):
