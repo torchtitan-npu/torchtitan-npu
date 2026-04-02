@@ -32,6 +32,43 @@ if __name__ == "__main__":
     else:
         activation_checkpoint_module._apply_full_ac = _patched_apply_full_ac
 
+    if config.compile.enable:
+        if config.model.name == "deepseek_v3":
+            # pyrefly: ignore [missing-import]
+            from torch_npu.op_plugin.meta._meta_registrations import (
+                npu_fusion_attention_forward as original_meta_func,
+            )
+
+            # Lazy imports to avoid requiring NPU hardware at module load time
+            from torchtitan_npu.patches.torch_npu._meta_registrations import (
+                npu_fusion_attention_forward,
+            )
+
+            # MLA performs shape inference according to the value tensor
+            original_meta_func.__code__ = npu_fusion_attention_forward.__code__
+
+            try:
+                # pyrefly: ignore [missing-import]
+                import inductor_npu_ext  # noqa: F401
+            except Exception as e:
+                raise RuntimeError(
+                    "compile.enable is True for deepseek_v3 model but inductor_npu_ext is not available. "
+                    "Please install inductor_npu_ext before enabling compile. "
+                    "See README.md for installation instructions."
+                ) from e
+
+            if "npu_bypass_triton_codegen" in config.model.converters:
+                raise RuntimeError(
+                    "deepseek_v3 model with compile.enable=True should not use npu_bypass_triton_codegen. "
+                    "Please remove 'npu_bypass_triton_codegen' from model.converters in your config."
+                )
+        else:
+            if "npu_bypass_triton_codegen" not in config.model.converters:
+                raise RuntimeError(
+                    f"{config.model.name} model with compile.enable=True requires npu_bypass_triton_codegen. "
+                    "Please add 'npu_bypass_triton_codegen' to model.converters in your config."
+                )
+
     if config.model.name == "deepseek_v32":
         from torchtitan_npu.train import (
             _patch_init_for_dsa_set_loss_scale,
