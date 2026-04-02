@@ -79,7 +79,7 @@ torchtitan-npu/
 
 * 硬件：Atlas A3 系列
 * 软件版本：
-  * CANN==8.5.0（HDK配套版本见 [Ascend开发者文档](https://www.hiascend.com/document/detail/zh/canncommercial/850/releasenote/releasenote_0000.html)）
+  * CANN==9.0.0-beta1（HDK配套版本见 [Ascend开发者文档](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/index/index.html)）
   * Python>=3.10
   * Python 依赖见 `requirements.txt`。
 
@@ -112,7 +112,7 @@ NGPU=1 CONFIG_FILE=./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v
 
 ## 性能基准
 
-### 2026.02
+### 2026.03
 
 System: Atlas 800T A3
 | Model              | Number of NPUs | Precision | GBS | Local BS | Sequence Length | FSDP | TP  | PP  | CP  | EP  | Tokens / sec | MFU%     |
@@ -122,7 +122,7 @@ System: Atlas 800T A3
 | Deepseek V3-671B   | 64             | BF16      | 1024 | 1       | 4096            | 32   | 4   | 1   | 1   | 128  | 546          | 21.78% |
 | Llama3-70B         | 16             | BF16      | 16  | 8        | 8192            | 2    | 8   | 1   | 1   | 1   | 1059         | 19.66%   |
 | Llama3-8B          | 8              | BF16      | 4   | 1        | 8192            | 8    | 1   | 2   | 1   | 1   | 2125         | 39.45%   |
-# 注意：以上MoE模型的性能数据均开启负载均衡配置moe_force_load_balance=true
+ > 注：以上MoE模型的性能数据均开启负载均衡配置moe_force_load_balance=true。
 
 ## 免责声明
 致torchtitan-npu使用者

@@ -54,7 +54,7 @@ if __name__ == "__main__":
                 raise RuntimeError(
                     "compile.enable is True for deepseek_v3 model but inductor_npu_ext is not available. "
                     "Please install inductor_npu_ext before enabling compile. "
-                    "See README.md for installation instructions."
+                    "See docs/torch_compile.md for installation instructions."
                 ) from e
 
             if "npu_bypass_triton_codegen" in config.model.converters:
