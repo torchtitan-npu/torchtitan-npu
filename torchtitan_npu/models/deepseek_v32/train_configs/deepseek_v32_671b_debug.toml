@@ -63,7 +63,7 @@ pipeline_parallel_degree = 1
 pipeline_parallel_schedule = "Interleaved1F1B"
 expert_parallel_degree = 1
 expert_tensor_parallel_degree = 1
-context_parallel_degree = 2
+context_parallel_degree = 1
 enable_custom_context_parallel = true
 custom_context_parallel_path = "torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext"
 
