@@ -15,6 +15,7 @@ from einops import rearrange
 # pyrefly: ignore [missing-import]
 from scipy.linalg import hadamard
 from torch import nn
+from torch.distributed.tensor import DTensor
 from torch.nn.attention import sdpa_kernel, SDPBackend
 from torchtitan.models.deepseek_v3.model.model import (
     DeepSeekV3Model,
@@ -644,6 +645,8 @@ class PostAttention(nn.Module):
     ):
         bsz, seqlen, _ = x.size()
         if self.enable_mla_absorb:
+            if isinstance(w_uv_t, DTensor):
+                w_uv_t = w_uv_t.to_local()
             output = torch.einsum("bhsr,hrv->bhsv", output, w_uv_t)
 
         # Reshape and project output
