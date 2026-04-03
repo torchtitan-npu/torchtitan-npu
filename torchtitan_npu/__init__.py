@@ -16,6 +16,10 @@ def _apply_patches():
     if _initialized:
         return
     _initialized = True
+
+    # patching optimizer before importing torchtitan.models
+    from .patches.optimizer import swap_optimizer  # noqa: F401 # usort:skip
+
     import torchtitan.models as titan_models
 
     # patching torchtitan
@@ -38,9 +42,6 @@ def _apply_patches():
         cp_input_sharding,
         custom_context_parallel,
     )
-
-    # patching optimizer
-    from .patches.optimizer import swap_optimizer  # noqa: F401
 
     # patching step timing
     from .patches.tools import utils  # noqa: F401
