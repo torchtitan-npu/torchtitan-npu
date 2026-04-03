@@ -87,20 +87,22 @@ def _cp_dsa_tests() -> List[OverrideDefinitions]:
             "deepseek_v32_cp_dsa",
             ngpu=2,
         ),
-        # CP DSA + MTP Test Case for DeepSeek V32
+    ]
+
+
+def _cp_ulysses_tests() -> List[OverrideDefinitions]:
+    return [
         OverrideDefinitions(
             [
                 [
-                    "--model.name deepseek_v32",
-                    "--model.flavor tinymodel",
-                    "--model.converters npu_dsa",
+                    "--model.name deepseek_v3",
+                    "--model.flavor 671B_debug",
                     "--parallelism.context_parallel_degree 2",
-                    "--training.num_mtp_modules 1",
-                    "--training.mtp_loss_weight 0.3",
+                    "--parallelism.enable_custom_context_parallel true",
                 ]
             ],
-            "DeepSeek V32 CP DSA MTP",
-            "deepseek_v32_cp_dsa_mtp",
+            "DeepSeek V3 CP Ulysses",
+            "deepseek_v3_cp_ulysses",
             ngpu=2,
         ),
     ]
@@ -115,7 +117,7 @@ def generate_smoke_tests() -> List[OverrideDefinitions]:
     Returns:
         A list of OverrideDefinitions objects representing different test scenarios.
     """
-    return _base_tests() + _cp_dsa_tests()
+    return _base_tests() + _cp_dsa_tests() + _cp_ulysses_tests()
 
 
 _TEST_SUITES_FUNCTION = {

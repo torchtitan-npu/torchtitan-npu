@@ -218,10 +218,7 @@ def test_valid_parallel_config():
 
         valid_configs = [
             {"enable_custom_context_parallel": False},
-            {
-                "enable_custom_context_parallel": True,
-                "custom_context_parallel_path": "module.Class",
-            },
+            {"enable_custom_context_parallel": True},
         ]
 
         for config in valid_configs:

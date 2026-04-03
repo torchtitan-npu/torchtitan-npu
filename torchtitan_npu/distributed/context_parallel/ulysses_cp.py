@@ -9,10 +9,6 @@ import torch
 from torch.distributed.device_mesh import DeviceMesh
 from torchtitan.models.attention import ScaledDotProductAttentionWrapper
 
-from torchtitan_npu.patches.distributed.custom_context_parallel import (
-    CustomContextParallelContext,  # pyrefly: ignore [missing-module-attribute]
-)
-
 
 class AllToAll(torch.autograd.Function):
     """
@@ -79,91 +75,37 @@ def all_to_all(input_tensor, mesh, scatter_dim, gather_dim):
     return AllToAll.apply(input_tensor, mesh, scatter_dim, gather_dim)
 
 
-class UlyssesContextParallelContext(CustomContextParallelContext):
-
+def patch_ulysses_for_context_parallel(*, cp_mesh: DeviceMesh) -> None:
     """
-    The base class already shards input tensors on sequence dimension when entering.
-    This class performs ulysses CP by inserting 2 all-to-all operations to the input
-    and output of the attention operation.
+    Patch ScaledDotProductAttentionWrapper.forward to a Ulysses CP-aware implementation.
 
-    1. Attention input:
-        Perform all-to-all to scatter the head dimension and gather the sequence dimension.
-        > Allows each NPU complete context access for each sequence, utilizing the stable
-        head dimension to split the data, without restricting the choice of  local batch_size.
+    Called from apply_cp_to_attention_module when attention_type == "ulysses".
+    Replaces the class-level forward so every instance automatically performs
+    AllToAll before and after the SDPA kernel.
 
-    2. Attention output:
-        Perform all-to-all to scatter the sequence dimension and gather the head dimension.
-        > Ensures compatibility with the rest of the transformer block that expects data
-        to be partitioned across the sequence dimension.
+    Input layout:  [B, n_heads,      seq // CP, head_dim]
+    After A2A:     [B, n_heads // CP, seq,       head_dim]
+    After SDPA:    [B, n_heads // CP, seq,       v_head_dim]
+    After A2A:     [B, n_heads,       seq // CP, v_head_dim]
     """
+    ScaledDotProductAttentionWrapper.cp_mesh = cp_mesh  # pyrefly: ignore [no-access]
+    orig_forward = ScaledDotProductAttentionWrapper.forward
 
-    def __init__(
+    @functools.wraps(orig_forward)
+    def patched_forward(
         self,
-        mesh: DeviceMesh,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
         *,
-        buffers: list[torch.Tensor] | None = None,
-        buffer_seq_dims: list[int] | None = None,
-        no_restore_buffers: set[torch.Tensor] | None = None,
-        load_balance: bool = False,
+        scale: float | None = None,
     ):
-        super().__init__(
-            mesh,
-            buffers=buffers,
-            buffer_seq_dims=buffer_seq_dims,
-            no_restore_buffers=no_restore_buffers,
-            load_balance=load_balance,
-        )
-        self.cp_mesh = mesh
-        self._orig_sdpa_forward = None
+        q = all_to_all(q, self.cp_mesh, scatter_dim=1, gather_dim=2)
+        k = all_to_all(k, self.cp_mesh, scatter_dim=1, gather_dim=2)
+        v = all_to_all(v, self.cp_mesh, scatter_dim=1, gather_dim=2)
+        output = orig_forward(self, q, k, v, scale=scale)
+        return all_to_all(output, self.cp_mesh, scatter_dim=2, gather_dim=1)
 
-    @torch.no_grad()
-    def __enter__(self):
-        super().__enter__()  # This shards the buffers
-        self.apply_patches()
-
-    @torch.no_grad()
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Restore original forward method."""
-        if self._orig_sdpa_forward is not None:
-            ScaledDotProductAttentionWrapper.forward = self._orig_sdpa_forward
-        super().__exit__(exc_type, exc_val, exc_tb)
-
-    def apply_patches(self):
-        """Patch the attention forward method to use Ulysses-style context parallelism."""
-
-        ScaledDotProductAttentionWrapper.cp_mesh = self.cp_mesh
-        orig_sdpa_forward = (
-            self._orig_sdpa_forward
-        ) = ScaledDotProductAttentionWrapper.forward
-
-        @functools.wraps(ScaledDotProductAttentionWrapper.forward)
-        def patched_forward(
-            self,
-            q: torch.Tensor,
-            k: torch.Tensor,
-            v: torch.Tensor,
-            *,
-            scale: float | None = None,
-        ):
-            """
-            Forward pass with Ulysses-style context parallelism.
-
-            Input layout: [batch_size, n_heads, seq_len // CP, head_dim]
-            All2all for attention input: [batch_size, n_heads // CP, seq_len, head_dim]
-            After attention operation: [batch_size, n_heads // CP, seq_len, head_dim]
-            All2all for attention output: [batch_size, n_heads, seq_len // CP, head_dim]
-            """
-            q = all_to_all(q, self.cp_mesh, scatter_dim=1, gather_dim=2)
-            k = all_to_all(k, self.cp_mesh, scatter_dim=1, gather_dim=2)
-            v = all_to_all(v, self.cp_mesh, scatter_dim=1, gather_dim=2)
-
-            output = orig_sdpa_forward(self, q, k, v, scale=scale)
-
-            # Reverse the redistribution to return the output to the original sequence-parallel layout.
-            output = all_to_all(output, self.cp_mesh, scatter_dim=2, gather_dim=1)
-
-            return output
-
-        ScaledDotProductAttentionWrapper.forward = (
-            patched_forward  # pyrefly: ignore [bad-assignment]
-        )
+    ScaledDotProductAttentionWrapper.forward = (
+        patched_forward  # pyrefly: ignore [bad-assignment]
+    )

@@ -49,7 +49,8 @@ def _patch_post_dataloading_process_for_dsa_cp() -> None:
 
     titan_train.Trainer.post_dataloading_process = wrapper
     logger.info(
-        "[Patch] DSA CP uses sequential shard (context_parallel_load_balancer=None)"
+        "[Patch] Registered post_dataloading hook for DSA CP on deepseek_v32 only "
+        "(forces context_parallel_load_balancer=None during shard)."
     )
 
 

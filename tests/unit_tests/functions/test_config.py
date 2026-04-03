@@ -23,22 +23,12 @@ def test_parallelism_defaults_expose_custom_context_config():
     config = Parallelism()
 
     assert config.enable_custom_context_parallel is False
-    assert config.custom_context_parallel_path == ""
 
 
 def test_parallelism_accepts_custom_context_override():
-    config = Parallelism(
-        enable_custom_context_parallel=True,
-        custom_context_parallel_path=(
-            "torchtitan_npu.distributed.context_parallel.dsa_cp."
-            "AscendDSAContextParallelContext"
-        ),
-    )
+    config = Parallelism(enable_custom_context_parallel=True)
 
     assert config.enable_custom_context_parallel is True
-    assert config.custom_context_parallel_path.endswith(
-        "AscendDSAContextParallelContext"
-    )
 
 
 def test_training_defaults_expose_npu_memory_ratio():
@@ -50,20 +40,13 @@ def test_training_defaults_expose_npu_memory_ratio():
 def test_job_config_accepts_custom_sections():
     job_config = JobConfig(
         optimizer=Optimizer(swap_optimizer=True, swap_optimizer_times=8),
-        parallelism=Parallelism(
-            enable_custom_context_parallel=True,
-            custom_context_parallel_path="pkg.module.ContextManager",
-        ),
+        parallelism=Parallelism(enable_custom_context_parallel=True),
         training=Training(torch_npu_memory_ratio=0.8),
     )
 
     assert job_config.optimizer.swap_optimizer is True
     assert job_config.optimizer.swap_optimizer_times == 8
     assert job_config.parallelism.enable_custom_context_parallel is True
-    assert (
-        job_config.parallelism.custom_context_parallel_path
-        == "pkg.module.ContextManager"
-    )
     assert job_config.training.torch_npu_memory_ratio == 0.8
 
 

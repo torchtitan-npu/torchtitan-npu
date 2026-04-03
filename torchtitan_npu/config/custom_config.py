@@ -60,21 +60,11 @@ class Optimizer(BaseOptimizer):
 @dataclass
 class Parallelism(BaseParallelism):
     """
-    Whether to use a custom context manager for context parallel.
-    If enable this, the 'custom_context_parallel_path' should be set correctly.
+    Whether to use a custom context parallel implementation.
+    When True and context_parallel_degree > 1, Ulysses-style CP is applied to attention modules.
     """
 
     enable_custom_context_parallel: bool = False
-
-    """
-    The path to custom context parallel context manager class.
-    - The string must adhere to the format 'package.module.ClassName'.
-    - The recommended custom class is a subclass of
-    'torchtitan_npu.patches.distributed.custom_context_parallel.CustomContextParallelContext'
-
-    Example string: 'torchtitan_npu.distributed.context_parallel.dsa_cp.AscendDSAContextParallelContext'
-    """
-    custom_context_parallel_path: str = ""
 
 
 @dataclass

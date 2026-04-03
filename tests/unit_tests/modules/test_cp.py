@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 from torch.distributed._tensor import DTensor, Partial, Replicate
+from torchtitan.models.attention import ScaledDotProductAttentionWrapper
 
 from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
 from torchtitan_npu.distributed.context_parallel.dsa_cp import (
@@ -17,7 +18,15 @@ from torchtitan_npu.distributed.context_parallel.dsa_cp import (
     patch_dsa_for_context_parallel,
     ToLocalWithPartialGrad,
 )
+from torchtitan_npu.distributed.context_parallel.ulysses_cp import (
+    all_to_all,
+    AllToAll,
+    patch_ulysses_for_context_parallel,
+)
 from torchtitan_npu.models.deepseek_v32.model.model import DSV32_SDPA
+from torchtitan_npu.patches.distributed.custom_context_parallel import (
+    validate_ulysses_configs,
+)
 
 
 def _make_cpu_mesh():
@@ -256,3 +265,214 @@ class TestDsaForwardWithCpValidation:
         self_mock = MagicMock()
         self_mock.cp_mesh = MagicMock()
         return self_mock
+
+
+# ---------------------------------------------------------------------------
+# Ulysses CP tests
+# ---------------------------------------------------------------------------
+
+
+def _make_cpu_mesh_ulysses():
+    from torch.distributed.device_mesh import init_device_mesh
+
+    return init_device_mesh("cpu", (1,))
+
+
+@pytest.fixture
+def mock_all_to_all_identity_for_gloo():
+    def _fake_all_to_all(
+        output_tensor_list, input_tensor_list, group=None, async_op=False
+    ):
+        assert len(output_tensor_list) == len(input_tensor_list)
+        for out_t, in_t in zip(output_tensor_list, input_tensor_list):
+            out_t.copy_(in_t)
+        return None
+
+    with patch.object(torch.distributed, "all_to_all", side_effect=_fake_all_to_all):
+        yield
+
+
+@pytest.mark.usefixtures(
+    "single_rank_process_group", "mock_all_to_all_identity_for_gloo"
+)
+class TestAllToAll:
+    @staticmethod
+    def test_single_rank_preserves_shape_and_values():
+        mesh = _make_cpu_mesh_ulysses()
+        t = torch.randn(2, 4, 8, 16)
+
+        result = all_to_all(t, mesh, scatter_dim=1, gather_dim=2)
+
+        assert result.shape == t.shape
+        assert torch.allclose(result, t)
+
+    @staticmethod
+    def test_output_is_plain_tensor():
+        mesh = _make_cpu_mesh_ulysses()
+        t = torch.randn(1, 4, 4, 8)
+
+        result = all_to_all(t, mesh, scatter_dim=1, gather_dim=2)
+
+        assert isinstance(result, torch.Tensor)
+        assert not isinstance(result, DTensor)
+
+    @staticmethod
+    def test_backward_grad_shape_matches_input():
+        mesh = _make_cpu_mesh_ulysses()
+        t = torch.randn(2, 4, 8, 16, requires_grad=True)
+
+        output = AllToAll.apply(t, mesh, 1, 2)
+        output.sum().backward()
+
+        assert t.grad is not None
+        assert t.grad.shape == t.shape
+
+    @staticmethod
+    def test_single_rank_backward_is_identity():
+        mesh = _make_cpu_mesh_ulysses()
+        t = torch.randn(2, 4, 8, 16, requires_grad=True)
+        grad_ref = torch.ones(2, 4, 8, 16)
+
+        output = AllToAll.apply(t, mesh, 1, 2)
+        output.backward(torch.ones_like(output))
+
+        assert torch.allclose(t.grad, grad_ref)
+
+
+class TestPatchUlyssesForContextParallel:
+    @staticmethod
+    def test_sets_cp_mesh_on_class():
+        snapshot = TestPatchUlyssesForContextParallel._snapshot_class_state()
+        try:
+            mock_mesh = MagicMock()
+            patch_ulysses_for_context_parallel(cp_mesh=mock_mesh)
+            assert ScaledDotProductAttentionWrapper.cp_mesh is mock_mesh
+        finally:
+            TestPatchUlyssesForContextParallel._restore_class_state(snapshot)
+
+    @staticmethod
+    def test_forward_replaced_with_wrapper():
+        snapshot = TestPatchUlyssesForContextParallel._snapshot_class_state()
+        try:
+            original = ScaledDotProductAttentionWrapper.forward
+            mock_mesh = MagicMock()
+            patch_ulysses_for_context_parallel(cp_mesh=mock_mesh)
+            assert ScaledDotProductAttentionWrapper.forward is not original
+        finally:
+            TestPatchUlyssesForContextParallel._restore_class_state(snapshot)
+
+    @pytest.mark.usefixtures("single_rank_process_group")
+    @staticmethod
+    def test_patched_forward_calls_all_to_all_for_qkv_and_output():
+        snapshot = TestPatchUlyssesForContextParallel._snapshot_class_state()
+        try:
+            mesh = _make_cpu_mesh_ulysses()
+            patch_ulysses_for_context_parallel(cp_mesh=mesh)
+
+            call_count = {"n": 0}
+
+            def counting_a2a(tensor, m, scatter_dim, gather_dim):
+                call_count["n"] += 1
+                return tensor
+
+            module = ScaledDotProductAttentionWrapper()
+            q = torch.randn(1, 4, 8, 16)
+            k = torch.randn(1, 4, 8, 16)
+            v = torch.randn(1, 4, 8, 16)
+
+            with patch(
+                "torchtitan_npu.distributed.context_parallel.ulysses_cp.all_to_all",
+                side_effect=counting_a2a,
+            ):
+                ScaledDotProductAttentionWrapper.forward(module, q, k, v)
+
+            assert call_count["n"] == 4
+        finally:
+            TestPatchUlyssesForContextParallel._restore_class_state(snapshot)
+
+    @staticmethod
+    def _snapshot_class_state():
+        return {
+            "forward": ScaledDotProductAttentionWrapper.forward,
+            "had_cp_mesh": hasattr(ScaledDotProductAttentionWrapper, "cp_mesh"),
+        }
+
+    @staticmethod
+    def _restore_class_state(snapshot):
+        ScaledDotProductAttentionWrapper.forward = snapshot["forward"]
+        if not snapshot["had_cp_mesh"] and hasattr(
+            ScaledDotProductAttentionWrapper, "cp_mesh"
+        ):
+            delattr(ScaledDotProductAttentionWrapper, "cp_mesh")
+
+
+class TestValidateUlyssesConfigs:
+    @staticmethod
+    def test_passes_for_valid_config():
+        validate_ulysses_configs(
+            job_config=TestValidateUlyssesConfigs._make_job_config(),
+            model_args=TestValidateUlyssesConfigs._make_model_args(n_heads=128),
+            cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(2),
+        )
+
+    @staticmethod
+    def test_raises_when_n_heads_not_divisible_by_cp_degree():
+        with pytest.raises(ValueError, match="n_heads"):
+            validate_ulysses_configs(
+                job_config=TestValidateUlyssesConfigs._make_job_config(),
+                model_args=TestValidateUlyssesConfigs._make_model_args(n_heads=128),
+                cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(3),
+            )
+
+    @staticmethod
+    def test_raises_when_seq_len_not_divisible_by_cp_degree():
+        with pytest.raises(ValueError, match="seq_len"):
+            validate_ulysses_configs(
+                job_config=TestValidateUlyssesConfigs._make_job_config(seq_len=2049),
+                model_args=TestValidateUlyssesConfigs._make_model_args(),
+                cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(2),
+            )
+
+    @staticmethod
+    def test_raises_when_n_heads_not_divisible_by_tp_times_cp():
+        with pytest.raises(ValueError, match="tp_degree"):
+            validate_ulysses_configs(
+                job_config=TestValidateUlyssesConfigs._make_job_config(tp_degree=3),
+                model_args=TestValidateUlyssesConfigs._make_model_args(n_heads=128),
+                cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(2),
+            )
+
+    @staticmethod
+    def test_passes_without_model_args():
+        validate_ulysses_configs(
+            job_config=TestValidateUlyssesConfigs._make_job_config(),
+            model_args=None,
+            cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(2),
+        )
+
+    @staticmethod
+    def test_passes_without_job_config():
+        validate_ulysses_configs(
+            job_config=None,
+            model_args=TestValidateUlyssesConfigs._make_model_args(n_heads=128),
+            cp_mesh=TestValidateUlyssesConfigs._make_cp_mesh(2),
+        )
+
+    @staticmethod
+    def _make_cp_mesh(cp_degree):
+        mesh = MagicMock()
+        mesh.size.return_value = cp_degree
+        return mesh
+
+    @staticmethod
+    def _make_job_config(seq_len=2048, tp_degree=1):
+        job_config = MagicMock()
+        job_config.training.seq_len = seq_len
+        job_config.parallelism.tensor_parallel_degree = tp_degree
+        return job_config
+
+    @staticmethod
+    def _make_model_args(n_heads=128):
+        model_args = MagicMock()
+        model_args.n_heads = n_heads
+        return model_args
