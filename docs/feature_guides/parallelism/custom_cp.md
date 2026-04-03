@@ -1,6 +1,6 @@
 # 自定义Context Parallel特性
 
-在大规模语言模型的分布式训练中，上下文并行（Context Parallelism, CP）是突破单卡内存瓶颈、支持超长序列训练的核心技术。在基于 NPU 硬件生态推进 torchtitan 框架适配时，现有技术方案暴露出显著的局限性：
+在分布式训练任务中，上下文并行（Context Parallelism, CP）是突破单卡内存瓶颈、支持超长序列训练的核心技术。在基于 NPU 硬件生态推进 torchtitan 框架适配时，现有技术方案暴露出显著的局限性：
 1. PyTorch 原生 CP 设计强绑定于标准的 SDPA 算子，仅提供 RingAttention 或原生 AllGatherKV 的特定实现，无法支持采用复杂稀疏注意力机制的模型如 DeepSeek-V3.2 模型的DSA。
 2. 框架需要允许开发者灵活扩展新的 CP 范式，如 UlyssesCP。
 

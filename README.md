@@ -33,7 +33,7 @@ torchtitan-npu 基于 torchtitan 的训练流程，在继承 torchtitan 原生�
 
 | 功能            | 原生支持 | NPU支持                                    |
 | --------------- | -------- | ------------------------------------------ |
-| `torch.compile` | ✅       | [部分支持](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/compile.md) |
+| `torch.compile` | ✅       | [部分支持](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/torch_compile.md) |
 
 ### 训练精度
 

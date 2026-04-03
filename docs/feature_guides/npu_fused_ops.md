@@ -27,7 +27,7 @@ converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"]
 ## DSA (DeepSeek Sparse Attention)
 
 <p align="center">
-<img src="./assets/DSA_overview.png" style="width:80%; max-width: 1200px" >
+<img src="../assets/DSA_overview.png" style="width:80%; max-width: 1200px" >
 </p>
 
 
