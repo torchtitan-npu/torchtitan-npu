@@ -17,6 +17,7 @@ from torchtitan.train import Trainer
 from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
     _patched_apply_full_ac,
 )
+from torchtitan_npu.train import _patch_torchtitan_model_reshape_for_broadcast
 
 
 if __name__ == "__main__":
@@ -31,6 +32,8 @@ if __name__ == "__main__":
         )
     else:
         activation_checkpoint_module._apply_full_ac = _patched_apply_full_ac
+
+    _patch_torchtitan_model_reshape_for_broadcast()
 
     if config.compile.enable:
         if config.model.name == "deepseek_v3":

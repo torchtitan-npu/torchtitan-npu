@@ -8,14 +8,44 @@ import logging
 import torch
 import torch.nn as nn
 import torch_npu
+from torchtitan.models.qwen3.model.model import (
+    reshape_for_broadcast as reshape_for_broadcast_qwen,
+)
 
 from ..base_converter import BaseConverter
 from ..convert_utils import find_functions, replace_functions
 from ..registry import register_npu_converter
 
-from .rope_broadcast import reshape_for_broadcast as _reshape_freqs_cis_for_broadcast
-
 logger = logging.getLogger(__name__)
+
+
+def reshape_for_broadcast(
+    freqs_cis: torch.Tensor, x: torch.Tensor, positions: torch.Tensor | None = None
+) -> torch.Tensor:
+
+    ndim = x.ndim
+    assert ndim > 1
+    seqlen = x.shape[1]
+    if positions is None:
+        freqs_cis = freqs_cis[0:seqlen]
+        assert freqs_cis.shape == (seqlen, x.shape[-1] // 2)
+        shape = [1, seqlen, 1, freqs_cis.shape[-1]]
+        return freqs_cis.view(*shape)
+    elif positions.size(0) == 1:
+        assert positions.shape == (1, seqlen)
+        freqs_cis_real = torch.view_as_real(freqs_cis)
+        freqs_cis_real = freqs_cis_real[positions.squeeze(0)]
+        freqs_cis = torch.view_as_complex(freqs_cis_real)
+        assert freqs_cis.shape == (seqlen, x.shape[-1] // 2)
+        shape = [1, seqlen, 1, freqs_cis.shape[-1]]
+        return freqs_cis.view(*shape)
+    else:
+        assert positions.shape == (x.shape[0], seqlen)
+        freqs_cis_real = torch.view_as_real(freqs_cis)
+        freqs_cis_real = freqs_cis_real[positions]
+        freqs_cis = torch.view_as_complex(freqs_cis_real)
+        shape = [x.shape[0], seqlen, 1, freqs_cis.shape[-1]]
+        return freqs_cis.view(*shape)
 
 
 def _prepare_cos_sin_from_complex(
@@ -31,45 +61,37 @@ def _prepare_cos_sin_from_complex(
     return cos, sin
 
 
+def _prepare_cos_sin_from_cache(rope_cache: torch.Tensor, x: torch.Tensor):
+    head_dim = x.shape[-1]
+    seqlen = x.shape[1]
+    rope_cache = rope_cache[:seqlen].view(1, seqlen, 1, -1)
+    cos = rope_cache[..., :head_dim].to(dtype=x.dtype)
+    sin = rope_cache[..., head_dim:].to(dtype=x.dtype)
+    return cos, sin
+
+
 def npu_apply_rotary_emb_deepseek(
     x: torch.Tensor,
     freqs_cis: torch.Tensor,
+    positions: torch.Tensor | None = None,
     interleaved: bool = True,
-    positions: torch.Tensor | None = None,
 ) -> torch.Tensor:
+
+    dtype = x.dtype
+    shape = x.shape
+
+    x = x.float()
     if not interleaved:
-        dtype = x.dtype
-        shape = x.shape
-        x = x.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous()
-        x_complex = torch.view_as_complex(x.float().view(*shape[:-1], -1, 2))
-        freqs_b = _reshape_freqs_cis_for_broadcast(freqs_cis, x_complex, positions)
-        y = torch.view_as_real(x_complex * freqs_b).flatten(3)
+        x = x.view(*shape[:-1], 2, -1).transpose(-1, -2).contiguous().view(*shape)
+
+    freqs_cis = reshape_for_broadcast(freqs_cis, x, positions)[0].unsqueeze(0)
+
+    cos, sin = _prepare_cos_sin_from_complex(freqs_cis, x.dtype, already_broadcast=True)
+    y = torch_npu.npu_rotary_mul(x, cos, sin, rotary_mode="interleave")
+
+    if not interleaved:
         y = torch.cat([y[..., 0::2], y[..., 1::2]], dim=-1)
-        return y.to(dtype)
 
-    dtype = x.dtype
-    x_work = x.float()
-
-    x_ref = torch.view_as_complex(
-        x_work.reshape(*x_work.shape[:-1], x_work.shape[-1] // 2, 2)
-    )
-    freqs_b = _reshape_freqs_cis_for_broadcast(freqs_cis, x_ref, positions)
-    cos, sin = _prepare_cos_sin_from_complex(
-        freqs_b, x_work.dtype, already_broadcast=True
-    )
-    y = torch_npu.npu_rotary_mul(x_work, cos, sin, rotary_mode="interleave")
-    return y.to(dtype)
-
-
-def npu_apply_rotary_emb_deepseek_v3(
-    x: torch.Tensor,
-    freqs_cis: torch.Tensor,
-    positions: torch.Tensor | None = None,
-) -> torch.Tensor:
-    dtype = x.dtype
-    x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
-    freqs_b = _reshape_freqs_cis_for_broadcast(freqs_cis, x_complex, positions)
-    y = torch.view_as_real(x_complex * freqs_b).flatten(3)
     return y.to(dtype)
 
 
@@ -79,27 +101,36 @@ def npu_apply_rotary_emb_llama(
     freqs_cis: torch.Tensor,
     positions: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    xq_complex = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    freqs_cis = _reshape_freqs_cis_for_broadcast(freqs_cis, xq_complex, positions)
+
+    xq_ = xq.float()
+    xk_ = xk.float()
+
+    freqs_cis = reshape_for_broadcast(freqs_cis, xq_, positions)[0].unsqueeze(0)
+
     cos, sin = _prepare_cos_sin_from_complex(
-        freqs_cis, xq.dtype, already_broadcast=True
+        freqs_cis, xq_.dtype, already_broadcast=True
     )
-    return torch_npu.npu_rotary_mul(
-        xq, cos, sin, rotary_mode="interleave"
+    return torch_npu.npu_rotary_mul(xq_, cos, sin, rotary_mode="interleave").type_as(
+        xq
     ), torch_npu.npu_rotary_mul(
-        xk, cos.to(xk.dtype), sin.to(xk.dtype), rotary_mode="interleave"
+        xk_, cos.to(xk_.dtype), sin.to(xk_.dtype), rotary_mode="interleave"
+    ).type_as(
+        xk
     )
 
 
 def npu_apply_rotary_emb_qwen(
-    xq: torch.Tensor, xk: torch.Tensor, rope_cache: torch.Tensor
+    xq: torch.Tensor,
+    xk: torch.Tensor,
+    rope_cache: torch.Tensor,
+    positions: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    head_dim, seqlen = xq.shape[-1], xq.shape[1]
-    rope_cache = rope_cache[:seqlen].view(1, seqlen, 1, -1)
-    cos = rope_cache[..., :head_dim].to(dtype=xq.dtype)
-    sin = rope_cache[..., head_dim:].to(dtype=xq.dtype)
+    rope_cache = reshape_for_broadcast_qwen(rope_cache, xq, positions)
+
+    cos, sin = _prepare_cos_sin_from_cache(rope_cache, xq)
+
     return torch_npu.npu_rotary_mul(xq, cos, sin), torch_npu.npu_rotary_mul(
-        xk, cos.to(xk.dtype), sin.to(xk.dtype)
+        xk, cos, sin
     )
 
 
@@ -107,8 +138,8 @@ def npu_apply_rotary_emb_qwen(
 class RoPEKernel(BaseConverter):
 
     MODEL_IMPL = {
+        "deepseek_v3": npu_apply_rotary_emb_deepseek,
         "deepseek_v32": npu_apply_rotary_emb_deepseek,
-        "deepseek_v3": npu_apply_rotary_emb_deepseek_v3,
         "qwen3": npu_apply_rotary_emb_qwen,
         "_default": npu_apply_rotary_emb_llama,
     }
@@ -120,8 +151,9 @@ class RoPEKernel(BaseConverter):
         if not matches:
             return 0
 
-        impl = cls.get_impl_cls(model_name) or cls.MODEL_IMPL["_default"]
+        impl = cls.get_impl_cls(model_name)
 
+        # pyrefly: ignore [bad-argument-type]
         count = replace_functions(target, impl, model=model)
 
         return count

@@ -3,12 +3,15 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import importlib
 from functools import wraps
 
 import torch
 import torchtitan.train as titan_train
 from torchtitan.config import JobConfig
 from torchtitan.tools.logging import init_logger, logger
+
+from torchtitan_npu.converters.convert_utils import find_functions
 
 init_logger()
 
@@ -20,6 +23,54 @@ def get_grad_accumulation_steps(trainer) -> int:
         micro_bs = trainer.job_config.parallelism.pipeline_parallel_microbatch_size
         return ga_steps * (local_bs // micro_bs)
     return ga_steps
+
+
+def reshape_for_broadcast(
+    freqs_cis: torch.Tensor, x: torch.Tensor, positions: torch.Tensor | None = None
+) -> torch.Tensor:
+
+    ndim = x.ndim
+    assert ndim > 1
+    seqlen = x.shape[1]
+    if positions is None:
+        freqs_cis = freqs_cis[0:seqlen]
+        assert freqs_cis.shape == (seqlen, x.shape[-1])
+        shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+        return freqs_cis.view(*shape)
+    elif positions.size(0) == 1:
+        assert positions.shape == (1, seqlen)
+        freqs_cis_real = torch.view_as_real(freqs_cis)
+        freqs_cis_real = freqs_cis_real[positions.squeeze(0)]
+        freqs_cis = torch.view_as_complex(freqs_cis_real)
+        assert freqs_cis.shape == (seqlen, x.shape[-1])
+        shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+        return freqs_cis.view(*shape)
+    else:
+        assert positions.shape == (x.shape[0], seqlen)
+        freqs_cis_real = torch.view_as_real(freqs_cis)
+        freqs_cis_real = freqs_cis_real[positions]
+        freqs_cis = torch.view_as_complex(freqs_cis_real)
+        shape = [x.shape[0], seqlen, 1, freqs_cis.shape[-1]]
+        return freqs_cis.view(*shape)
+
+
+def _patch_torchtitan_model_reshape_for_broadcast():
+    torchtitan_reshape_for_broadcast_modules = [
+        "torchtitan.models.deepseek_v3.model.model",
+        "torchtitan.models.llama3.model.model",
+        "torchtitan.models.llama4.model.model",
+    ]
+    total = 0
+    for module_path in torchtitan_reshape_for_broadcast_modules:
+        importlib.import_module(module_path)
+        matches = find_functions("reshape_for_broadcast", package=module_path)
+        for match in matches:
+            match.replace(reshape_for_broadcast)
+        total += len(matches)
+
+    logger.info(
+        f"[RoPE Broadcast Patch] Applied {total} reshape_for_broadcast patch(es)"
+    )
 
 
 def _patch_train_step_for_dsv32_indexer_loss():

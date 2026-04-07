@@ -206,6 +206,7 @@ def parallelize_deepseekv32(
             loss_parallel=not job_config.parallelism.disable_loss_parallel,
             enable_float8_tensorwise_tp=False,
             job_config=job_config,
+            cp_enabled=parallel_dims.cp_enabled,
         )
         maybe_enable_async_tp(job_config, tp_mesh)
 
@@ -342,6 +343,7 @@ def apply_non_moe_tp(
     loss_parallel: bool,
     enable_float8_tensorwise_tp: bool,
     job_config: JobConfig,
+    cp_enabled: bool,
 ):
     """Apply tensor parallelism."""
 
@@ -359,6 +361,7 @@ def apply_non_moe_tp(
         "selective",
     ]
 
+    positions_sharding = Replicate() if cp_enabled else None
     # 1. Parallelize the embedding and shard its outputs (which are the first
     # transformer block's inputs)
     # 2. Parallelize the root norm layer over the sequence dim
@@ -415,8 +418,22 @@ def apply_non_moe_tp(
         )
 
     indexer_plan = prepare_module_input(
-        input_layouts=(Replicate(), Replicate(), None, Replicate(), None, None),
-        desired_input_layouts=(Replicate(), Replicate(), None, Replicate(), None, None),
+        input_layouts=(
+            Replicate(),
+            Replicate(),
+            None,
+            Replicate(),
+            None,
+            positions_sharding,
+        ),
+        desired_input_layouts=(
+            Replicate(),
+            Replicate(),
+            None,
+            Replicate(),
+            None,
+            positions_sharding,
+        ),
         use_local_output=True,
     )
 
@@ -456,8 +473,14 @@ def apply_non_moe_tp(
         layer_plan = {
             "attention_norm": SequenceParallel(),
             "attention": prepare_module_input(
-                input_layouts=(Shard(1), Replicate(), None, None, None),
-                desired_input_layouts=(Replicate(), Replicate(), None, None, None),
+                input_layouts=(Shard(1), Replicate(), None, None, positions_sharding),
+                desired_input_layouts=(
+                    Replicate(),
+                    Replicate(),
+                    None,
+                    None,
+                    positions_sharding,
+                ),
             ),
             # NOTE: use_local_output=False make the output to be a DTensor instead of a plain Tensor
             # so that the intermedidate results k is generated as a DTensor and its gradient is
