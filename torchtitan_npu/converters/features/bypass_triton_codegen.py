@@ -58,19 +58,8 @@ class BypassTritonCodegenKernel(BaseConverter):
         for m in matches:
             m.replace(compile_bypass_fusion(m.func))
 
-        # pyrefly: ignore [missing-import]
-        from torch_npu.op_plugin.meta._meta_registrations import (
-            npu_fusion_attention_forward as original_meta_func,
-        )
-
         # Lazy imports to avoid requiring NPU hardware at module load time
         from torchtitan_npu.patches.torch_npu._inductor.lowering import fix_npu_inductor
-        from torchtitan_npu.patches.torch_npu._meta_registrations import (
-            npu_fusion_attention_forward,
-        )
-
-        # MLA performs shape inference according to the value tensor
-        original_meta_func.__code__ = npu_fusion_attention_forward.__code__
 
         torch._inductor.graph.GraphLowering.call_function = graphlowering_call_function
         fix_npu_inductor()
