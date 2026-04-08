@@ -12,7 +12,7 @@ enable_memory_snapshot = false
 save_memory_snapshot_folder = "memory_snapshot"
 
 [metrics]
-log_freq = 10
+log_freq = 1
 disable_color_printing = false
 enable_tensorboard = false
 save_tb_folder = "tb"
@@ -22,7 +22,7 @@ enable_wandb = false
 name = "deepseek_v3"
 flavor = "671B_debug_16die"
 hf_assets_path = "./assets/hf/DeepSeek-V3.1-Base"
-# converters = ["float8"]
+converters = ["npu_rms_norm", "npu_rope", "npu_permute", "npu_gmm"]
 
 [optimizer]
 name = "AdamW"
@@ -54,6 +54,8 @@ pipeline_parallel_degree = 4
 pipeline_parallel_schedule = "1F1B"  # "Interleaved1F1B"
 expert_parallel_degree = 4
 expert_tensor_parallel_degree = 1
+context_parallel_degree = 1
+enable_custom_context_parallel = true
 
 [checkpoint]
 enable = false

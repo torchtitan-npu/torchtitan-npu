@@ -63,6 +63,8 @@ pipeline_parallel_degree = 1
 pipeline_parallel_schedule = "1F1B"  # "Interleaved1F1B"
 expert_parallel_degree = 128
 expert_tensor_parallel_degree = 1
+context_parallel_degree = 1
+enable_custom_context_parallel = true
 
 [checkpoint]
 enable = false
