@@ -20,6 +20,9 @@ export ACL_DEVICE_SYNC_TIMEOUT=7200
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
 export CPU_AFFINITY_CONF=1
+export TASK_QUEUE_ENABLE=2
+export STREAMS_PER_DEVICE=32
+export MULTI_STREAM_MEMORY_RESERVE=2
 
 # TODO change to your network interface
 Network_Interface=enp23s0f3
