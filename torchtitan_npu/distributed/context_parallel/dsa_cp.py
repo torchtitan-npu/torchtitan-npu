@@ -20,12 +20,6 @@ INDEXER_GRAD_INDICES = [2, 3, 4]  # corresponding to LILossTrain.backward output
 USE_DTENSOR_MODE = True  # whether to use dtensor to communicate
 
 
-def _maybe_to_local_tensor(x):
-    if isinstance(x, DTensor):
-        return x.to_local()
-    return x
-
-
 class AllgatherOnSequence(torch.autograd.Function):
     """Allgather with backward on sequence dim of BSND tensor."""
 
@@ -123,15 +117,6 @@ def dsa_forward_with_cp(
     Forward pass of the dsa module with context parallel.
     CP strategy: allgather KV tensors across the CP mesh.
     """
-    q = _maybe_to_local_tensor(q)
-    k = _maybe_to_local_tensor(k)
-    v = _maybe_to_local_tensor(v)
-    attn_mask = _maybe_to_local_tensor(attn_mask)
-    q_indexer = _maybe_to_local_tensor(q_indexer)
-    k_indexer = _maybe_to_local_tensor(k_indexer)
-    weights = _maybe_to_local_tensor(weights)
-    end_pos = _maybe_to_local_tensor(end_pos)
-    index_topk = _maybe_to_local_tensor(index_topk)
 
     if k.shape[1] != 1 or v.shape[1] != 1:
         raise NotImplementedError(
@@ -141,7 +126,7 @@ def dsa_forward_with_cp(
     # Gather full k_indexer and slice causally up to current rank
     k_indexer_global = allgather_sequence(k_indexer, self.cp_mesh)
     cp_rank = dist.get_rank(group=self.cp_mesh.get_group())
-    s_local = k_indexer.shape[1]
+    s_local = k_indexer.shape[1]  # pyrefly: ignore [missing-attribute]
     slice_end = s_local * (cp_rank + 1)
     k_indexer_causal = k_indexer_global[:, :slice_end, :, :]
 

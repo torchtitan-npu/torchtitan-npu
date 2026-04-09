@@ -12,7 +12,6 @@ from torchtitan.models.attention import ScaledDotProductAttentionWrapper
 
 from torchtitan_npu.converters.kernels.dsa import SparseLightningIndexerKLLoss
 from torchtitan_npu.distributed.context_parallel.dsa_cp import (
-    _maybe_to_local_tensor,
     allgather_sequence,
     dsa_forward_with_cp,
     patch_dsa_for_context_parallel,
@@ -33,28 +32,6 @@ def _make_cpu_mesh():
     from torch.distributed.device_mesh import init_device_mesh
 
     return init_device_mesh("cpu", (1,))
-
-
-class TestMaybeToLocalTensor:
-    @staticmethod
-    def test_none_passes_through():
-        assert _maybe_to_local_tensor(None) is None
-
-    @staticmethod
-    def test_plain_tensor_returns_same_object():
-        t = torch.randn(2, 3)
-        assert _maybe_to_local_tensor(t) is t
-
-    @staticmethod
-    def test_dtensor_calls_to_local():
-        local = torch.randn(2, 3)
-        mock_dtensor = MagicMock(spec=DTensor)
-        mock_dtensor.to_local.return_value = local
-
-        result = _maybe_to_local_tensor(mock_dtensor)
-
-        mock_dtensor.to_local.assert_called_once()
-        assert result is local
 
 
 class TestToLocalWithPartialGrad:

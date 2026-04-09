@@ -125,21 +125,11 @@ def apply_cp_to_attention_module(
     if attention_type == "dsa":
         validate_dsa_converters(job_config=job_config)
 
-        from torch.distributed.tensor.experimental._attention import _ContextParallel
-
         from torchtitan_npu.distributed.context_parallel.dsa_cp import (
             patch_dsa_for_context_parallel,
         )
 
         patch_dsa_for_context_parallel(cp_mesh=cp_mesh, model_args=model_args)
-        cp_plan = _ContextParallel(
-            seq_dim=2, attention_type=_ContextParallel.AttentionType.SDPA
-        )
-
-        for attention_module in attention_modules:
-            titan_cp.parallelize_module(  # type: ignore[attr-defined]
-                module=attention_module, device_mesh=cp_mesh, parallelize_plan=cp_plan
-            )
     elif attention_type == "ulysses":
         validate_ulysses_configs(
             job_config=job_config, model_args=model_args, cp_mesh=cp_mesh
