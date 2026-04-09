@@ -50,9 +50,12 @@ decay_ratio = 0.8  # lr scheduler decay ratio, 80% of the train steps
 decay_type = "cosine"
 min_lr_factor = 1
 
+[debug]
+moe_force_load_balance = false
+
 [training]
 local_batch_size = 1
-global_batch_size = 128 # It is recommended to enable gbs gradient accumulation only when PP equals 1
+global_batch_size = 512 # It is recommended to enable gbs gradient accumulation only when PP equals 1
 seq_len = 4096
 max_norm = 1.0  # grad norm clipping
 steps = 1000

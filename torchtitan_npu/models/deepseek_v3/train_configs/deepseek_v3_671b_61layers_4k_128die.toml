@@ -66,6 +66,9 @@ expert_tensor_parallel_degree = 1
 context_parallel_degree = 1
 enable_custom_context_parallel = true
 
+[debug]
+moe_force_load_balance = false
+
 [checkpoint]
 enable = false
 folder = "checkpoint"
