@@ -1,3 +1,10 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from PyTorch,
+# https://github.com/pytorch/pytorch/blob/v2.10.0/torch/_inductor/graph.py
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 import logging
 import operator
 from collections.abc import Callable

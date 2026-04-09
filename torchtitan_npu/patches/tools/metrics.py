@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/components/metrics.py
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
@@ -53,7 +57,6 @@ def _patched_get_peak_flops(device_name: str) -> float:
     return _original_get_peak_flops(device_name)
 
 
-# Adapted from https://github.com/pytorch/torchtitan/blob/v0.2.1/torchtitan/components/metrics.py
 def _patched_metrics_processor_log(
     self,
     step: int,

@@ -6,11 +6,22 @@
 
 <configuration>
     <oatconfig>
+        <filefilterlist>
+            <filefilter name="defaultFilter" desc="Files not to check">
+                <filteritem type="filepath" name="tests/.*" desc="Test files do not require license check"/>
+                <filteritem type="filepath" name=".*.png" desc="Image files, no license required"/>
+                <filteritem type="filepath" name=".*.toml" desc="Configuration files, no license required"/>
+                <filteritem type="filename" name=".flake8" desc="Configuration files, no license required"/>
+                <filteritem type="filename" name=".pre-commit-config.yaml" desc="Configuration files, no license required"/>
+            </filefilter>
+        </filefilterlist>
         <licensefile></licensefile>
         <policylist>
             <policy name="projectPolicy" desc="">
                 <!--policyitem type="compatibility" name="GPL-2.0+" path="abc/.*" desc="Process that runs independently, invoked by the X process."/-->
-                <policyitem type="license" name="BSD-style" path=".*" desc=""/>
+                <policyitem type="license" name="BSD-style" path=".*" desc="Using BSD-style license."/>
+                <policyitem type="license" name="BSD-3-Clause" path=".*" desc="Using BSD-3-Clause license."/>
+                <policyitem type="copyright" name="Huawei Technologies Co., Ltd. " path=".*" desc="Developed by Huawei Technologies Co. Ltd."/>
             </policy>
         </policylist>
     </oatconfig>

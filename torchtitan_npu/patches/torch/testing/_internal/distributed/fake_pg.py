@@ -1,6 +1,9 @@
-# Adapted from
-# https://github.com/pytorch/pytorch/blob/v2.10.0/torch/testing/_internal/distributed/fake_pg.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from PyTorch,
+# https://github.com/pytorch/pytorch/blob/v2.10.0/torch/testing/_internal/distributed/fake_pg.py
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
 import torch.distributed as dist
 from torch._C._distributed_c10d import FakeProcessGroup

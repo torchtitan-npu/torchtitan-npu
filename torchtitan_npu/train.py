@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/train.py
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.

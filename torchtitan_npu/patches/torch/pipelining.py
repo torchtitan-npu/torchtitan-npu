@@ -1,5 +1,11 @@
-# Copyright (c) Meta Platforms Inc. and affiliates
-
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from PyTorch,
+# https://github.com/pytorch/pytorch/blob/v2.10.0/torch/distributed/pipelining/stage.py
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 from collections.abc import Callable
 from typing import Any
 

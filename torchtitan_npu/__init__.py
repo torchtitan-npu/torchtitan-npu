@@ -38,16 +38,16 @@ def _apply_patches():
     from .models.deepseek_v3.infra import parallelize  # noqa: F401
 
     # patching context_parallel utils
-    from .patches.distributed import (  # noqa: F401
+
+    # patching utils
+    from .patches.distributed import (  # noqa: F401  # noqa: F401, F811
         cp_input_sharding,
         custom_context_parallel,
+        utils,
     )
 
     # patching step timing
-    from .patches.tools import utils  # noqa: F401
-
-    # patching utils
-    from .patches.distributed import utils  # noqa: F401, F811
+    from .patches.tools import metrics  # noqa: F401
 
     # async_tp
     # patching torch

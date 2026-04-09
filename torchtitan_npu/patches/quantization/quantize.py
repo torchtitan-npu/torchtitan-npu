@@ -1,6 +1,6 @@
-# Adapted from
-# https://github.com/pytorch/ao/blob/main/torchao/quantization/quant_api.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from torchao,
+# https://github.com/pytorch/ao/blob/main/torchao/quantization/quant_api.py
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the BSD-style license found in the

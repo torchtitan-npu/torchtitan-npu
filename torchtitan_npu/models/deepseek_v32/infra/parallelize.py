@@ -1,7 +1,7 @@
-# Adapted from
-# https://github.com/pytorch/torchtitan/blob/v0.2.1/torchtitan/models/deepseek_v3/infra/parallelize.py
-# https://github.com/pytorch/torchtitan/blob/v0.2.1/torchtitan/models/llama4/infra/parallelize.py
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# This file is derived from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/models/deepseek_v3/infra/parallelize.py
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/models/llama4/infra/parallelize.py
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 #
