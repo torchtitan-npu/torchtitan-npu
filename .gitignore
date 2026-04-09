@@ -7,7 +7,6 @@ outputs
 dist/*
 .vscode
 .vs
-AGENTS.md
 
 # data
 data

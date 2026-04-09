@@ -139,6 +139,65 @@ setup_agent_skills_link() {
   echo "已创建软链接: ${skills_link} -> ${relative_target}"
 }
 
+setup_claude_files() {
+  # 仅当选择 claude code 时执行：
+  # 将 AGENTS.md 软链接为 .claude/CLAUDE.md，将 rules/ 软链接为 .claude/rules
+  if [[ "${AGENT_DIR_NAME}" != ".claude" ]]; then
+    return
+  fi
+
+  local agent_dir="${PROJECT_ROOT}/${AGENT_DIR_NAME}"
+  local agents_md="${PROJECT_ROOT}/.agents/AGENTS.md"
+
+  # 软链接 AGENTS.md -> .claude/CLAUDE.md
+  local claude_md="${agent_dir}/CLAUDE.md"
+  local relative_md="../.agents/AGENTS.md"
+
+  if [[ -L "${claude_md}" ]]; then
+    local current_target
+    current_target="$(readlink "${claude_md}")"
+    if [[ "${current_target}" == "${relative_md}" ]]; then
+      echo "已存在软链接: ${claude_md} -> ${current_target}"
+    else
+      ln -sf "${relative_md}" "${claude_md}"
+      echo "已更新软链接: ${claude_md} -> ${relative_md}"
+    fi
+  elif [[ -e "${claude_md}" ]]; then
+    local backup_path="${claude_md}.bak.$(date +%Y%m%d%H%M%S)"
+    mv "${claude_md}" "${backup_path}"
+    echo "检测到已有 ${claude_md}，已备份到 ${backup_path}"
+    ln -s "${relative_md}" "${claude_md}"
+    echo "已创建软链接: ${claude_md} -> ${relative_md}"
+  else
+    ln -s "${relative_md}" "${claude_md}"
+    echo "已创建软链接: ${claude_md} -> ${relative_md}"
+  fi
+
+  # 软链接 .agents/rules -> .claude/rules
+  local rules_link="${agent_dir}/rules"
+  local relative_rules="../.agents/rules"
+
+  if [[ -L "${rules_link}" ]]; then
+    local current_target
+    current_target="$(readlink "${rules_link}")"
+    if [[ "${current_target}" == "${relative_rules}" ]]; then
+      echo "已存在软链接: ${rules_link} -> ${current_target}"
+    else
+      ln -sf "${relative_rules}" "${rules_link}"
+      echo "已更新软链接: ${rules_link} -> ${relative_rules}"
+    fi
+  elif [[ -e "${rules_link}" ]]; then
+    local backup_path="${rules_link}.bak.$(date +%Y%m%d%H%M%S)"
+    mv "${rules_link}" "${backup_path}"
+    echo "检测到已有 ${rules_link}，已备份到 ${backup_path}"
+    ln -s "${relative_rules}" "${rules_link}"
+    echo "已创建软链接: ${rules_link} -> ${relative_rules}"
+  else
+    ln -s "${relative_rules}" "${rules_link}"
+    echo "已创建软链接: ${rules_link} -> ${relative_rules}"
+  fi
+}
+
 main() {
   echo "项目根目录: ${PROJECT_ROOT}"
   echo "skills 目录: ${SKILLS_DIR}"
@@ -146,6 +205,7 @@ main() {
 
   select_agent
   setup_agent_skills_link
+  setup_claude_files
   show_available_skills
 
   echo
