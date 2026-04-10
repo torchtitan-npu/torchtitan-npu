@@ -29,6 +29,14 @@ def _apply_patches():
         loss,
     )
 
+    # patching context_parallel utils
+    from .patches.distributed import (  # noqa: F401, F811 # usort:skip
+        mtp_context_parallel,
+        cp_input_sharding,
+        custom_context_parallel,
+        utils,
+    )
+
     # patching mxfp8/hif8
     from .converters import quant_converter  # noqa: F401
 
@@ -36,15 +44,6 @@ def _apply_patches():
     from .models import deepseek_v3, llama3  # noqa: F401
 
     from .models.deepseek_v3.infra import parallelize  # noqa: F401
-
-    # patching context_parallel utils
-
-    # patching utils
-    from .patches.distributed import (  # noqa: F401  # noqa: F401, F811
-        cp_input_sharding,
-        custom_context_parallel,
-        utils,
-    )
 
     # patching step timing
     from .patches.tools import metrics  # noqa: F401

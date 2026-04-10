@@ -16,11 +16,7 @@ from einops import rearrange
 from scipy.linalg import hadamard
 from torch import nn
 from torch.nn.attention import sdpa_kernel, SDPBackend
-from torchtitan.models.deepseek_v3.model.model import (
-    DeepSeekV3Model,
-    precompute_freqs_cis,
-    TransformerBlock,
-)
+from torchtitan.models.deepseek_v3.model.model import DeepSeekV3Model, TransformerBlock
 from torchtitan.protocols.model import AttentionMasksType
 
 from torchtitan_npu.train import reshape_for_broadcast
@@ -481,7 +477,7 @@ class PreAttention(nn.Module):
         self.qk_head_dim = model_args.qk_nope_head_dim + model_args.qk_rope_head_dim
         self.v_head_dim = model_args.v_head_dim
         self.enable_mla_absorb = model_args.enable_mla_absorb
-        self.n_layers = model_args.n_layers
+        self.n_layers = model_args.n_layers + model_args.num_mtp_modules
 
         self.wq_a = nn.Linear(self.dim, self.q_lora_rank, bias=False)
         self.q_norm = nn.RMSNorm(self.q_lora_rank, eps=model_args.norm_eps)
@@ -632,7 +628,7 @@ class PostAttention(nn.Module):
         self.wo = nn.Linear(
             model_args.n_heads * model_args.v_head_dim, model_args.dim, bias=False
         )
-        self.n_layers = model_args.n_layers
+        self.n_layers = model_args.n_layers + model_args.num_mtp_modules
 
     def forward(
         self,
@@ -754,6 +750,71 @@ class TransformerBlockV32(TransformerBlock):
         return x, residual
 
 
+class MTPModule(TransformerBlockV32):
+    """
+    MTP block with linear projection and transformerblock layers.
+    """
+
+    def __init__(self, layer_id: int, model_args: DeepSeekV32ModelArgs):
+        super().__init__(layer_id, model_args)
+        self.model_args = model_args
+        # pyrefly: ignore [bad-assignment]
+        self.attention = Attention(model_args)
+        self.enorm = RMSNorm(model_args.dim, eps=model_args.norm_eps)
+        self.hnorm = RMSNorm(model_args.dim, eps=model_args.norm_eps)
+        self.eh_proj = nn.Linear(2 * model_args.dim, model_args.dim, bias=False)
+
+    # pyrefly: ignore [bad-param-name-override]
+    def forward(
+        self,
+        input_offset: torch.Tensor,
+        prev_embed: torch.Tensor,
+        freqs_cis: torch.Tensor,
+        attention_masks: AttentionMasksType | None,
+        positions: torch.Tensor | None = None,
+    ):
+        """
+        Forward pass for the Transformer block.
+
+        Args:
+            input_offset (torch.Tensor): Input tensor of original offset token embedding (batch_size, seq_len, dim).
+            prev_embed (torch.Tensor): Predicted tokens of previous layer  (batch_size, seq_len, dim).
+            freqs_cis (torch.Tensor): Precomputed complex exponential values for rotary embeddings.
+
+        Returns:
+            torch.Tensor: Output tensor with the same shape as the input.
+        """
+        input_offset = self.enorm(input_offset)
+        prev_embed = self.hnorm(prev_embed)
+        h = torch.cat([input_offset, prev_embed], dim=-1)
+        h = self.eh_proj(h)
+        h, residual = self.attention_norm(h), h
+        h = self.attention(h, freqs_cis, attention_masks, self.layer_id, positions)
+        h = h + residual
+        residual = h
+        h = self.ffn_norm(h)
+        if self.moe_enabled:
+            h = self.moe(h)
+        else:
+            h = self.feed_forward(h)
+        return h, residual
+
+    def init_weights(self, buffer_device: torch.device):
+        super().init_weights(buffer_device=buffer_device)
+        for norm in (self.enorm, self.hnorm):
+            norm.reset_parameters()
+        final_out_std = self.model_args.dim**-0.5
+        cutoff_factor = 3
+        if self.eh_proj is not None:
+            nn.init.trunc_normal_(
+                self.eh_proj.weight,
+                mean=0.0,
+                std=final_out_std,
+                a=-cutoff_factor * final_out_std,
+                b=cutoff_factor * final_out_std,
+            )
+
+
 class DeepSeekV32Model(DeepSeekV3Model):
     """
     DeepSeek-V3.2 Transformer model with attention and feed-forward layers.
@@ -762,23 +823,14 @@ class DeepSeekV32Model(DeepSeekV3Model):
     def __init__(self, model_args: DeepSeekV32ModelArgs):
         super().__init__(model_args)
         self.layers = torch.nn.ModuleDict()
-        for layer_id in range(model_args.n_layers):
-            self.layers[str(layer_id)] = TransformerBlockV32(layer_id, model_args)
+        for layer_id in range(model_args.n_layers + model_args.num_mtp_modules):
+            if layer_id < model_args.n_layers:
+                self.layers[str(layer_id)] = TransformerBlockV32(layer_id, model_args)
+            else:
+                self.layers[str(layer_id)] = MTPModule(layer_id, model_args)
         self.model_args = model_args
         # pyrefly: ignore [bad-assignment]
         self.norm = RMSNorm(model_args.dim)
-        # When MTP is enabled, the forward pass receives sequences of length
-        # max_seq_len + num_mtp_modules, so freqs_cis must cover that extra range.
-        if model_args.num_mtp_modules > 0:
-            import dataclasses
-
-            extended_args = dataclasses.replace(
-                model_args,
-                max_seq_len=model_args.max_seq_len + model_args.num_mtp_modules,
-            )
-            self.register_buffer(
-                "freqs_cis", precompute_freqs_cis(extended_args), persistent=False
-            )
 
     # pyrefly: ignore [bad-override]
     def forward(
@@ -802,13 +854,52 @@ class DeepSeekV32Model(DeepSeekV3Model):
         Returns:
             torch.Tensor: Logits tensor of shape (batch_size, vocab_size).
         """
-
-        h = self.tok_embeddings(tokens) if self.tok_embeddings is not None else tokens
         residual = None
+        seq_len = tokens.shape[1]
+        # pyrefly: ignore [missing-attribute]
+        seq_len -= self.model_args.num_mtp_modules
+        h = (
+            self.tok_embeddings(tokens[:, :seq_len])
+            if self.tok_embeddings is not None
+            else tokens[:, :seq_len]
+        )
+        # Main model calculate
+        layer_id = 0
         for layer in self.layers.values():
-            h, residual = layer(h, residual, self.freqs_cis, attention_masks, positions)
+            if layer_id < self.model_args.n_layers:
+                h, residual = layer(
+                    h, residual, self.freqs_cis, attention_masks, positions
+                )
+            else:
+                break
+            layer_id += 1
         if residual is not None:
             h = h + residual
+        prev_embed = h
         h = self.norm(h) if self.norm is not None else h
         output = self.output(h.float()) if self.output is not None else h
-        return output
+        # pyrefly: ignore [missing-attribute]
+        if self.model_args.num_mtp_modules <= 0:
+            return output
+        else:
+            # pyrefly: ignore [missing-attribute]
+            output_list = [None] * (1 + self.model_args.num_mtp_modules)
+            output_list[0] = output
+        # MTP module calculate
+        # pyrefly: ignore [missing-attribute]
+        for mtp_layer_id in range(self.model_args.num_mtp_modules):
+            token_offset_id = mtp_layer_id + 1
+            token_end_idx = token_offset_id + seq_len
+            token_offset = tokens[:, token_offset_id:token_end_idx]
+            input_offset = self.tok_embeddings(token_offset)
+            layer_id = mtp_layer_id + self.model_args.n_layers
+            h, residual = self.layers[str(layer_id)](
+                input_offset, prev_embed, self.freqs_cis, attention_masks, positions
+            )
+            if residual is not None:
+                h = h + residual
+            prev_embed = h
+            h = self.norm(h) if self.norm is not None else h
+            output = self.output(h.float()) if self.output is not None else h
+            output_list[mtp_layer_id + 1] = output
+        return output_list

@@ -42,7 +42,7 @@ deepseekv32_args = {
             score_func="sigmoid",
             route_norm=True,
             score_before_experts=False,
-            use_grouped_mm=False,
+            use_grouped_mm=True,
         ),
         q_lora_rank=1536,
         kv_lora_rank=512,

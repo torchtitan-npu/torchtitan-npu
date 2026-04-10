@@ -15,8 +15,6 @@ from torchtitan.components.loss import cross_entropy_loss
 from torchtitan.config import JobConfig
 from torchtitan.tools.logging import logger
 
-from torchtitan_npu.config.custom_config import JobConfig as NpuJobConfig
-
 
 def multi_token_cross_entropy_loss(
     preds: list[torch.Tensor],
@@ -24,11 +22,12 @@ def multi_token_cross_entropy_loss(
     job_config: JobConfig,
 ) -> torch.Tensor:
 
-    main_loss = cross_entropy_loss(preds[0], labels[:, : job_config.training.seq_len])
+    seq_len = preds[0].shape[1]
+    main_loss = cross_entropy_loss(preds[0], labels[:, :seq_len])
     mtp_loss = 0
 
     for label_offset, pred in enumerate(preds[1:], 1):
-        end_idx = label_offset + job_config.training.seq_len
+        end_idx = label_offset + seq_len
         loss = cross_entropy_loss(
             pred,
             labels[:, label_offset:end_idx],
@@ -48,7 +47,8 @@ def multi_token_cross_entropy_loss(
 def mtp_build_cross_entropy_loss(job_config: JobConfig, **kwargs):
     del kwargs  # delete any unused arguments
     if (
-        isinstance(job_config, NpuJobConfig) and job_config.training.num_mtp_modules > 0
+        hasattr(job_config.training, "num_mtp_modules")
+        and job_config.training.num_mtp_modules > 0
     ):  # pyrefly: ignore [missing-attribute]
         loss_fn = functools.partial(
             multi_token_cross_entropy_loss,
