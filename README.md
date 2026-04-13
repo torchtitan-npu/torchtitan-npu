@@ -12,7 +12,6 @@
 
 </div>
 
-
 # 简介
 
 ---
@@ -37,7 +36,25 @@ SIG 例会：[sig-framework-adapter](https://meeting.osinfra.cn/cann?sig=sig-fra
 
 ---
 
-当前季度的规划见 [Torchtitan-npu Roadmap](https://gitcode.com/cann/torchtitan-npu/issues/5)。欢迎访问。
+当前季度的规划见 `torchtitan-npu` [Roadmap](https://gitcode.com/cann/torchtitan-npu/issues/5)。欢迎访问。
+
+# 安装
+
+源码安装：
+
+```shell
+git clone https://gitcode.com/cann/torchtitan-npu.git
+cd torchtitan-npu
+pip install -e . ，
+```
+
+详情请参考 [部署文档](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guide/installation.md) 安装torchtitan-npu及其依赖。
+
+
+# 快速上手
+指导开发者快速启动大语言模型的训练任务，具体的操作请参考：
+[快速入门(基于PyTorch框架)](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guide/quick-start.md)
+
 
 # 特性支持概览
 
