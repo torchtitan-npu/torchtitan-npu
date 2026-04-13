@@ -10,7 +10,7 @@ torchtitan_npu 在 `torchtitan_npu/converters/kernels` 下定义了多个 torcht
 name = "deepseek_v32"
 flavor = "debugmodel"
 hf_assets_path = "./assets/hf/DeepSeek-V3.2"
-converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"]
+converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm", "npu_expert_parallel"]
 ```
 
 当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
@@ -19,6 +19,7 @@ converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm"]
   - [Permute](#permute)
   - [RMSNorm](#rmsnorm)
   - [Rope](#rope)
+  - [NEP](#nep-npu-expert-parallel)
 
 关于本仓库适配的各融合算子的详细说明，前往[开发者文档](#开发者文档)。
 
@@ -109,3 +110,17 @@ converters = [... "npu_rope", ...] # 添加 `npu_rope` 配置项
 ```
 **ModelConverter 源码路径：** `torchtitan_npu/converters/kernels/rope.py` \
 **相关 NPU 融合算子开发者文档：** [`npu_rope`](https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_rotary_mul.md)
+
+-----------
+
+## NEP (NPU Expert Parallel)
+MoE的专家并行机制需要_token_dispatch分发token到各rank，_token_combine收集结果并恢复顺序。
+
+本 ModelConverter 将“重排”和“恢复”操作替换为基于 `npu_moe_token_permute` 和 `NPUMoeTokenUnpermute` 算子的实现。
+
+**配置示例**：
+```toml
+[model]
+converters = [... "npu_moe_expert_parallel", ...] # 添加 `npu_moe_expert_parallel` 配置项
+```
+**ModelConverter 源码路径：** `torchtitan_npu/converters/kernels/expert_parallel.py`
