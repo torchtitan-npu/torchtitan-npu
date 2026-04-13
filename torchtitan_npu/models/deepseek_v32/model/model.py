@@ -1,4 +1,5 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+#
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
 # This source code is licensed under the BSD-style license found in the
@@ -183,6 +184,8 @@ class Indexer(torch.nn.Module):
 LOSS_SCALE = torch.tensor(1.0)
 
 
+# Derived from MindSpeed,
+# https://gitcode.com/Ascend/MindSpeed-LLM/blob/master/mindspeed_llm/tasks/models/transformer/dsa_indexer.py
 class DSAIndexerLossAutoScaler(torch.autograd.Function):
     """An AutoScaler that triggers the backward pass and scales the grad for DSA indexer loss."""
 
