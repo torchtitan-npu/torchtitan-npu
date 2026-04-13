@@ -100,6 +100,32 @@ def allgather_sequence(tensor, mesh):
         return AllgatherOnSequence.apply(tensor, mesh)
 
 
+def _allgather_on_dim(tensor: torch.Tensor, tp_mesh, dim: int) -> torch.Tensor:
+    """All-gather a TP-sharded plain tensor along `dim` across TP ranks.
+
+    Used in dsa_forward_with_cp to restore the full head count before calling
+    npu_sparse_lightning_indexer_grad_kl_loss, which requires N ∈ {64, 128}.
+    No gradient support is needed: LILossTrain.backward returns None for
+    query and softmax_max/sum, so no gradient flows through these tensors.
+    """
+    group = tp_mesh.get_group()
+    tp_size = dist.get_world_size(group=group)
+    if tp_size == 1:
+        return tensor
+    ndim = tensor.ndim
+    # Permute so the sharded dim is at position 0 for all_gather_into_tensor
+    perm = [dim] + [i for i in range(ndim) if i != dim]
+    inv_perm = [0] * ndim
+    for dst, src in enumerate(perm):
+        inv_perm[src] = dst
+    t = tensor.permute(perm).contiguous()
+    out_shape = list(t.shape)
+    out_shape[0] *= tp_size
+    output = torch.empty(out_shape, dtype=t.dtype, device=t.device)
+    dist.all_gather_into_tensor(output, t, group=group)
+    return output.permute(inv_perm).contiguous()
+
+
 def dsa_forward_with_cp(
     self,
     q: torch.Tensor,
@@ -189,6 +215,13 @@ def dsa_forward_with_cp(
         return_softmax_lse=True,  # must be True in training mode
     )
 
+    tp_mesh = getattr(self, "tp_mesh", None)
+    if tp_mesh is not None:
+        q_nope = _allgather_on_dim(q_nope, tp_mesh, dim=2)
+        q_pe = _allgather_on_dim(q_pe, tp_mesh, dim=2)
+        softmax_max = _allgather_on_dim(softmax_max, tp_mesh, dim=3)
+        softmax_sum = _allgather_on_dim(softmax_sum, tp_mesh, dim=3)
+
     loss = self.compute_dsa_indexer_loss(
         q_nope,
         k_nope_global[:, :slice_end, :, :],
@@ -212,7 +245,10 @@ def dsa_forward_with_cp(
 
 
 def patch_dsa_for_context_parallel(
-    *, cp_mesh: DeviceMesh, model_args: object | None = None
+    *,
+    cp_mesh: DeviceMesh,
+    model_args: object | None = None,
+    tp_mesh: DeviceMesh | None = None,
 ) -> None:
     """
     Patch DSA attention forward to a CP-aware implementation.
@@ -224,6 +260,7 @@ def patch_dsa_for_context_parallel(
         cls.cp_mesh = cp_mesh  # pyrefly: ignore [no-access]
         if model_args is not None:
             cls.model_args = model_args  # pyrefly: ignore [no-access]
+        cls.tp_mesh = tp_mesh  # pyrefly: ignore [no-access]
         cls.compute_dsa_indexer_loss = (  # pyrefly: ignore [no-access]
             SparseLightningIndexerKLLoss()
         )

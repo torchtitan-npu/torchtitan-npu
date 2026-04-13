@@ -41,7 +41,7 @@ def _apply_patches():
     from .converters import quant_converter  # noqa: F401
 
     # patching models
-    from .models import deepseek_v3, llama3  # noqa: F401
+    from .models import deepseek_v3  # noqa: F401
 
     from .models.deepseek_v3.infra import parallelize  # noqa: F401
 

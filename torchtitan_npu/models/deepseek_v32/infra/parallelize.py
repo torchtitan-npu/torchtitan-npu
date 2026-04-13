@@ -232,6 +232,9 @@ def parallelize_deepseekv32(
             cp_attn_type,
             job_config=job_config,  # pyrefly: ignore [unexpected-keyword]
             model_args=model.model_args,  # pyrefly: ignore [unexpected-keyword]
+            tp_mesh=parallel_dims.get_mesh("tp")
+            if parallel_dims.tp_enabled
+            else None,  # pyrefly: ignore [unexpected-keyword]
         )
 
     # Check if using DeepEP for MoE communication

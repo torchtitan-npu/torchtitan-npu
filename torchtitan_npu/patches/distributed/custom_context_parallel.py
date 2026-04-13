@@ -121,6 +121,7 @@ def apply_cp_to_attention_module(
     *,
     job_config: object | None = None,
     model_args: object | None = None,
+    tp_mesh: DeviceMesh | None = None,
 ) -> None:
     if attention_type == "dsa":
         validate_dsa_converters(job_config=job_config)
@@ -129,7 +130,9 @@ def apply_cp_to_attention_module(
             patch_dsa_for_context_parallel,
         )
 
-        patch_dsa_for_context_parallel(cp_mesh=cp_mesh, model_args=model_args)
+        patch_dsa_for_context_parallel(
+            cp_mesh=cp_mesh, model_args=model_args, tp_mesh=tp_mesh
+        )
     elif attention_type == "ulysses":
         validate_ulysses_configs(
             job_config=job_config, model_args=model_args, cp_mesh=cp_mesh
