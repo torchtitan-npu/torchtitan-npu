@@ -21,7 +21,7 @@ converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm", "npu_expert_p
   - [Rope](#rope)
   - [NEP](#nep-npu-expert-parallel)
 
-关于本仓库适配的各融合算子的详细说明，前往[开发者文档](#开发者文档)。
+关于本仓库适配的各融合算子的详细说明，请查看对应的 NPU 融合算子开发者文档。
 
 -----------
 

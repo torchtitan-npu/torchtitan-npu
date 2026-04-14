@@ -8,7 +8,7 @@
 [![license](https://img.shields.io/badge/license-BSD_3--Clause-lightgrey.svg)](https://gitcode.com/cann/torchtitan-npu/blob/master/LICENSE)
 [![contributing](https://img.shields.io/badge/CONTRIBUTING-teal)](https://gitcode.com/cann/torchtitan-npu/blob/master/CONTRIBUTING.md)
 [![SIG](https://img.shields.io/badge/SIG-framework--adapter-yellow)](https://gitcode.com/cann/community/tree/master/CANN/sigs/framework-adapter)
-[![contributing](https://img.shields.io/badge/pypi-0.2.2-blue)](https://gitcode.com/cann/torchtitan-npu/blob/master/CONTRIBUTING.md)
+[![pypi](https://img.shields.io/badge/pypi-0.2.2.post1-blue)](https://pypi.org/project/torchtitan-npu/)
 
 </div>
 
