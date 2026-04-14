@@ -127,6 +127,7 @@ stdout 仅打印 5 位有效数字，可能不够精确，请使用 `scripts/los
 | Skill | 说明 |
 | --- | --- |
 | `accuracy-debug` | 有基线对照的训练精度异常定位（loss 偏离、NaN/Inf），基于代码审查 + detect_anomaly + msprobe dump/compare 流程 |
+| `oom-analysis` | NPU 训练 OOM 问题诊断，按日志分类 → 静态内存估算 → Memory Snapshot 深度分析 → 优化建议的流程定位和解决问题 |
 | `torchtitan-sync` | 上游 torchtitan 分支同步与适配，读取 versioning_policy.md 分支同步表，生成变更分析并完成代码适配 |
 
 ## 关键路径速查
