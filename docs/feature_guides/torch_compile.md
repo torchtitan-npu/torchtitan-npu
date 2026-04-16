@@ -44,3 +44,17 @@ torchtitan-npu 当前支持 DeepSeek-V3 模型的全流程编译。
 [model]
 converters = [..., "npu_bypass_triton_codegen"]
 ```
+
+## 注意事项
+
+> ⚠️ **修改模型结构后，需要清理缓存重新 compile**
+>
+> torch.compile 会缓存编译结果。当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的缓存可能导致编译失败或运行异常。请执行以下命令清理缓存：
+>
+> ```bash
+> rm -rf /root/.cache
+> rm -rf /tmp/*
+> rm -rf ./torchinductor_root
+> rm -rf ./torch_compile_debug
+> rm -rf .npu_kernels_root
+> ```
