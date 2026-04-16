@@ -15,7 +15,7 @@ converters = ["npu_dsa", "npu_rms_norm", "npu_permute", "npu_gmm", "npu_expert_p
 
 当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
   - [DSA](#dsa-deepseek-sparse-attention)
-  - [GMM](#gmm)
+  - [GMM](#gmmgrouped-matmul)
   - [Permute](#permute)
   - [RMSNorm](#rmsnorm)
   - [Rope](#rope)

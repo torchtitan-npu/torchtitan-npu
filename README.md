@@ -48,12 +48,12 @@ cd torchtitan-npu
 pip install -e .
 ```
 
-详情请参考 [部署文档](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guide/installation.md) 安装torchtitan-npu及其依赖。
+详情参见 [安装教程](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guides/installation.md) 。
 
 
 # 快速上手
-指导开发者快速启动大语言模型的训练任务，具体的操作请参考：
-[快速入门(基于PyTorch框架)](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guide/quick-start.md)
+快速启动大语言模型的训练任务，参见
+[快速上手文档](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user-guides/quickstart.md) 。
 
 
 # 特性支持概览
