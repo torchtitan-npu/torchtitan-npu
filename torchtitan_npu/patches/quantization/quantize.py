@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
 # This file is derived from torchao,
 # https://github.com/pytorch/ao/blob/main/torchao/quantization/quant_api.py
 # Copyright (c) Meta Platforms, Inc. and affiliates.

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-# Copied from https://github.com/pytorch/torchtitan/blob/main/scripts/download_hf_assets.py
-# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
+# This file is copied from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/scripts/download_hf_assets.py
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 #

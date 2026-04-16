@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
 # This file is derived from torchtitan,
 # https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/hf_datasets/text_datasets.py
 # Copyright (c) Meta Platforms, Inc. and affiliates.

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
 # This file is derived from PyTorch,
 # https://github.com/pytorch/pytorch/blob/v2.10.0/torch/nn/utils/clip_grad.py
 #

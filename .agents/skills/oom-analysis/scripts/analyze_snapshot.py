@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All Rights Reserved.
 #
 # Memory Snapshot 深度分析脚本
 # 用于解析 torchtitan memory snapshot (.pickle) 文件，提取关键内存指标。
