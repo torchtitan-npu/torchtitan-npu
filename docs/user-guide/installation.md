@@ -67,7 +67,7 @@ pip install -e .
 > 注：如有旧版本Torchtitan-npu，请先[卸载](#卸载)，再进行安装
 
 
-### 4.算子自动融合特性支持（可选）
+### 4. 安装inductor-npu-ext（可选，使能torch.compile时需要）
 
 为了在 NPU 平台上充分利用 `torch.compile` 原生的编译能力，`torchtitan_npu` 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 [`inductor-npu-ext`](https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md)。该后端借助 [AutoFuse](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html) 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。
 
@@ -80,7 +80,7 @@ cd -
 ```
 
 
-> 注：具体使用方法请参考 [说明文档](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/torch_compile.md)
+> 注：具体torch.compile特性文档请参考 [说明文档](https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/torch_compile.md)
 
 
 ## PyPI安装

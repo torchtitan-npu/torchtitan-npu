@@ -5,9 +5,9 @@
 
 ### 1. 数据准备
 
-a. 下载[Tokenizer(以DeepSeekV3.2网络为例)](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main)。
+a. 下载Tokenizer[(以DeepSeekV3.2网络为例)](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main)。
 
-新建“deepseekv3.2-tokenizer”目录，并将tokenizer.json和tokenizer_config.json文件下载至该目录。
+新建“deepseekv3.2-tokenizer”目录，并将 `tokenizer.json` 和 `tokenizer_config.json` 文件下载至该目录。
 
 也可以通过以下方式下载tokenizer：
 
@@ -21,7 +21,7 @@ b. 下载数据集(以[enwiki数据集](https://huggingface.co/datasets/lsb/enwi
 
 首先创建数据集路径。
 
-```
+```shell
 mkdir -p ./tests/assets/enwiki
 ```
 
@@ -35,12 +35,13 @@ hf download lsb/enwiki20230101 --repo-type=dataset --local-dir .
 cd ../..
 ```
 
-> 注：用户需要自行设置代理，以便访问或下载数据集。
+> [!NOTE]
+> 用户需要自行设置代理，以便访问或下载数据集。
 
 
 ### 2. 配置环境变量
 
-当前以root用户安装后的默认路径为例，请用户根据set_env.sh的实际路径执行如下命令。
+当前以 root 用户安装后的默认路径为例，请用户根据 `set_env.sh` 的实际路径执行如下命令。
 
 ```shell
 source /usr/local/Ascend/cann/set_env.sh
@@ -48,13 +49,14 @@ source /usr/local/Ascend/cann/set_env.sh
 
 ### 3. 启动预训练
 
-本项目提供统一的预训练脚本：单机环境使用 `scripts/run_train.sh`，多机环境使用 `scripts/run_train_multinodes.sh`。你可以通过**修改环境变量来指定计算资源与模型配置**，并通过**命令行参数动态重载（Override）TOML 配置文件**的默认设定。
+本项目提供统一的预训练脚本：单机环境使用 `scripts/run_train.sh`，多机环境使用 `scripts/run_train_multinodes.sh`。用户可以通过**修改环境变量来指定计算资源与模型配置**，并通过**命令行参数动态重载（Override）TOML 配置文件**的默认设定。
 
 #### 3.1 单机预训练
 
 **3.1.1 默认参数启动**
 
 默认拉起单机 8 卡 DeepSeek 训练任务：
+
 ```shell
 bash scripts/run_train.sh
 ```
@@ -62,6 +64,7 @@ bash scripts/run_train.sh
 **3.1.2 自定义参数启动**
 
 以单机 8 卡拉起 DeepSeekV3.2 模型为例，动态覆盖配置中的训练步数与全局 Batch Size：
+
 ```shell
 NGPU=8 CONFIG_FILE=./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml \
 bash scripts/run_train.sh \
@@ -86,7 +89,7 @@ bash scripts/run_train.sh \
 
 **3.2.2 启动多机任务**
 
-在**所有参与训练的节点**上同时执行以下命令拉起训练，此处以 DeepSeek-V3.2完整模型为例：
+在**所有参与训练的节点**上同时执行以下命令拉起训练，此处以 DeepSeek-V3.2 完整模型为例：
 
 ```shell
 CONFIG_FILE=./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_4k_128die.toml \
@@ -100,25 +103,23 @@ bash scripts/run_train_multinodes.sh \
 
 ### 4. 原仓模型训练
 
-除了torchtitan-npu已经适配的模型外，用户还可以直接下载torchtitan原仓代码，使用其自带的toml配置文件启动训练，示例步骤如下：
+除了 torchtitan-npu 已适配的模型外，用户还可以直接使用 torchtitan 原仓代码，利用其自带的 TOML 配置文件启动训练。
 
-1. 使用以下命令安装原仓代码。
+1. 在本项目**外**克隆 torchtitan 原仓，并在本项目根目录创建软链接指向其内层包目录：
 
-```shell
-git clone -b v0.2.2 https://github.com/pytorch/torchtitan.git
-```
-2. 将torchtitan根目录放到与torchtitan_npu的同级目录下。
+   ```shell
+   # 在 torchtitan-npu 的上级目录执行
+   git clone -b v0.2.2 https://github.com/pytorch/torchtitan.git
+   # 回到 torchtitan-npu 项目根目录
+   cd torchtitan-npu
+   ln -s ../torchtitan/torchtitan ./torchtitan
+   ```
 
-3. 根据需要训练的模型，选择torchtitan_npu提供的toml配置文件，并修改tokenizer地址、真实权重地址为实际地址。
+2. 根据需要训练的模型，在 `./torchtitan/` 目录中选择对应的 TOML 配置文件，并按实际情况修改其中的 `tokenizer_path` 及权重加载路径（`initial_load_path`）。
 
-参考以下示例进行修改scripts/run_train.sh文件，改为实际的toml配置文件路径：
-```shell
-CONFIG_FILE=${CONFIG_FILE:-"../torchtitan/models/llama3/train_configs/debug_model.toml"}
-```
+3. 在 torchtitan-npu 项目根目录执行以下命令拉起训练，以 LLaMA3 为例：
 
-或参考3.1.2章节在运行时动态指定配置文件地址。
-
-4. 运行拉起训练脚本，拉起训练。
-```shell
-bash scripts/run_train.sh
-```
+   ```shell
+   CONFIG_FILE=./torchtitan/models/llama3/train_configs/debug_model.toml \
+   bash scripts/run_train.sh
+   ```
