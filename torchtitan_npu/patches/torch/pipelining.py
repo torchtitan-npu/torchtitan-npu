@@ -69,7 +69,7 @@ def backward_maybe_with_nosync(
     if isinstance(self.submod, DistributedDataParallel):
         if last_backward:
             # Last chunk, prepare for gradient reduction
-            # HACK: reaching into DDP implementation details here. Is there a better way?
+            # NOTE: reaching into DDP implementation details here. Is there a better way?
             self.submod.reducer.prepare_for_backward(  # type: ignore[union-attr, operator]
                 list(
                     torch.nn.parallel.distributed._find_tensors(  # type: ignore[attr-defined]

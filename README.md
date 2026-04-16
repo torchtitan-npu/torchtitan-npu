@@ -184,4 +184,4 @@ torchtitan‑npu 功能依赖的 PyTorch 等第三方开源软件，均由第三
 ---
 
 - torchtitan‑npu 产品的使用许可证，具体请参见 [LICENSE](https://gitcode.com/cann/torchtitan-npu/blob/master/LICENSE)。
-- torchtitan‑npu 工具 docs 目录下的文档适用相应许可证，具体请参见文档目录下的 LICENSE 文件。
+- torchtitan‑npu 工具 docs 目录下的文档适用相应许可证，具体请根目录下的 LICENSE 文件。

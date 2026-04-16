@@ -9,7 +9,7 @@
 
 | torchtitan-npu | torchtitan | Python | Stable CANN | PyTorch/torch_npu |
 | --- | --- | --- | --- | --- |
-| v0.2.1 | v0.2.1 (81af8833ddeff9b5f1874dc7e20594aa17da6b86) | >= 3.10 | 8.0+ | 2.6+ / torch-npu matching CANN |
+| v0.2.2 | v0.2.2 (73a0e6979dd10b6b1904098eb3c8f62c18ab87ce) | >= 3.10 | 8.0+ | 2.6+ / torch-npu matching CANN |
 
 对于活跃开发分支，请始终以 `分支同步表 为准。
 
@@ -20,11 +20,11 @@
 
 | torchtitan_npu_branch | torchtitan_repo_url | torchtitan_branch | torchtitan_commit | updated_at | notes |
 | --- | --- | --- | --- | --- | --- |
-| master | https://github.com/pytorch/torchtitan.git | v0.2.1 | 81af8833ddeff9b5f1874dc7e20594aa17da6b86 | 2026-03-11 | Baseline adapted to torchtitan v0.2.1 tag. Update after each sync. |
+| master | https://github.com/pytorch/torchtitan.git | v0.2.2 | 73a0e6979dd10b6b1904098eb3c8f62c18ab87ce | 2026-03-11 | Baseline adapted to torchtitan v0.2.2 tag. Update after each sync. |
 
 格式规则：
 - `torchtitan_commit` 必须仅包含纯 commit hash。
-- 不得在 `torchtitan_commit` 中附加说明性文本（例如 `, v0.2.1 tag`）。
+- 不得在 `torchtitan_commit` 中附加说明性文本（例如 `, v0.2.2 tag`）。
 
 ## 分支策略
 
