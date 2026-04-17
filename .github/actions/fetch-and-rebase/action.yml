@@ -1,0 +1,49 @@
+name: Fetch and Rebase
+
+description: Fetch a remote branch and rebase the current branch onto it.
+
+inputs:
+  repo_path:
+    description: Path to the repository to update.
+    required: true
+  remote_branch:
+    description: Fully qualified remote branch to rebase from.
+    required: true
+  loop:
+    description: Number of retry attempts if the rebase sequence fails.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch and rebase
+      shell: bash
+      env:
+        REPO_PATH: ${{ inputs.repo_path }}
+        REMOTE_BRANCH: ${{ inputs.remote_branch }}
+        LOOP: ${{ inputs.loop }}
+      run: |
+        set +e
+
+        count=0
+
+        for i in $(seq 1 "${LOOP}"); do
+          pushd "${REPO_PATH}" >/dev/null || exit 1
+
+          git fetch --all --tags &&
+          git rebase "${REMOTE_BRANCH}"
+          status=$?
+
+          popd >/dev/null || exit 1
+
+          if [[ ${status} -eq 0 ]]; then
+            exit 0
+          fi
+
+          count=$((count + 1))
+          pushd "${REPO_PATH}" >/dev/null || exit 1
+          git rebase --abort >/dev/null 2>&1 || true
+          popd >/dev/null || exit 1
+        done
+
+        [[ ${count} -lt ${LOOP} ]]
