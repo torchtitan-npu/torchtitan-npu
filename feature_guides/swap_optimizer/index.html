@@ -145,7 +145,7 @@
 <h3 id="_3">异步多流通信与流水线更新</h3>
 <p>重写后的 <code>swap_optimizer_step</code> 引入了两个独立的底层数据流 <code>swap_to_device_stream</code> 和 <code>swap_to_host_stream</code>，并且将整个参数更新过程切分为多个小块（通过 <code>swap_optimizer_times</code> 控制单次处理的容量阈值 <code>swap_numel</code>）以实现高效的流水线更新：</p>
 <p align="center">
-<img src="../assets/swap_optimizer.png" width="80%" >
+<img src="../../assets/swap_optimizer.png" width="80%" >
 </p>
 
 <ol>

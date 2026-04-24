@@ -132,7 +132,7 @@
 <h2 id="npu-torchcompile">NPU 上的 torch.compile</h2>
 <p>在 torch.compile 的工作流程中，PyTorch 代码依次经过 Dynamo 成图， Inductor 图编译优化、Codegen，生成在硬件 runtime 上执行的优化 DSL 代码。</p>
 <p align="center">
-<img src="../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
+<img src="../../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
 </p>
 
 <p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
