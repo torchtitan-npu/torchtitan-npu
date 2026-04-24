@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>调试支持特性 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u8c03\u8bd5\u652f\u6301\u7279\u6027";
+        var mkdocs_page_input_path = "feature_guides/metrics_and_debugging.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">调试支持特性</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#hccl-flight-recorder">HCCL Flight Recorder</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">使用场景</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">实现原理</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">配置选项</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#memory-snapshot">Memory Snapshot</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">使用场景</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">配置选项</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_9">使用场景</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_10">配置选项</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#torchtitan">torchtitan 原生配置选项</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#torchtitan_npu">torchtitan_npu 扩展配置选项</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_11">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">调试支持特性</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">调试支持特性</h1>
+<p>torchtitan-npu 目前提供多种调试特性支持，帮助开发者定位分布式训练中的各类问题，包括通信故障、内存问题和性能瓶颈等。以下是常见使用场景和对应功能的快速参考：</p>
+<table>
+<thead>
+<tr>
+<th>使用场景</th>
+<th>对应功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>排查 HCCL 通信超时问题</td>
+<td><a href="#hccl-flight-recorder">HCCL Flight Recorder</a></td>
+</tr>
+<tr>
+<td>分析 OOM 和内存泄漏</td>
+<td><a href="#memory-snapshot">Memory Snapshot</a></td>
+</tr>
+<tr>
+<td>定位性能瓶颈和优化性能</td>
+<td><a href="#profiling">Profiling</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="hccl-flight-recorder">HCCL Flight Recorder</h2>
+<p>在大规模分布式训练任务因通信算子超时而异常退出时，往往因为缺少详尽的通信轨迹及对应代码位置信息，难以快速定位问题的根本原因。HCCL Flight Recorder 通过自动配置 HCCL 相关环境变量，在分布式训练过程中实时监控 HCCL 通信操作，并记录通信算子的下发调用栈、时间戳和数据量大小等关键信息。当检测到通信超时异常时，系统会自动将缓冲区中的追踪信息转储到文件。</p>
+<h3 id="_2">使用场景</h3>
+<ul>
+<li>训练过程中出现 HCCL 通信超时错误</li>
+<li>需要排查 HCCL 通信算子的调用顺序和参数</li>
+</ul>
+<h3 id="_3">实现原理</h3>
+<p>由于启用 HCCL Flight Recorder 功能所需的环境变量配置与 NCCL 存在差异，因而 torchtitan_npu 在 <code>torchtitan_npu/tools/flight_recorder.py</code> 中对 <code>torchtitan.distributed.utils.init_distributed</code> 函数进行了拦截，自动配置 HCCL Flight Recorder 相关的环境变量，使能了通信超时的自动检测和轨迹转储功能。在分布式初始化阶段，系统会根据配置自动设置以下环境变量：</p>
+<ol>
+<li><strong><code>TORCH_HCCL_TRACE_BUFFER_SIZE</code></strong>：设置 HCCL 追踪缓冲区大小，控制记录的通信轨迹数据量。</li>
+<li><strong><code>HCCL_ASYNC_ERROR_HANDLING</code></strong>：启用 HCCL 异步错误处理机制，创建检测通信问题的 HCCL Watchdog 线程。</li>
+<li><strong><code>TORCH_HCCL_ENABLE_MONITORING</code></strong>：启用 HCCL 监控功能，实时检测通信状态。</li>
+<li><strong><code>TORCH_HCCL_DUMP_ON_TIMEOUT</code></strong>：配置在检测到超时时自动转储追踪信息。</li>
+<li><strong><code>TORCH_HCCL_DEBUG_INFO_TEMP_FILE</code></strong>：指定追踪文件的存储路径和文件名前缀。</li>
+</ol>
+<h3 id="_4">配置选项</h3>
+<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 <code>[comm]</code> 节，并添加以下配置以启用 HCCL Flight Recorder：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trace_buf_size</code></td>
+<td>int</td>
+<td>0</td>
+<td>HCCL 追踪缓冲区大小。设置为 0 时不启用追踪，设置为大于 0 的值时启用自动追踪和超时转储。</td>
+</tr>
+<tr>
+<td><code>save_traces_folder</code></td>
+<td>str</td>
+<td>"comm_traces"</td>
+<td>追踪文件的保存目录路径，相对于训练输出目录。</td>
+</tr>
+<tr>
+<td><code>save_traces_file_prefix</code></td>
+<td>str</td>
+<td>"rank_"</td>
+<td>追踪文件的文件名前缀。</td>
+</tr>
+</tbody>
+</table>
+<p>需要注意的是，HCCL 通信超时的阈值目前只能通过环境变量 <code>HCCL_EXEC_TIMEOUT</code> 来配置。设置此环境变量可以确保 HCCL 本身的其他调试信息能够被正确收集。例如，在启动训练脚本中设置：</p>
+<pre><code class="language-bash">export HCCL_EXEC_TIMEOUT=120  # 设置超时阈值为 120 秒
+</code></pre>
+<h3 id="_5">配置示例</h3>
+<p>在配置文件的 <code>[comm]</code> 节中添加以下配置，启用 HCCL Flight Recorder 并设置相关参数：</p>
+<pre><code class="language-toml">[comm]
+trace_buf_size = 2000               # 设置大小为 2000 的追踪缓冲区
+save_traces_folder = &quot;hccl_traces&quot;  # 追踪文件保存到 `hccl_traces` 目录
+save_traces_file_prefix = &quot;rank_&quot;   # 文件名前缀为 `rank_`
+</code></pre>
+<p>当训练过程中出现 HCCL 通信超时或错误时，系统会自动将追踪信息转储到 <code>hccl_traces/rank_*</code> 文件中，开发者可以使用这些文件进行问题诊断和分析，相关指导可以参考Pytorch社区关于Flight Recorder功能的相关<a href="https://docs.pytorch.org/tutorials/unstable/flight_recorder_tutorial.html">说明文档</a>。</p>
+<hr />
+<h2 id="memory-snapshot">Memory Snapshot</h2>
+<p>内存快照功能用于捕获和记录训练过程中的内存使用情况，包括内存分配、显存占用、张量生命周期等信息。通过 torchtitan 配置项进行定时内存快照收集，本功能生成的<code>.pickle</code>格式内存快照文件可通过<a href="https://docs.pytorch.org/memory_viz">memory_viz</a>工具进行解析和可视化查看。</p>
+<h3 id="_6">使用场景</h3>
+<ul>
+<li>训练过程中出现 OOM（Out of Memory）错误，需要分析内存占用情况</li>
+<li>怀疑存在内存泄漏，需要追踪内存分配和释放情况</li>
+<li>需要优化显存使用，了解框架不同模块的内存占用</li>
+</ul>
+<h3 id="_7">配置选项</h3>
+<p>torchtitan 原生提供内存快照功能，相关配置项位于 <code>[profiling]</code> 节，支持的配置选项如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable_memory_snapshot</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用内存快照功能。</td>
+</tr>
+<tr>
+<td><code>save_memory_snapshot_folder</code></td>
+<td>str</td>
+<td>"memory_snapshot"</td>
+<td>内存快照文件保存目录。</td>
+</tr>
+<tr>
+<td><code>profile_freq</code></td>
+<td>int</td>
+<td>10</td>
+<td>每隔多少个训练步骤收集一次内存快照。</td>
+</tr>
+</tbody>
+</table>
+<p>torchtitan 原生内存快照功能会按照 <code>profile_freq</code> 指定的频率定期收集内存快照，并在发生 OOM 错误时自动转储当前内存快照。收集到的内存快照将保存到 <code>save_memory_snapshot_folder</code> 指定的目录中。</p>
+<h3 id="_8">配置示例</h3>
+<p>在配置文件的 <code>[profiling]</code> 节中添加以下配置，启用内存快照功能：</p>
+<pre><code class="language-toml">[profiling]
+enable_memory_snapshot = true                   # 使能内存快照采集
+save_memory_snapshot_folder = &quot;memory_snapshot&quot; # 指定输出快照文件目录为 memory_snapshot
+profile_freq = 10                               # 指定每训练10步收集采集内存快照
+</code></pre>
+<hr />
+<h2 id="profiling">Profiling</h2>
+<p>性能分析是优化训练性能的关键工具。torchtitan_npu 对性能分析功能进行了 NPU 适配，支持详细的性能数据收集和分析。系统使用 <code>torch_npu.profiler</code> 提供的原生性能分析器，能够追踪 CPU 和 NPU 的活动，记录内存使用情况、调用栈信息、张量形状等详细数据，并提供 AI 算力利用率指标。</p>
+<h3 id="_9">使用场景</h3>
+<ul>
+<li>需要分析训练过程中的性能瓶颈</li>
+<li>需要对比不同配置或优化方案的性能表现</li>
+<li>需要定位训练过程中的性能异常或退化</li>
+</ul>
+<h3 id="_10">配置选项</h3>
+<p>在训练任务的 TOML 配置文件中，找到对应的 <code>[profiling]</code> 节，并添加以下配置以启用性能分析。</p>
+<h4 id="torchtitan">torchtitan 原生配置选项</h4>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable_profiling</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用性能分析功能。</td>
+</tr>
+<tr>
+<td><code>save_traces_folder</code></td>
+<td>str</td>
+<td>"profile_traces"</td>
+<td>性能分析结果的保存目录路径。</td>
+</tr>
+<tr>
+<td><code>profile_freq</code></td>
+<td>int</td>
+<td>10</td>
+<td>性能分析的采样频率，每隔多少步采集一次。</td>
+</tr>
+<tr>
+<td><code>profiler_warmup</code></td>
+<td>int</td>
+<td>1</td>
+<td>性能分析器的预热步数。</td>
+</tr>
+<tr>
+<td><code>profiler_active</code></td>
+<td>int</td>
+<td>3</td>
+<td>性能分析器的采集步数。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="torchtitan_npu">torchtitan_npu 扩展配置选项</h4>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profile_step_start</code></td>
+<td>int</td>
+<td>0</td>
+<td>开始性能分析的步数。如果设置为大于 0 的值，将使用基于步数的分析模式。</td>
+</tr>
+<tr>
+<td><code>profile_step_end</code></td>
+<td>int</td>
+<td>0</td>
+<td>结束性能分析的步数。如果设置为 0，将使用 <code>profile_step_start + profiler_active</code>。</td>
+</tr>
+<tr>
+<td><code>profile_ranks</code></td>
+<td>list[int]</td>
+<td>[-1]</td>
+<td>需要进行性能分析的 rank 列表，例如 [0, 1, 2]。使用 [-1] 表示对所有 rank 进行分析。</td>
+</tr>
+<tr>
+<td><code>profile_record_shapes</code></td>
+<td>bool</td>
+<td>true</td>
+<td>是否在性能分析期间记录张量形状。</td>
+</tr>
+<tr>
+<td><code>profile_with_memory</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否在性能分析期间记录内存使用情况。</td>
+</tr>
+<tr>
+<td><code>profile_with_stack</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否在性能分析期间记录调用栈信息。</td>
+</tr>
+<tr>
+<td><code>enable_online_parse</code></td>
+<td>bool</td>
+<td>true</td>
+<td>是否启用性能分析数据的在线解析。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_11">配置示例</h3>
+<p>在配置文件中添加以下配置，启用性能分析功能。</p>
+<p>使用 torchtitan 原生的基于频率的分析模式：</p>
+<pre><code class="language-toml">[profiling]
+enable_profiling = true                 # 启用性能分析
+save_traces_folder = &quot;profile_traces&quot;   # 性能分析结果保存目录
+profile_freq = 10                       # 每 10 步采集一次profiling
+profiler_warmup = 1                     # 预热 1 步
+profiler_active = 3                     # 采集 3 步
+</code></pre>
+<p>使用 torchtitan_npu 扩展的基于步数的分析模式：</p>
+<pre><code class="language-toml">[profiling]
+enable_profiling = true                 # 启用性能分析
+save_traces_folder = &quot;profile_traces&quot;   # 性能分析结果保存目录
+profile_step_start = 10                 # 从第 10 步开始分析
+profile_step_end = 15                   # 到第 15 步结束分析
+profile_ranks = [0]                     # 仅对 rank 0 进行分析
+profile_record_shapes = true            # 记录张量形状
+profile_with_memory = false             # 不记录内存使用
+profile_with_stack = false              # 不记录调用栈
+enable_online_parse = true              # 启用在线解析
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../low_precision_training/" class="btn btn-neutral float-left" title="低精度训练特性（MXFP8 / HiFloat8）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../muon_optimizer/" class="btn btn-neutral float-right" title="Muon 优化器特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../low_precision_training/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

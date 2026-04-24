@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>torch.compile 支持 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "torch.compile \u652f\u6301";
+        var mkdocs_page_input_path = "feature_guides/torch_compile.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">torch.compile 支持</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#npu-torchcompile">NPU 上的 torch.compile</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">支持范围</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">注意事项</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">torch.compile 支持</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="torchcompile">torch.compile 支持</h1>
+<p>torch.compile 是 PyTorch 2.0 的核心特性。通过 JIT （即时编译），将 PyTorch 代码转化为高度优化的融合算子，在几乎不改动原有代码的前提下显著提升性能。作为 PyTorch 原生的分布式训练框架，torchtitan 的一大优势便是可以便捷、充分地发挥 torch.compile 的性能收益。在此基础上，torchtitan_npu 结合 CANN 生态的编译能力，在 NPU 平台上的分布式训练任务中为 torch.compile 提供支持。</p>
+<h2 id="npu-torchcompile">NPU 上的 torch.compile</h2>
+<p>在 torch.compile 的工作流程中，PyTorch 代码依次经过 Dynamo 成图， Inductor 图编译优化、Codegen，生成在硬件 runtime 上执行的优化 DSL 代码。</p>
+<p align="center">
+<img src="../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
+</p>
+
+<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
+<h2 id="torchcompile_1">torch.compile 示例</h2>
+<p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
+<pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
+cd torchair/experimental/_inductor_npu_ext/
+pip3 install -e ./python/
+cd -
+</code></pre>
+<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的 TOML 配置文件）中，找到对应的 <code>[compile]</code> 节，添加以下配置以完整编译模型：</p>
+<pre><code class="language-toml">[compile]
+# 启用编译
+enable = true
+# 编译完整模型，而不是只编译 loss 。
+components = [&quot;model&quot;, &quot;loss&quot;]
+</code></pre>
+<p>启动训练任务前，设置以下环境变量：</p>
+<pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
+bash run_train.sh
+</code></pre>
+<h2 id="_1">支持范围</h2>
+<p>torchtitan-npu 当前支持 DeepSeek-V3 模型的全流程编译。
+其他模型的 Codegen 处于待调试状态，启用 torch.compile时，需要引入补丁 <code>npu_bypass_triton_codegen</code> 以跳过 Codegen 流程：</p>
+<pre><code class="language-toml">[model]
+converters = [..., &quot;npu_bypass_triton_codegen&quot;]
+</code></pre>
+<h2 id="_2">注意事项</h2>
+<blockquote>
+<p>⚠️ <strong>修改模型结构后，需要清理缓存重新 compile</strong></p>
+<p>torch.compile 会缓存编译结果。当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的缓存可能导致编译失败或运行异常。请执行以下命令清理缓存：</p>
+<p><code>bash
+rm -rf /root/.cache
+rm -rf /tmp/*
+rm -rf ./torchinductor_root
+rm -rf ./torch_compile_debug
+rm -rf .npu_kernels_root</code></p>
+</blockquote>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../swap_optimizer/" class="btn btn-neutral float-left" title="SwapOptimizer 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../parallelism/custom_cp/" class="btn btn-neutral float-right" title="自定义Context Parallel特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../swap_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../parallelism/custom_cp/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

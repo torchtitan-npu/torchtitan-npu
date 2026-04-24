@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>低精度训练特性（MXFP8 / HiFloat8） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3\u7279\u6027\uff08MXFP8 / HiFloat8\uff09";
+        var mkdocs_page_input_path = "feature_guides/low_precision_training.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8 / HiFloat8）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">硬件要求</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">整体架构</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#quantizelinearmx">线性层低精度（quantize.linear.mx）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#moe-quantizegrouped_mmmx">MoE 专家层低精度（quantize.grouped_mm.mx）</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">配置选项</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#quantizelinearmx_1">线性层低精度配置（quantize.linear.mx）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#moe-quantizegrouped_mmmx_1">MoE 专家层低精度配置（quantize.grouped_mm.mx）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">验证清单</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">低精度训练特性（MXFP8 / HiFloat8）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="mxfp8-hifloat8">低精度训练特性（MXFP8 / HiFloat8）</h1>
+<p>在大规模语言模型的分布式训练中，矩阵乘法运算（GEMM）占据了绝大部分计算开销。传统的 BF16/FP16 混合精度训练虽然已大幅降低了显存占用，但在超大规模模型（如 DeepSeek-V3 671B）上仍面临计算效率瓶颈。低精度训练通过将线性层和 MoE 专家层的矩阵乘法降至 8-bit 浮点精度执行，在保持训练收敛性的前提下，显著提升计算吞吐并降低显存消耗。</p>
+<p>本特性在 <code>torchtitan</code> 框架中引入了对 <strong>MXFP8</strong> 和 <strong>HiFloat8</strong> 两种 8-bit 浮点格式的支持，覆盖普通线性层（nn.Linear）和 MoE 专家层（Grouped MM）两大场景。</p>
+<h2 id="_1">硬件要求</h2>
+<p>低精度训练特性仅支持 <strong>Ascend 950 及更高架构</strong>的 NPU 设备。系统在初始化时会通过 <code>torch_npu.npu.get_device_name()</code> 进行硬件检测，不满足要求时将抛出异常。</p>
+<h2 id="_2">实现原理</h2>
+<h3 id="_3">整体架构</h3>
+<p>本特性通过 <code>torchtitan</code> 的 converter 机制实现，在模型构建完成后对目标模块进行无缝替换。相关代码主要分布在以下文件中：</p>
+<table>
+<thead>
+<tr>
+<th>文件路径</th>
+<th>修改作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/converters/quant_converter.py</code></td>
+<td>对上游 <code>MXLinearConverter</code> 和 <code>MXGroupedMMConverter</code> 的初始化与转换逻辑进行 NPU 适配替换</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/converters/kernels/quant_linear.py</code></td>
+<td>实现低精度线性层 <code>MXLinear</code>，包含 MXFP8 和 HiFloat8 的前向/反向自定义算子</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/converters/kernels/quant_gmm.py</code></td>
+<td>实现低精度分组矩阵乘法，包含 MXFP8 和 HiFloat8 的前向/反向自定义算子</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/patches/quantization/quant_config.py</code></td>
+<td>定义量化配置数据类 <code>MXLinearConfig</code>、<code>MoETrainingConfig</code> 及对应的 recipe 枚举</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/patches/quantization/quantize.py</code></td>
+<td>提供 <code>linear_quantize_</code> 和 <code>grouped_quantize_</code> 函数，实现模型模块的递归遍历与替换</td>
+</tr>
+</tbody>
+</table>
+<h3 id="quantizelinearmx">线性层低精度（<code>quantize.linear.mx</code>）</h3>
+<p>通过 converter 机制，系统将模型中符合条件的 <code>nn.Linear</code> 模块替换为自定义的 <code>MXLinear</code> 模块。<code>MXLinear</code> 继承自 <code>nn.Linear</code>，在 <code>forward</code> 方法中根据配置的 <code>recipe_name</code> 调用对应的低精度自定义算子：</p>
+<ul>
+<li><strong>MXFP8 模式</strong>：使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对激活和权重进行 per-block 量化（block size=32），每 32 个元素共享一个scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行低精度矩阵乘法。前向传播的线性变换及反向传播的输入梯度、权重梯度计算以 FP8 精度执行，最终输出恢复为原始精度。</li>
+<li><strong>HiFloat8 模式</strong>：使用 <code>torch_npu.npu_dynamic_quant</code> 对激活和权重进行 per-tensor 动态量化，整个张量共享一个 scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行低精度矩阵乘法。</li>
+</ul>
+<p>用户可通过 <code>filter_fqns</code> 配置项，指定不进行低精度替换的线性层（如 <code>output</code> 层和 <code>router.gate</code> 层），以避免对精度敏感的模块产生影响。</p>
+<h3 id="moe-quantizegrouped_mmmx">MoE 专家层低精度（<code>quantize.grouped_mm.mx</code>）</h3>
+<p>对于 MoE（Mixture of Experts）架构中的专家层，系统通过替换 <code>npu_grouped_mm</code> 函数为低精度版本来实现量化加速：</p>
+<ul>
+<li><strong>MXFP8 模式</strong>：在前向传播中，使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对输入和权重分别进行 per-block 量化（block size=32），再调用 <code>torch_npu.npu_grouped_matmul</code> 执行低精度分组矩阵乘法。反向传播中，梯度计算同样在 FP8 精度下完成，其中权重梯度的计算使用 <code>torch_npu.npu_grouped_dynamic_mx_quant</code> 进行 per-block 量化。</li>
+<li><strong>HiFloat8 模式</strong>：先根据专家数和 EP 并行度计算分组大小 <code>g_size</code>，再通过 <code>reshape(g_size, -1)</code> 将张量重塑为 <code>g_size</code> 行，利用 <code>torch_npu.npu_dynamic_quant</code> 的默认 per-token 量化模式对每一行（实际对应每个专家分组）独立量化，每个专家分组共享一个scale。量化后调用 <code>torch_npu.npu_grouped_matmul</code> 执行低精度分组矩阵乘法。</li>
+</ul>
+<blockquote>
+<p><strong>注意</strong>：MoE 低精度功能依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 <code>converters</code> 配置中 <code>"npu_gmm"</code> 必须位于 <code>"quantize.grouped_mm.mx"</code> 之前。</p>
+</blockquote>
+<h2 id="_4">配置选项</h2>
+<p>在训练任务的 TOML 配置文件中，通过 <code>[model]</code> 节的 <code>converters</code> 字段启用低精度 converter，并在对应的 <code>[quantize.linear.mx]</code> 和 <code>[quantize.grouped_mm.mx]</code> 节中设置详细参数。</p>
+<h3 id="quantizelinearmx_1">线性层低精度配置（<code>quantize.linear.mx</code>）</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>recipe_name</code></td>
+<td>str</td>
+<td>"mxfp8"</td>
+<td>量化方式。可选值：<code>"mxfp8"</code>、<code>"hif8"</code>。</td>
+</tr>
+<tr>
+<td><code>filter_fqns</code></td>
+<td>list[str]</td>
+<td>[]</td>
+<td>不进行低精度替换的模块名称列表。匹配规则为子字符串包含，如 <code>"output"</code> 将过滤所有全限定名（Fully Qualified Name, FQN）中包含 "output" 的线性层。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="moe-quantizegrouped_mmmx_1">MoE 专家层低精度配置（<code>quantize.grouped_mm.mx</code>）</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>recipe_name</code></td>
+<td>str</td>
+<td>"mxfp8"</td>
+<td>量化方式。可选值：<code>"mxfp8"</code>、<code>"hif8"</code>。</td>
+</tr>
+<tr>
+<td><code>fqns</code></td>
+<td>list[str]</td>
+<td>[]</td>
+<td>需要进行低精度替换的 MoE 模块名称列表。匹配规则为子字符串包含，如 <code>"experts"</code> 将匹配所有全限定名（Fully Qualified Name, FQN）中包含 "experts" 的模块。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">配置示例</h3>
+<p>首先在配置文件中使能本代码仓的自定义配置，随后在 <code>[model]</code> 节中配置 <code>converters</code> 并添加对应的量化参数节：</p>
+<p><strong>示例一：仅对线性层启用低精度训练</strong></p>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+
+[model]
+converters = [&quot;quantize.linear.mx&quot;]
+
+[quantize.linear.mx]
+recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
+filter_fqns = [&quot;output&quot;, &quot;router.gate&quot;]   # output 和 router.gate 层不做低精度替换
+</code></pre>
+<p><strong>示例二：同时对线性层和 MoE 专家层启用低精度训练</strong></p>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;
+
+[model]
+# npu_gmm 必须在 quantize.grouped_mm.mx 之前
+converters = [&quot;npu_gmm&quot;, &quot;quantize.linear.mx&quot;, &quot;quantize.grouped_mm.mx&quot;]
+
+[quantize.linear.mx]
+recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
+filter_fqns = [&quot;output&quot;, &quot;router.gate&quot;]
+
+[quantize.grouped_mm.mx]
+recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
+fqns = [&quot;experts&quot;]
+</code></pre>
+<h2 id="_6">验证清单</h2>
+<ol>
+<li><strong>确认 converter 生效</strong>：启动日志中应出现以下关键字（MXFP8 和 HiFloat8 均适用）：</li>
+<li>线性层：<code>MX training active with recipe &lt;recipe_name&gt;</code>（其中 <code>&lt;recipe_name&gt;</code> 为 <code>mxfp8</code> 或 <code>hif8</code>）和 <code>Swapped to MXLinear_NPU layers</code></li>
+<li>MoE 专家层：<code>&lt;recipe_name&gt; MoE training enabled</code> 和 <code>[MXFP8/Hif8 GMM] Replaced &lt;N&gt; NPU GMM methods/functions</code></li>
+<li><strong>确认模块替换数量</strong>：日志中 <code>Replaced &lt;N&gt; NPU GMM methods/functions</code> 的数量应与预期的 MoE 专家模块数一致；线性层可通过 <code>model.named_modules()</code> 检查 <code>MXLinear</code> 类型的模块数量。</li>
+<li><strong>常见未生效场景排查</strong>：</li>
+<li><code>converters</code> 顺序错误：<code>"npu_gmm"</code> 未放在 <code>"quantize.grouped_mm.mx"</code> 之前，导致 MoE 专家层替换失败</li>
+<li><code>filter_fqns</code> / <code>fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
+<li>硬件不满足要求：日志报错 <code>[MXFP8/Hif8] is only supported on Ascend950 or higher architecture</code></li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v32_mtp/" class="btn btn-neutral float-left" title="多Token预测特性(Multi Token Prediction, MTP)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../metrics_and_debugging/" class="btn btn-neutral float-right" title="调试支持特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v32_mtp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
+    <title>版本策略（Versioning Policy） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u7248\u672c\u7b56\u7565\uff08Versioning Policy\uff09";
+        var mkdocs_page_input_path = "source/community/versioning_policy.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" >Community</a>
+    <ul class="current">
+                <li class="toctree-l2 current"><a class="reference internal current" href="#">版本策略（Versioning Policy）</a>
+    <ul class="current">
+    <li class="toctree-l3"><a class="reference internal" href="#_1">发布兼容性表</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">分支同步表</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">分支策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">同步更新策略</a>
+    </li>
+    </ul>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Source</li>
+          <li class="breadcrumb-item">Community</li>
+      <li class="breadcrumb-item active">版本策略（Versioning Policy）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="versioning-policy">版本策略（Versioning Policy）</h1>
+<p><code>torchtitan-npu</code> 采用“分支 + commit 基线”的方式与上游 <code>torchtitan</code> 保持对齐。
+本政策用于定义发布兼容性约束，以及分支同步信息的唯一事实来源（source of truth）。</p>
+<h2 id="_1">发布兼容性表</h2>
+<p>下表列出了已发布 <code>torchtitan-npu</code> 版本对应的上游 <code>torchtitan</code> 基线及关键运行时兼容范围。</p>
+<table>
+<thead>
+<tr>
+<th>torchtitan-npu</th>
+<th>torchtitan</th>
+<th>Python</th>
+<th>Stable CANN</th>
+<th>PyTorch/torch_npu</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v0.2.2</td>
+<td>v0.2.2 (73a0e6979dd10b6b1904098eb3c8f62c18ab87ce)</td>
+<td>&gt;= 3.10</td>
+<td>8.0+</td>
+<td>2.6+ / torch-npu matching CANN</td>
+</tr>
+</tbody>
+</table>
+<p>对于活跃开发分支，请始终以 `分支同步表 为准。</p>
+<h2 id="_2">分支同步表</h2>
+<p>本表是 <code>torchtitan-sync</code> skill 的唯一事实来源。
+在执行同步前，必须先读取与当前 <code>torchtitan-npu</code> 分支对应的数据行。</p>
+<table>
+<thead>
+<tr>
+<th>torchtitan_npu_branch</th>
+<th>torchtitan_repo_url</th>
+<th>torchtitan_branch</th>
+<th>torchtitan_commit</th>
+<th>updated_at</th>
+<th>notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>master</td>
+<td>https://github.com/pytorch/torchtitan.git</td>
+<td>v0.2.2</td>
+<td>73a0e6979dd10b6b1904098eb3c8f62c18ab87ce</td>
+<td>2026-03-11</td>
+<td>Baseline adapted to torchtitan v0.2.2 tag. Update after each sync.</td>
+</tr>
+</tbody>
+</table>
+<p>格式规则：
+- <code>torchtitan_commit</code> 必须仅包含纯 commit hash。
+- 不得在 <code>torchtitan_commit</code> 中附加说明性文本（例如 <code>, v0.2.2 tag</code>）。</p>
+<h2 id="_3">分支策略</h2>
+<ul>
+<li><code>master</code>：长期集成分支，应跟踪稳定上游基线。</li>
+<li><code>releases/vX.Y.Z</code>（如使用）：发布维护分支，使用固定上游基线。</li>
+<li><code>feature/*</code> 或 <code>dev_*</code>：开发分支，仍必须维护同步元数据的准确性与时效性。</li>
+</ul>
+<p>常规流程应先将变更合入 <code>master</code>，再按需回移（backport）到维护分支。</p>
+<h2 id="_4">同步更新策略</h2>
+<p>每次完成上游同步后，必须同步更新本文件：
+1. 将 <code>torchtitan_commit</code> 更新为本次同步目标 commit。
+2. 更新 <code>updated_at</code>。
+3. 在 <code>notes</code> 中记录 commit 区间与主要适配点。
+4. 若兼容性发生变化，同步更新 <code>发布兼容性表</code>。</p>
+<p>若当前分支在表中无映射行，必须先补充该行后再执行同步。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../../feature_guides/parallelism/custom_cp/" class="btn btn-neutral float-left" title="自定义Context Parallel特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../../test_guides/test_design/" class="btn btn-neutral float-right" title="Test Design">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../../feature_guides/parallelism/custom_cp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../../test_guides/test_design/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../../..";</script>
+    <script src="../../../js/theme_extra.js"></script>
+    <script src="../../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

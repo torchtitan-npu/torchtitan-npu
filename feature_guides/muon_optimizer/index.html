@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Muon 优化器特性 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Muon \u4f18\u5316\u5668\u7279\u6027";
+        var mkdocs_page_input_path = "feature_guides/muon_optimizer.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Muon 优化器特性</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">参数分配策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">学习率调整模式</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#original">original 模式详解</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#match_rms_adamw">match_rms_adamw 模式详解</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#_4">模式选择建议</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">配置选项</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">配置示例</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">注意事项</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">参考文献</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">Muon 优化器特性</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="muon">Muon 优化器特性</h1>
+<p>在大规模语言模型的训练中，优化器的选择对收敛速度和最终性能有着重要影响。传统的 Adam/AdamW 优化器虽然通用性强，但对于大规模矩阵参数（Linear 层的权重）的更新策略并非最优。Muon 优化器通过引入动量正交化（Momentum Orthogonalization）技术，针对 2D 矩阵参数实现了更高效的梯度下降策略。</p>
+<h2 id="_1">实现原理</h2>
+<p>Muon 优化器的核心创新在于对 2D 参数（矩阵）采用不同于传统优化器的更新机制。其理论基础源于以下观察：</p>
+<ol>
+<li><strong>传统优化器的局限</strong>：Adam/AdamW 等优化器将参数视为独立的一维向量进行更新，忽略了矩阵参数的结构信息</li>
+<li><strong>动量正交化思想</strong>：在每一步更新时，将动量分解为与当前梯度方向平行和垂直的两个分量，仅保留正交分量以实现更稳定的收敛</li>
+</ol>
+<h3 id="_2">参数分配策略</h3>
+<p>torchtitan-npu 目前采用了 <strong>Muon + AdamW 混合优化器</strong> 策略：</p>
+<ul>
+<li><strong>2D 参数</strong>（如 Linear 层的权重矩阵）→ 使用 Muon 优化器</li>
+<li><strong>非 2D 参数</strong>（如偏置、LayerNorm、Embedding）→ 使用 AdamW 优化器</li>
+</ul>
+<p>这种混合策略既能发挥 Muon 在矩阵参数上的收敛优势，又能保证非矩阵参数的稳定训练。</p>
+<h3 id="_3">学习率调整模式</h3>
+<p>Muon 优化器支持两种学习率调整模式（通过 <code>muon_adjust_lr_fn</code> 配置），其核心区别在于如何根据矩阵形状调整学习率，以及是否需要独立的超参数调优。</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>调整公式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>original</code></td>
+<td>$\gamma \leftarrow \gamma \cdot \sqrt{\max(1, A/B)}$</td>
+<td>Keller Jordan 原始实现，根据矩阵宽高比调整</td>
+</tr>
+<tr>
+<td><code>match_rms_adamw</code></td>
+<td>$\gamma \leftarrow 0.2 \cdot \gamma \cdot \sqrt{\max(A, B)}$</td>
+<td>Moonshot 实现，直接复用 AdamW 的 lr 和 weight_decay</td>
+</tr>
+</tbody>
+</table>
+<h4 id="original">original 模式详解</h4>
+<p>该模式源自 Muon 创始人 Keller Jordan 的原始实现。调整公式为：</p>
+<p>$$\gamma_{\text{adjusted}} = \gamma \times \sqrt{\max\left(1, \frac{A}{B}\right)}$$</p>
+<p>其中 $A$ 和 $B$ 是矩阵的两个维度。这个调整的目的是：<strong>让正交化后的梯度更新在不同形状的矩形矩阵上具有一致的 RMS（Root Mean Square）</strong>。</p>
+<ul>
+<li>当 $A \le B$（宽矩阵，如 FFN 中的中间层）时，系数为 1，不做额外调整</li>
+<li>当 $A &gt; B$（高矩阵，如输出层）时，按 $\sqrt{A/B}$ 缩放</li>
+</ul>
+<p>这种设计使得 Muon 可以在不同形状的矩阵上保持相似的收敛行为。由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将Adamw的学习率放大10倍来作为Muon的学习率。这就是为什么该模式需要配合 <code>MuonLRSchedulersContainer</code> 使用。</p>
+<h4 id="match_rms_adamw">match_rms_adamw 模式详解</h4>
+<p>该模式来自 Moonshot 团队的论文 <a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a>。调整公式为：</p>
+<p>$$\gamma_{\text{adjusted}} = 0.2 \times \gamma \times \sqrt{\max(A, B)}$$</p>
+<p>这个模式的设计目标是：<strong>让 Muon 可以直接复用已经为 AdamW 调优好的学习率和权重衰减超参数</strong>，无需额外的超参数搜索。</p>
+<p>论文实验表明，使用此调整后，Muon 在大模型训练任务上可以达到与 AdamW 相近的收敛效果，同时利用动量正交化获得更快的收敛速度。由于调整后的学习率与 AdamW 处于同一量级，Muon 和 AdamW 可以共享相同的基础学习率，使用标准的 <code>LRSchedulersContainer</code> 即可。</p>
+<h4 id="_4">模式选择建议</h4>
+<ul>
+<li><strong>使用 <code>match_rms_adamw</code></strong>：如果你已经为 AdamW 调优好了超参数，希望直接尝试 Muon 而不想重新调参</li>
+<li><strong>使用 <code>original</code></strong>：如果你愿意投入时间单独调优 Muon 的学习率，追求可能的更好收敛效果</li>
+</ul>
+<h2 id="_5">配置选项</h2>
+<p>在训练任务的 TOML 配置文件中，找到对应的 <code>[optimizer]</code> 节，并添加以下配置以启用 Muon 优化器：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>str</td>
+<td>"AdamW"</td>
+<td>优化器类型，设置为 "Muon" 启用本特性</td>
+</tr>
+<tr>
+<td><code>muon_lr</code></td>
+<td>float</td>
+<td>None</td>
+<td>Muon 专用学习率，若不设置则使用 base lr</td>
+</tr>
+<tr>
+<td><code>muon_momentum</code></td>
+<td>float</td>
+<td>0.9</td>
+<td>Muon 的动量因子</td>
+</tr>
+<tr>
+<td><code>muon_enable_nesterov</code></td>
+<td>bool</td>
+<td>False</td>
+<td>是否启用 Nesterov 动量</td>
+</tr>
+<tr>
+<td><code>muon_ns_steps</code></td>
+<td>int</td>
+<td>5</td>
+<td>步数参数，影响正交化计算的迭代次数</td>
+</tr>
+<tr>
+<td><code>muon_adjust_lr_fn</code></td>
+<td>str</td>
+<td>"match_rms_adamw"</td>
+<td>学习率调整模式：<code>"original"</code> 或 <code>"match_rms_adamw"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">配置示例</h3>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+
+[optimizer]
+name = &quot;Muon&quot;                        # 使用 Muon 混合优化器
+lr = 3e-4                            # 基础学习率（AdamW 部分使用）
+muon_lr = 1e-3                       # Muon 专用学习率（可选）
+weight_decay = 0.01
+muon_momentum = 0.9                  # Muon 动量因子
+muon_enable_nesterov = false         # 是否启用 Nesterov 动量
+muon_ns_steps = 5                    # 正交化步数
+muon_adjust_lr_fn = &quot;original&quot;       # 使用独立的 lr 调度器
+</code></pre>
+<h3 id="_7">注意事项</h3>
+<ol>
+<li><strong>单设备限制</strong>：Muon 优化器目前仅支持单设备训练，不支持多设备分布式场景。若在多设备环境下启用，将抛出 <code>NotImplementedError</code>：</li>
+</ol>
+<p><code>python
+   is_distributed = torch.distributed.is_initialized()
+   world_size = torch.distributed.get_world_size() if is_distributed else 1
+   if world_size &gt; 1:
+       raise NotImplementedError(
+           "Muon optimizer currently only support single device"
+       )</code></p>
+<ol>
+<li><strong>与 Swap Optimizer 互斥</strong>：Muon 优化器不支持与 Swap Optimizer 特性同时启用：</li>
+</ol>
+<p><code>python
+   if getattr(optimizer_config, "swap_optimizer", False):
+       raise ValueError(
+           "Muon optimizer does not support swap_optimizer. "
+           "Please set swap_optimizer=false in your config."
+       )</code></p>
+<h2 id="_8">参考文献</h2>
+<ul>
+<li><a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Muon.html">PyTorch Muon 官方文档</a></li>
+<li><a href="https://kexue.fm/archives/11416">Muon 优化器指南：快速上手与关键细节</a></li>
+<li><a href="https://www.spaces.ac.cn/archives/10592">Muon 优化器赏析：从向量到矩阵的本质跨越</a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../metrics_and_debugging/" class="btn btn-neutral float-left" title="调试支持特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../npu_fused_ops/" class="btn btn-neutral float-right" title="NPU 融合算子适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../npu_fused_ops/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Test Design - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Test Design";
+        var mkdocs_page_input_path = "test_guides/test_design.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Test Design</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#purpose">Purpose</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#test-layers">Test Layers</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-to-choose-a-layer">How to Choose a Layer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#what-smoke-means-here">What "Smoke" Means Here</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#rules-for-adding-tests">Rules for Adding Tests</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#readability-guidelines">Readability Guidelines</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-entry-points">Build Entry Points</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#pre-submission-checklist">Pre-Submission Checklist</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Test guides</li>
+      <li class="breadcrumb-item active">Test Design</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="test-design">Test Design</h1>
+<h2 id="purpose">Purpose</h2>
+<p>This document explains the current test layering in <code>torchtitan-npu</code> and helps contributors decide where a new test should live.</p>
+<p>The goals are simple:
+- Keep unit tests fast and hardware-independent
+- Keep smoke tests focused on real execution paths
+- Make test placement easy to understand for new contributors</p>
+<h2 id="test-layers">Test Layers</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Directory</th>
+<th>NPU Required</th>
+<th>Use Cases</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Function UT</td>
+<td><code>tests/unit_tests/functions/</code></td>
+<td>No</td>
+<td>Pure functions, config parsing, helpers, validation logic</td>
+</tr>
+<tr>
+<td>Module UT</td>
+<td><code>tests/unit_tests/modules/</code></td>
+<td>No</td>
+<td>Wrappers, checkpoint logic, distributed initialization logic</td>
+</tr>
+<tr>
+<td>Converter UT</td>
+<td><code>tests/unit_tests/converters/</code></td>
+<td>No</td>
+<td>Converter registration, replacement, and mapping logic</td>
+</tr>
+<tr>
+<td>Patch UT</td>
+<td><code>tests/unit_tests/patches/</code></td>
+<td>No</td>
+<td>Patch activation, wiring, and small patch behavior</td>
+</tr>
+<tr>
+<td>Feature Smoke</td>
+<td><code>tests/smoke_tests/features/</code></td>
+<td>Yes</td>
+<td>Real NPU feature paths, fused ops, wrapper execution chains</td>
+</tr>
+<tr>
+<td>Model Parallel Smoke</td>
+<td><code>tests/smoke_tests/model_parallel/</code></td>
+<td>Yes</td>
+<td>CP/TP/EP behavior, mesh setup, DTensor, model-parallel scenarios</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-to-choose-a-layer">How to Choose a Layer</h2>
+<ul>
+<li>If the test can run without NPU, prefer UT</li>
+<li>If the value of the test depends on real NPU execution, use smoke</li>
+<li>If the change is about mesh, shard, placement, or DTensor behavior, use model-parallel smoke</li>
+<li>If the change is about a small helper or pure transformation, keep it in UT</li>
+</ul>
+<h2 id="what-smoke-means-here">What "Smoke" Means Here</h2>
+<p>In this repository, smoke tests are not import checks. They are integration-style checks over real execution paths.</p>
+<p><code>build.sh -s</code> runs two parts by default:
+- Core smoke: minimal end-to-end training path validation
+- Extended smoke: local feature and model-parallel smoke suites</p>
+<p>Upstream smoke is kept as a separate targeted entry. It is heavier, takes longer, and may be affected by low-level hardware issues, so it is not part of the default smoke path.</p>
+<h2 id="rules-for-adding-tests">Rules for Adding Tests</h2>
+<ol>
+<li>Prefer real behavior validation over import-only checks.</li>
+<li>Do not add placeholder tests that only make the suite look larger.</li>
+<li>Keep UT fully hardware-independent.</li>
+<li>Use smoke only when the behavior matters on real NPU.</li>
+<li>If a test depends on external artifacts or a special runtime setup, state that clearly.</li>
+</ol>
+<h2 id="readability-guidelines">Readability Guidelines</h2>
+<ul>
+<li>Use test names that describe behavior and expected outcome directly</li>
+<li>Keep setup short and easy to scan</li>
+<li>Use blank lines to separate Arrange, Act, and Assert when it helps readability</li>
+<li>Let assertions show the exact behavior being protected</li>
+</ul>
+<p>Avoid:
+- Long per-test docstrings
+- Comments that just restate the test name
+- Decorative section comments with no real meaning</p>
+<h2 id="build-entry-points">Build Entry Points</h2>
+<ul>
+<li><code>build.sh -u</code>: run all unit tests</li>
+<li><code>build.sh -s</code>: run all smoke tests</li>
+</ul>
+<p>Useful variants:
+- <code>ONLY_CORE_SMOKE=true build.sh -s</code>
+- <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code>
+- <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></p>
+<h2 id="pre-submission-checklist">Pre-Submission Checklist</h2>
+<ol>
+<li>Is the test in the right directory?</li>
+<li>Does it validate real behavior instead of a placeholder path?</li>
+<li>Can a new contributor understand the test quickly?</li>
+<li>If the change affects test execution or test usage, did you update the docs?</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../source/community/versioning_policy/" class="btn btn-neutral float-left" title="版本策略（Versioning Policy）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../test_design_zh/" class="btn btn-neutral float-right" title="测试设计">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../source/community/versioning_policy/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../test_design_zh/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

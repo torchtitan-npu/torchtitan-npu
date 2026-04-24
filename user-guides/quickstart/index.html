@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>快速上手 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u5feb\u901f\u4e0a\u624b";
+        var mkdocs_page_input_path = "user-guides/quickstart.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">快速上手</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">数据准备</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cann">配置 CANN 环境变量</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">启动训练任务</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">单机训练任务</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">多机训练任务</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#torchtitan">torchtitan 仓库内置训练任务</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User guides</li>
+      <li class="breadcrumb-item active">快速上手</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">快速上手</h1>
+<p>参考 <a href="../installation/">软件安装</a> 准备环境后，按照如下步骤操作，在 NPU 平台上运行 torchtitan-npu。</p>
+<h2 id="_2">数据准备</h2>
+<ol>
+<li>下载 Tokenizer <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main">（以 DeepSeekV3.2 网络为例）</a>。</li>
+</ol>
+<p>新建 "deepseekv3.2-tokenizer" 目录，将 <code>tokenizer.json</code> 和 <code>tokenizer_config.json</code> 文件下载至该目录。</p>
+<p>也可以通过以下方式下载 tokenizer：</p>
+<pre><code class="language-bash"># 从huggingface下载 DeepSeek V3.2 tokenizer https://huggingface.co/settings/tokens
+
+python scripts/download_hf_assets.py --repo_id deepseek-ai/DeepSeek-V3.2 --assets tokenizer
+</code></pre>
+<ol>
+<li>下载数据集 (以 <a href="https://huggingface.co/datasets/lsb/enwiki20230101">enwiki 数据集</a> 为例)。</li>
+</ol>
+<p>通过 huggingface 下载 <a href="https://huggingface.co/datasets/lsb/enwiki20230101">enwiki 的 parquet 数据</a> 到 <code>./tests/assets</code>。</p>
+<pre><code class="language-bash">cd ./tests/assets
+hf download lsb/enwiki20230101 --repo-type=dataset --local-dir .
+cd ../..
+</code></pre>
+<h2 id="cann">配置 CANN 环境变量</h2>
+<pre><code class="language-bash">source /usr/local/Ascend/cann/set_env.sh
+</code></pre>
+<h2 id="_3">启动训练任务</h2>
+<p>启动 torchtitan-npu 训练任务时，推荐使用以下脚本：单机环境使用 <code>scripts/run_train.sh</code>，多机环境使用 <code>scripts/run_train_multinodes.sh</code>。以下展示了一些常见任务的启动方式。</p>
+<h3 id="_4">单机训练任务</h3>
+<p>默认配置，以 8 NPU 启动 DeepSeek-V3.2 debug 模型训练任务：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh
+</code></pre>
+<p>自定义配置，以 16 NPU 启动 DeepSeek-V3.2 4 层模型训练任务：</p>
+<pre><code class="language-bash">NGPU=16 CONFIG_FILE=./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_4layers_debug.toml \
+bash scripts/run_train.sh \
+  --training.steps=100 \
+  --training.global_batch_size=32
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+* <code>CONFIG_FILE</code>: 指定模型 TOML 配置文件路径，需在该文件中预先配置好相关特性的使能。
+* <code>NGPU</code>: 指定参与训练的 NPU 数量（默认为 8）。
+* <code>--training.steps</code> 与 <code>--training.global_batch_size</code>：动态覆盖 toml 配置中 <code>[training]</code> 部分的 <code>steps</code> 与 <code>global_batch_size</code>。</p>
+</blockquote>
+<h3 id="_5">多机训练任务</h3>
+<p>在执行启动命令前，按照集群的实际情况编辑 <code>scripts/run_train_multinodes.sh</code> 文件中的网络与节点配置：</p>
+<pre><code class="language-toml"># TODO change to your network interface
+Network_Interface=enp23s0f3 # 填入 ifconfig 的驱动名
+...
+# TODO change to your device ips
+IPs=('192.168.xxx.xxx' '192.168.xxx.xxx') # 填入集群的所有IP
+# TODO change 192.168 to your local IP
+LOCAL_HOST=`ifconfig|grep &quot;inet 192.168&quot;| awk '{print $2}'` # 将 &quot;192.168&quot; 替换为当前 IP
+</code></pre>
+<p>在所有参与训练的节点上同时执行 <code>run_train_multinodes.sh</code>，以启动多机预训练任务。以 DeepSeek-V3.2 完整模型为例：</p>
+<pre><code class="language-bash">CONFIG_FILE=./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_4k_128die.toml \
+bash scripts/run_train_multinodes.sh \
+  --training.steps=500
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+* 脚本会自动通过 <code>LOCAL_HOST</code> 匹配 <code>IPs</code> 数组以推导当前机器的 <code>NODE_RANK</code>。若提取规则错误导致未匹配成功，脚本将报错退出。
+* 多机通信依赖相应的端口开放，请确保 <code>MASTER_PORT</code> (默认 6300) 以及 HCCL 通信基础端口 (默认 30000) 不被防火墙拦截。</p>
+</blockquote>
+<h3 id="torchtitan">torchtitan 仓库内置训练任务</h3>
+<p>除了 torchtitan-npu 已经适配的模型外，还可以直接下载 torchtitan 代码，使用原生配置启动训练任务：</p>
+<ol>
+<li>拉取 torchtitan 代码。</li>
+</ol>
+<pre><code class="language-bash">cd ..
+git clone -b v0.2.2 https://github.com/pytorch/torchtitan.git
+</code></pre>
+<ol>
+<li>将 torchtitan 源代码移动至 torchtitan-npu 项目中。</li>
+</ol>
+<pre><code class="language-bash">cp ./torchtitan/torchtitan ./torchtitan-npu/ -r
+</code></pre>
+<ol>
+<li>在 torchtitan-npu 项目中，使用 torchtitan 原生 toml 配置文件，启动训练。以 llama3 的 debug_model 配置为例:</li>
+</ol>
+<pre><code class="language-bash">cd torchtitan-npu
+CONFIG_FILE=&quot;../torchtitan/models/llama3/train_configs/debug_model.toml&quot; \
+bash scripts/run_train.sh
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../installation/" class="btn btn-neutral float-left" title="软件安装"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../installation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

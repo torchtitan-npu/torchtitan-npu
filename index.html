@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="None" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>torchtitan-npu</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">社群</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- Used for MkDocs generation. Checkout torchtitan-npu.github.io for .  -->
+<div align="center">
+
+<h1>torchtitan-npu</h1>
+
+<h4>基于 torchtitan 的昇腾全流程大模型训练适配插件</h4>
+
+
+<a href="#特性支持概览"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat" alt="Documentation"></a>
+<a href="https://gitcode.com/cann/torchtitan-npu/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-BSD_3--Clause-lightgrey.svg" alt="license"></a>
+<a href="https://gitcode.com/cann/torchtitan-npu/blob/master/CONTRIBUTING.md"><img src="https://img.shields.io/badge/CONTRIBUTING-teal" alt="contributing"></a>
+<a href="https://gitcode.com/cann/community/tree/master/CANN/sigs/framework-adapter"><img src="https://img.shields.io/badge/SIG-framework--adapter-yellow" alt="SIG"></a>
+<a href="https://pypi.org/project/torchtitan-npu/"><img src="https://img.shields.io/badge/pypi-0.2.2.post1-blue" alt="pypi"></a>
+</div>
+
+<hr />
+<h1 id="_1">简介</h1>
+<p><code>torchtitan-npu</code>定位为<code>torchtitan</code>的昇腾（Ascend）后端扩展插件，通过即插即用的硬件亲和性优化，充分释放NPU算力，助力<code>PyTorch native</code>训练在昇腾平台无缝、高效、稳定地运行。</p>
+<p>本插件基于社区 <code>ModelConverter</code> 拓展机制构建，已支持多维度训练优化，涵盖 NPU融合算子、图优化、图下沉、<strong>算子自动融合</strong>、显存管理、分布式并行以及调试维测能力等等。</p>
+<h2 id="_2">社群</h2>
+<p><a href="https://gitcode.com/cann/community/tree/master/CANN/sigs/framework-adapter"><img alt="SIG" src="https://img.shields.io/badge/SIG-framework--adapter-yellow" /></a></p>
+<p>SIG 例会：<a href="https://meeting.osinfra.cn/cann?sig=sig-framework-adapter">sig-framework-adapter</a></p>
+<hr />
+<h1 id="_3">最新消息</h1>
+<ul>
+<li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>：基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
+<li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>：在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
+</ul>
+<hr />
+<h1 id="roadmap">Roadmap</h1>
+<p>当前季度的规划见 <code>torchtitan-npu</code> <a href="https://gitcode.com/cann/torchtitan-npu/issues/5">Roadmap</a>。欢迎访问。</p>
+<hr />
+<h1 id="_4">安装</h1>
+<p>源码安装：</p>
+<pre><code class="language-shell">git clone https://gitcode.com/cann/torchtitan-npu.git
+cd torchtitan-npu
+pip install -e .
+</code></pre>
+<p>详情参见 <a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user_guides/installation.md">安装教程</a> 。</p>
+<hr />
+<h1 id="_5">快速上手</h1>
+<p>快速启动大语言模型的训练任务，参见
+<a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/user_guides/quickstart.md">快速上手文档</a> 。</p>
+<hr />
+<h1 id="_6">特性支持概览</h1>
+<table>
+  <thead>
+    <tr>
+      <th>场景</th>
+      <th>特性名称</th>
+      <th>原生支持</th>
+      <th>NPU支持</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- 并行能力 -->
+    <tr>
+      <td rowspan="3">并行能力</td>
+      <td>4D 并行 (FSDP2/TP/CP/PP)</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>专家并行 (EP/ETP)</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/parallelism/custom_cp.md">自定义 CP (DeepSeek V3.2 CP/SDPA Ulysses CP)</a></td>
+      <td>❌</td>
+      <td>✅</td>
+    </tr>
+    <!-- torch.compile -->
+    <tr>
+      <td>torch.compile</td>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/torch_compile.md">torch.compile</a></td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <!-- 训练精度 -->
+    <tr>
+      <td rowspan="2">训练精度</td>
+      <td>MxFP8 量化</td>
+      <td>✅</td>
+      <td>✅ (Ascend 950)</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/low_precision_training.md">HiF8 量化</a></td>
+      <td>❌</td>
+      <td>✅ (Ascend 950)</td>
+    </tr>
+    <!-- 训练调试与监控 -->
+    <tr>
+      <td rowspan="2">训练调试与监控</td>
+      <td>分布式 Checkpoint</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/metrics_and_debugging.md">调试工具</a></td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <!-- 性能优化 -->
+    <tr>
+      <td rowspan="2">性能优化</td>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/swap_optimizer.md">Swap Optimizer</a></td>
+      <td>❌</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/npu_fused_ops.md">NPU 融合算子适配</a></td>
+      <td>❌</td>
+      <td>✅</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+<h1 id="_7">项目结构</h1>
+<p>torchtitan-npu 充分利用了 torchtitan 提供的 ModelConverter 插件化机制。该机制介入模型定义之后、并行策略（如 TP/FSDP）应用之前，支持以非侵入式的方式，通过注册机制对特定模块进行替换或重写。基于此方案，我们实现了融合算子优化、量化支持以及优化器增强等功能。见以下项目结构：</p>
+<pre><code>torchtitan-npu/
+├── torchtitan_npu/     # torchtitan_npu核心源代码
+│   ├── config/         # 对Config的补丁
+│   ├── converters/     # 基于torchtitan ModelConverter机制的补丁
+│   ├── distributed/    # 自定义分布式代码
+│   ├── models/         # 基于torchtitan-npu的模型 (如Deepseek-V3.2)
+│   ├── patches/        # 其他补丁
+│   ├── tools/          # 工具补丁
+│   ├── entry.py        # 启动训练
+│   ├── train.py        # 训练主流程补丁
+│   └── __init__.py     # torchtitan-npu 插件修改注入点
+├── docs/               # 文档
+
+</code></pre>
+<hr />
+<h1 id="_8">性能基准</h1>
+<h3 id="202604">2026.04</h3>
+<p>System: Atlas 800T A3</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Number of NPUs</th>
+<th style="text-align: left;">Precision</th>
+<th style="text-align: left;">GBS</th>
+<th style="text-align: left;">Local BS</th>
+<th style="text-align: left;">Sequence Length</th>
+<th style="text-align: left;">FSDP</th>
+<th style="text-align: left;">TP</th>
+<th style="text-align: left;">PP</th>
+<th style="text-align: left;">CP</th>
+<th style="text-align: left;">EP</th>
+<th style="text-align: left;">Throughput (tokens/p/s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_32k_128die.toml">Deepseek V3.2-671B</a></td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">BF16</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">32768</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">103</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_4k_128die.toml">Deepseek V3.2-671B</a></td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">BF16</td>
+<td style="text-align: left;">512</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">4096</td>
+<td style="text-align: left;">32</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">146</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek V3-671B</a></td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">BF16</td>
+<td style="text-align: left;">1024</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">4096</td>
+<td style="text-align: left;">32</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">546</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek V3-671B + compile(Autofuse)</a></td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">BF16</td>
+<td style="text-align: left;">1024</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">4096</td>
+<td style="text-align: left;">32</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">576</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>注：以上MoE模型的性能数据均开启负载均衡配置moe_force_load_balance=true。</p>
+</blockquote>
+<hr />
+<h1 id="_9">免责声明</h1>
+<h2 id="torchtitannpu">致 torchtitan‑npu 使用者</h2>
+<ol>
+<li>torchtitan‑npu 提供的所有内容仅供您用于非商业目的。</li>
+<li>对于 torchtitan‑npu 测试用例以及示例文件中所涉及的各模型和数据集，平台仅用于功能测试，华为不提供任何模型权重和数据集。如您使用这些数据进行训练，请您特别注意应遵守对应模型和数据集的 License，如您因使用这些模型和数据集而产生侵权纠纷，华为不承担任何责任。</li>
+<li>如您在使用 torchtitan‑npu 过程中，发现任何问题（包括但不限于功能问题、合规问题），请在 GitCode 提交 issue，我们将及时审视并解决。</li>
+</ol>
+<p>torchtitan‑npu 功能依赖的 PyTorch 等第三方开源软件，均由第三方社区提供和维护，因第三方开源软件导致的问题的修复依赖相关社区的贡献和反馈。您应理解，torchtitan‑npu 仓库不保证对第三方开源软件本身的问题进行修复，也不保证会测试、纠正所有第三方开源软件的漏洞和错误。</p>
+<hr />
+<h1 id="license">License 声明</h1>
+<ul>
+<li>torchtitan‑npu 产品的使用许可证，具体请参见 <a href="https://gitcode.com/cann/torchtitan-npu/blob/master/LICENSE">LICENSE</a>。</li>
+<li>torchtitan‑npu 工具 docs 目录下的文档适用相应许可证，具体请根目录下的 LICENSE 文件。</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="lint_guide/" class="btn btn-neutral float-right" title="Lint 指南">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+      <span><a href="lint_guide/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2026-04-24 08:24:55.772104+00:00
+-->

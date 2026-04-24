@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Test Guide - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Test Guide";
+        var mkdocs_page_input_path = "test_guides/test_guide.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Test Guide</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#core-commands">Core Commands</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#unit-tests">Unit Tests</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#smoke-tests">Smoke Tests</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#integration-test">Integration Test</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#running">Running</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#command-line-arguments">Command-line Arguments</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#overridedefinitions-usage">OverrideDefinitions Usage</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#steps-to-add-a-new-test-case">Steps to Add a New Test Case</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#base_testtoml-configuration">base_test.toml Configuration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#model-parallel-commands">Model Parallel Commands</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#when-to-use-which-command">When to Use Which Command</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#quick-decision-rule">Quick Decision Rule</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#test-reports">Test Reports</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#quick-tips">Quick Tips</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Test guides</li>
+      <li class="breadcrumb-item active">Test Guide</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="test-guide">Test Guide</h1>
+<h2 id="core-commands">Core Commands</h2>
+<h3 id="unit-tests">Unit Tests</h3>
+<pre><code class="language-bash"># Run all unit tests and generate reports
+sh build.sh -u --generate-report
+
+# Run only local `torchtitan-npu` unit tests
+RUN_TORCHTITAN_UT=false sh build.sh -u --generate-report
+</code></pre>
+<h3 id="smoke-tests">Smoke Tests</h3>
+<pre><code class="language-bash"># Run the default smoke suite (core + extended)
+sh build.sh -s --generate-report
+
+# Run only core smoke
+ONLY_CORE_SMOKE=true sh build.sh -s --generate-report
+
+# Run only extended smoke
+ONLY_EXTENDED_SMOKE=true sh build.sh -s --generate-report
+
+# Run only upstream smoke
+ONLY_UPSTREAM_SMOKE=true sh build.sh -s --generate-report
+</code></pre>
+<h3 id="integration-test">Integration Test</h3>
+<p><code>tests/smoke_tests/integration_test.py</code> is the entry point for end-to-end integration tests, used to validate:
+- New model functionality support
+- Feature compatibility
+- Parallelism strategy compatibility</p>
+<h4 id="running">Running</h4>
+<pre><code class="language-bash"># Via build.sh (runs core + extended smoke by default)
+ONLY_CORE_SMOKE=true sh build.sh -s --generate-report
+
+# Run integration_test.py directly
+python tests/smoke_tests/integration_test.py output_dir \
+    --test_name all \
+    --ngpu 2
+</code></pre>
+<h4 id="command-line-arguments">Command-line Arguments</h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>output_dir</code></td>
+<td>None (required)</td>
+<td>Output directory for test results</td>
+</tr>
+<tr>
+<td><code>--config_path</code></td>
+<td><code>./tests/smoke_tests/base_test.toml</code></td>
+<td>Base config file path</td>
+</tr>
+<tr>
+<td><code>--test_name</code></td>
+<td><code>all</code></td>
+<td>Specific test case name</td>
+</tr>
+<tr>
+<td><code>--ngpu</code></td>
+<td><code>2</code></td>
+<td>Maximum GPU count</td>
+</tr>
+</tbody>
+</table>
+<h4 id="overridedefinitions-usage">OverrideDefinitions Usage</h4>
+<p><code>OverrideDefinitions</code> is the configuration class for defining integration test cases:</p>
+<pre><code class="language-python">OverrideDefinitions(
+    override_args=[[...]],  # Required: command-line argument list
+    test_descr=&quot;...&quot;,        # Required: test description
+    test_name=&quot;...&quot;,         # Required: test name
+    ngpu=2,                  # Optional: required GPU count
+    disabled=False,          # Optional: whether disabled
+)
+</code></pre>
+<h4 id="steps-to-add-a-new-test-case">Steps to Add a New Test Case</h4>
+<ol>
+<li>Open <code>tests/smoke_tests/integration_test.py</code></li>
+<li>Add a new configuration to the <code>smoke_cases</code> list in <code>generate_smoke_tests()</code>:</li>
+</ol>
+<pre><code class="language-python">OverrideDefinitions(
+    [
+        [
+            &quot;--model.name your_model&quot;,
+            &quot;--model.flavor your_flavor&quot;,
+            &quot;--parallelism.tensor_parallel_degree 2&quot;,
+        ],
+    ],
+    &quot;Your Model TP Test&quot;,
+    &quot;your_model_tp&quot;,
+    ngpu=2,
+)
+</code></pre>
+<ol>
+<li>Run tests to verify:</li>
+</ol>
+<pre><code class="language-bash">python tests/smoke_tests/integration_test.py ./outputs --test_name your_model_tp
+</code></pre>
+<h4 id="base_testtoml-configuration">base_test.toml Configuration</h4>
+<p><code>tests/smoke_tests/base_test.toml</code> is the base configuration for integration tests. All tests run based on this configuration file, and parameters in <code>override_args</code> override identically-named parameters in the base configuration.</p>
+<h3 id="model-parallel-commands">Model Parallel Commands</h3>
+<pre><code class="language-bash"># Basic model-parallel smoke
+python3 -m pytest -v tests/smoke_tests/model_parallel/
+
+# Multi-rank model-parallel smoke
+RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v tests/smoke_tests/model_parallel/
+</code></pre>
+<h2 id="when-to-use-which-command">When to Use Which Command</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Use It When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build.sh -u</code></td>
+<td>You changed hardware-independent logic such as converters, config, helpers, or patches</td>
+</tr>
+<tr>
+<td><code>build.sh -s</code></td>
+<td>You changed real NPU execution paths or wrapper behavior and want the default core + extended smoke set</td>
+</tr>
+<tr>
+<td><code>ONLY_CORE_SMOKE=true</code></td>
+<td>You changed the minimal training path (i.e., end-to-end integration tests defined in integration_test)</td>
+</tr>
+<tr>
+<td><code>ONLY_EXTENDED_SMOKE=true</code></td>
+<td>You changed local feature or model-parallel behavior</td>
+</tr>
+<tr>
+<td><code>ONLY_UPSTREAM_SMOKE=true</code></td>
+<td>You changed logic that depends on reused torchtitan upstream integration, or want to run the heavier upstream smoke path separately</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quick-decision-rule">Quick Decision Rule</h2>
+<ul>
+<li>Changed only hardware-independent logic: start with <code>build.sh -u</code></li>
+<li>Changed NPU feature paths or wrappers: run <code>build.sh -s</code></li>
+<li>Changed training-path wiring: at least run <code>ONLY_CORE_SMOKE=true build.sh -s</code></li>
+<li>Changed model-parallel behavior: run <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code></li>
+<li>Upstream integration compatibility needs a separate check: run <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></li>
+</ul>
+<h2 id="test-reports">Test Reports</h2>
+<ul>
+<li>Output directory: <code>test_reports/</code></li>
+<li>Common artifacts:</li>
+<li><code>*.xml</code>: JUnit results</li>
+<li><code>*.html</code>: HTML reports when <code>--generate-report</code> is enabled</li>
+<li><code>coverage/</code>: UT coverage reports</li>
+<li><code>README.md</code>: generated index of report artifacts</li>
+</ul>
+<h2 id="quick-tips">Quick Tips</h2>
+<ol>
+<li>Start with the smallest command that matches your change.</li>
+<li>Prefer <code>build.sh -u</code> when NPU is not required.</li>
+<li>Use targeted smoke variants instead of full smoke when possible.</li>
+<li>Update docs when test layout or execution changes.</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../test_design_zh/" class="btn btn-neutral float-left" title="测试设计"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../test_guide_zh/" class="btn btn-neutral float-right" title="测试使用指南">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../test_design_zh/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../test_guide_zh/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

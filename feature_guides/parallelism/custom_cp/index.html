@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
+    <title>自定义Context Parallel特性 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u81ea\u5b9a\u4e49Context Parallel\u7279\u6027";
+        var mkdocs_page_input_path = "feature_guides/parallelism/custom_cp.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" >Parallelism</a>
+    <ul class="current">
+                <li class="toctree-l2 current"><a class="reference internal current" href="#">自定义Context Parallel特性</a>
+    <ul class="current">
+    <li class="toctree-l3"><a class="reference internal" href="#_1">实现原理</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#sdpa-ulysses-cp">SDPA Ulysses CP</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#dsa-cp">DSA CP</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">配置选项</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#sdpa-ulysses-cpdeepseek-v3">配置示例：SDPA Ulysses CP（DeepSeek-V3）</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#dsa-context-paralleldeepseek-v32">配置示例：DSA Context Parallel（DeepSeek-V3.2）</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+          <li class="breadcrumb-item">Parallelism</li>
+      <li class="breadcrumb-item active">自定义Context Parallel特性</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="context-parallel">自定义Context Parallel特性</h1>
+<p>在分布式训练任务中，上下文并行（Context Parallelism, CP）是突破单卡内存瓶颈、支持超长序列训练的核心技术。在基于 NPU 硬件生态推进 torchtitan 框架适配时，现有技术方案暴露出显著的局限性：
+1. PyTorch 原生 CP 设计强绑定于标准的 SDPA 算子，仅提供 RingAttention 或原生 AllGatherKV 的特定实现，无法支持采用复杂稀疏注意力机制的模型如 DeepSeek-V3.2 模型的DSA。
+2. 框架需要允许开发者灵活扩展新的 CP 范式，如 UlyssesCP。</p>
+<h2 id="_1">实现原理</h2>
+<p>torchtitan_npu在<code>torchtitan_npu/patches/distributed/custom_context_parallel.py</code>对原生CP context 进行替换，从而使能自定义的CP context，增强CP的可扩展性。目前已提供如下两个自定义的CP context：</p>
+<h3 id="sdpa-ulysses-cp">SDPA Ulysses CP</h3>
+<p>定义在<code>torchtitan_npu/distributed/context_parallel/ulysses_cp.py</code>，为常用的SDPA实现Ulysses风格的CP。通过自定义Context Parallel Context，我们在基于torch_npu提供的融合算子的Attention计算前后插入All-to-All通信算子，将数据从"序列并行分布"转换为"多头维度分布"，使单计算节点获得完整上下文。</p>
+<h3 id="dsa-cp">DSA CP</h3>
+<p>定义在<code>torchtitan_npu/distributed/context_parallel/dsa_cp.py</code>，为DeepSeek Sparse Attention提供AllGatherKV风格的CP。本项目在遵循torch原生CP设计逻辑的基础上，通过自定义Context Parallel Context，将注意力部分的forward函数进行替换，对KV相关激活做CP域的AllGather，以此确保注意力计算在CP场景下的正确性。</p>
+<p>关于DSA CP的更多原理介绍，参考<a href="https://gitcode.com/cann/cann-recipes-train/blob/master/docs/llm_pretrain/deepseekv32_pre_train_optimization.md#自定义CP策略">技术文档</a>。</p>
+<h2 id="_2">配置选项</h2>
+<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 <code>[parallelism]</code> 节，并添加以下配置以启用 Custom CP：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>context_parallel_degree</code></td>
+<td>int</td>
+<td>1</td>
+<td>Context并行度</td>
+</tr>
+<tr>
+<td><code>enable_custom_context_parallel</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用自定义CP</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>注意</strong>：<code>enable_custom_context_parallel</code> 目前仅对 DeepSeek-V3 和 DeepSeek-V3.2 的并行化实现生效，其他模型（如 Llama3）的并行化实现暂不支持。</p>
+</blockquote>
+<p>CP类型由框架根据模型及转换器配置<strong>自动选择</strong>，无需手动指定：
+- <strong>DeepSeek-V3</strong>：启用自定义CP后自动使用 Ulysses CP。
+- <strong>DeepSeek-V3.2</strong>：当 <code>model.converters</code> 中包含 <code>npu_dsa</code> 时，自动使用 DSA CP。</p>
+<h3 id="sdpa-ulysses-cpdeepseek-v3">配置示例：SDPA Ulysses CP（DeepSeek-V3）</h3>
+<p>首先在配置文件中使能本代码仓的自定义配置，随后在<code>[parallelism]</code>节中添加以下配置：</p>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+
+[parallelism]
+context_parallel_degree = 2
+enable_custom_context_parallel = true
+</code></pre>
+<h3 id="dsa-context-paralleldeepseek-v32">配置示例：DSA Context Parallel（DeepSeek-V3.2）</h3>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+
+[model]
+converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;, &quot;npu_rope&quot;]    # 需包含 npu_dsa 以启用 DSA CP
+
+[parallelism]
+context_parallel_degree = 2
+enable_custom_context_parallel = true
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../torch_compile/" class="btn btn-neutral float-left" title="torch.compile 支持"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../../source/community/versioning_policy/" class="btn btn-neutral float-right" title="版本策略（Versioning Policy）">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../torch_compile/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../../source/community/versioning_policy/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../../..";</script>
+    <script src="../../../js/theme_extra.js"></script>
+    <script src="../../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

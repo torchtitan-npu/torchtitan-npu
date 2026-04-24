@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>NPU 融合算子适配 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "NPU \u878d\u5408\u7b97\u5b50\u9002\u914d";
+        var mkdocs_page_input_path = "feature_guides/npu_fused_ops.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">NPU 融合算子适配</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">如何配置</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#permute">Permute</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#rmsnorm">RMSNorm</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#rope">RoPE</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#nep-npu-expert-parallel">NEP (NPU Expert Parallel)</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">NPU 融合算子适配</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="npu">NPU 融合算子适配</h1>
+<p>torchtitan_npu 在 <code>torchtitan_npu/converters/kernels</code> 下定义了多个 torchtitan ModelConverter 。在启动模型训练任务时，它们会根据用户配置，自动将模型中的原始模块替换为基于 NPU 融合算子的实现，从而实现模型在 NPU 平台上的亲和适配。</p>
+<h2 id="_1">如何配置</h2>
+<p>所有融合算子均通过在训练配置 TOML 文件 （例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）的 <code>[model]</code> 节中的 <code>converters</code> 列表中添加对应的配置项来启用。
+示例：</p>
+<pre><code class="language-toml">[model]
+name = &quot;deepseek_v32&quot;
+flavor = &quot;debugmodel&quot;
+hf_assets_path = &quot;./assets/hf/DeepSeek-V3.2&quot;
+converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;, &quot;npu_expert_parallel&quot;]
+</code></pre>
+<p>当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
+  - <a href="#dsa-deepseek-sparse-attention">DSA</a>
+  - <a href="#gmm">GMM</a>
+  - <a href="#permute">Permute</a>
+  - <a href="#rmsnorm">RMSNorm</a>
+  - <a href="#rope">Rope</a>
+  - <a href="#nep-npu-expert-parallel">NEP</a></p>
+<p>关于本仓库适配的各融合算子的详细说明，前往<a href="#开发者文档">开发者文档</a>。</p>
+<hr />
+<h2 id="dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</h2>
+<p align="center">
+<img src="../assets/DSA_overview.png" style="width:80%; max-width: 1200px" >
+</p>
+
+<p>DSA 是DeepSeek-V3.2中引入的一种特殊注意力机制，主要由图中的两个模块构成：<strong>Lightning Indexer</strong> 筛选出少量高价值token的索引；这些索引被用于高效的 <strong>稀疏 Attention 计算</strong> (图中 Multi-Query Attention部分)。</p>
+<p>针对 DeepSeek V3.2 模型的 Attention 模块，将以上两种核心组件替换为对应的 NPU 融合算子。具体对应关系如下：</p>
+<table>
+<thead>
+<tr>
+<th>DeepSeek V3.2 Attention 组件</th>
+<th>NPU融合算子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lightning Indexer 前向计算</td>
+<td><code>npu_lightning_indexer</code></td>
+</tr>
+<tr>
+<td>Lightning Indexer 反向计算（梯度 + Loss）</td>
+<td><code>npu_sparse_lightning_indexer_grad_kl_loss</code></td>
+</tr>
+<tr>
+<td>稀疏注意力计算</td>
+<td><code>npu_sparse_flash_attention</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>配置示例：</strong></p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_dsa&quot;, ...] # 添加 `npu_dsa` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/dsa.py</code> \
+<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_lightning_indexer.md"><code>npu_lightning_indexer</code></a> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_lightning_indexer_grad_kl_loss.md"><code>npu_sparse_lightning_indexer_grad_kl_loss</code></a>   <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_flash_attention.md"><code>npu_sparse_flash_attention</code></a></p>
+<hr />
+<h2 id="gmmgrouped-matmul">GMM（Grouped MatMul）</h2>
+<p>在 MoE 模块中，每个专家执行前馈网络（FFN）运算：如 Swiglu FFN：输入先经过升维变换 <code>w1</code>，再通过激活函数，最后经过降维变换 <code>w2</code> 得到输出。</p>
+<p>由于各专家执行结构相同的矩阵乘法，为了将同类矩阵运算合并为一次算子调用，提升计算效率，本ModelConverter 引入分组矩阵乘法（GMM）算子 <code>npu_grouped_matmul</code>。该算子接收 <a href="#permute">Permute</a> 模块输出的重排后 token 及对应的专家索引，在一次调用中并行计算所有专家的同一线性层，如所有专家的 <code>w1</code>。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_gmm&quot;, ...] # 添加 `npu_gmm` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/gmm.py</code> \
+<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_grouped_matmul.md"><code>npu_grouped_matmul</code></a></p>
+<hr />
+<h2 id="permute">Permute</h2>
+<p>MoE 前向计算中，为了利用 <a href="#gmmgrouped-matmul">GMM</a> 提升计算效率，token 需要根据 MoE Router 为每个 token 分配的专家，以特定顺序重排，输出重排列后的 token 及其对应的专家索引；计算完成后，再将结果恢复至原始 token 顺序。</p>
+<p>本 ModelConverter 将“重排”和“恢复”操作替换为基于 <code>npu_moe_token_permute</code> 和 <code>npu_moe_token_unpermute</code> 算子的实现。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_permute&quot;, ...] # 添加 `npu_permute` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/permute.py</code></p>
+<hr />
+<h2 id="rmsnorm">RMSNorm</h2>
+<p>RMSNorm 通过计算输入张量每个样本的平方均值的平方根来稳定深层网络的训练。</p>
+<p>本 ModelConverter 将模型中的 RmsNorm 操作替换为基于 <code>npu_rms_norm</code> 融合算子的实现。</p>
+<p><strong>TOML 配置项</strong>：<code>npu_rms_norm</code>\
+<strong>配置示例</strong>：</p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_rms_norm&quot;, ...] # 添加 `npu_rms_norm` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rms_norm.py</code> \
+<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/（beta）torch_npu-npu_rms_norm.md"><code>npu_grouped_matmul</code></a></p>
+<hr />
+<h2 id="rope">RoPE</h2>
+<p>RoPE 将 token 位置相关的旋转矩阵应用于自注意力机制中的 Query 和 Key 向量，使每对 token 之间的相对位置信息在 Attention 计算中自然包含 Query 和 Key 的乘积。</p>
+<p>在模型实现中，通常预先生成每个位置的旋转角度，在 Attention 计算时，即时对 Query 和 Key 进行旋转变换。本 ModelConverter 将这一旋转变换操作替换为基于 <code>npu_rotary_mul</code> 融合算子的实现。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_rope&quot;, ...] # 添加 `npu_rope` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rope.py</code> \
+<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_rotary_mul.md"><code>npu_rope</code></a></p>
+<hr />
+<h2 id="nep-npu-expert-parallel">NEP (NPU Expert Parallel)</h2>
+<p>MoE的专家并行机制需要_token_dispatch分发token到各rank，_token_combine收集结果并恢复顺序。</p>
+<p>本 ModelConverter 将“重排”和“恢复”操作替换为基于 <code>npu_moe_token_permute</code> 和 <code>NPUMoeTokenUnpermute</code> 算子的实现。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-toml">[model]
+converters = [... &quot;npu_moe_expert_parallel&quot;, ...] # 添加 `npu_moe_expert_parallel` 配置项
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/expert_parallel.py</code></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../muon_optimizer/" class="btn btn-neutral float-left" title="Muon 优化器特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../swap_optimizer/" class="btn btn-neutral float-right" title="SwapOptimizer 特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../swap_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

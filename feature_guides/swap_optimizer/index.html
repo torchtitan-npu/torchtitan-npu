@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>SwapOptimizer 特性 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "SwapOptimizer \u7279\u6027";
+        var mkdocs_page_input_path = "feature_guides/swap_optimizer.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">SwapOptimizer 特性</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">状态初始化与零显存占位</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">异步多流通信与流水线更新</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">配置选项</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">SwapOptimizer 特性</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="swapoptimizer">SwapOptimizer 特性</h1>
+<p>在分布式训练任务中，随着模型参数量的剧增，除了模型权重和激活值，优化器状态（如 Adam/AdamW 的动量和方差）通常会占用极大的显存空间。现有的常规训练方案在处理优化器状态时暴露出以下局限性：
+1. 优化器状态在整个前向和反向传播过程中静态驻留在设备显存中，但实际上仅在最后的参数更新阶段才会被使用，造成了计算过程中的显存严重浪费。
+2. 传统的单纯卸载（Offload）方案通常会引入巨大的 CPU 与加速卡之间的传输延迟，阻塞主计算流，导致训练吞吐量大幅下降。</p>
+<h2 id="_1">实现原理</h2>
+<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md">MindSpeed框架设计的SwapOptimizer特性</a>，我们在 <code>torchtitan</code> 框架的优化器构建逻辑中引入了自定义的 <code>SwapOptimizersContainer</code>，对原生的 <code>Adam</code> 和 <code>AdamW</code> 优化器的 <code>step</code> 方法进行了无缝拦截与替换，从而使能了优化器状态的动态显存管理。相关代码定义在<code>torchtitan_npu/patches/optimizer/swap_optimizer.py</code>。</p>
+<p>本特性主要遵循“按块加载 -&gt; 异步更新 -&gt; 及时卸载”的流水线机制，在确保训练精度的前提下，用多流通算重叠换取巨大的显存空间收益。具体拆解如下：</p>
+<h3 id="_2">状态初始化与零显存占位</h3>
+<p>在初始化阶段，系统会在host内存中为每个参数分配固定内存（<code>pin_memory=True</code>）以存放一阶动量 <code>exp_avg</code>、二阶动量 <code>exp_avg_sq</code> 等状态。而在device端，通过底层接口 <code>untyped_storage().resize_(0)</code> 巧妙地将这些状态的底层物理显存清空，仅保留 Tensor 的元数据。这使得在耗时较长的前向和反向传播期间，优化器状态完全不占用宝贵的设备显存。</p>
+<h3 id="_3">异步多流通信与流水线更新</h3>
+<p>重写后的 <code>swap_optimizer_step</code> 引入了两个独立的底层数据流 <code>swap_to_device_stream</code> 和 <code>swap_to_host_stream</code>，并且将整个参数更新过程切分为多个小块（通过 <code>swap_optimizer_times</code> 控制单次处理的容量阈值 <code>swap_numel</code>）以实现高效的流水线更新：</p>
+<p align="center">
+<img src="../assets/swap_optimizer.png" width="80%" >
+</p>
+
+<ol>
+<li><strong>Load（加载）</strong>：在设备流中异步将下一块所需参数的优化器状态从 CPU 拷贝到 Device，并恢复其显存大小。</li>
+<li><strong>Update（更新）</strong>：主计算流通过事件（Event）阻塞等待状态加载完成，随后立即调用底层 Fused 算子进行参数更新。</li>
+<li><strong>Offload（卸载）</strong>：更新完成后，记录事件，并在主机流中将更新后的最新状态异步写回 CPU，同时再次清空设备侧显存以复用给下一个参数块。</li>
+</ol>
+<h2 id="_4">配置选项</h2>
+<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 <code>[optimizer]</code> 节，并添加以下配置以启用 Swap Optimizer：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>str</td>
+<td>"AdamW"</td>
+<td>使用的优化器类型。当前 Swap 特性拦截并支持 <code>Adam</code> 和 <code>AdamW</code>。</td>
+</tr>
+<tr>
+<td><code>swap_optimizer</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用 Swap Optimizer 特性以进行显存流水线卸载。</td>
+</tr>
+<tr>
+<td><code>swap_optimizer_times</code></td>
+<td>int</td>
+<td>16</td>
+<td>切片划分次数。用于决定优化器参数卸载与加载时的分块大小。值越大，单次峰值显存占用越小，但可能增加系统的流调度开销。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_5">配置示例</h3>
+<p>首先在配置文件中使能本代码仓的自定义配置，随后在 <code>[optimizer]</code> 节中添加以下配置，为AdamW优化器开启SwapOptimizer特性并设置流水线切片参数：</p>
+<pre><code class="language-toml">[job]
+custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+
+[optimizer]
+name = &quot;AdamW&quot;
+lr = 3e-4
+weight_decay = 0.01
+swap_optimizer = true       # 启用 Swap Optimizer
+swap_optimizer_times = 16   # 设置流水切分次数
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../npu_fused_ops/" class="btn btn-neutral float-left" title="NPU 融合算子适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../torch_compile/" class="btn btn-neutral float-right" title="torch.compile 支持">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../npu_fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../torch_compile/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
