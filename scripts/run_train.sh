@@ -12,6 +12,13 @@
 # e.g.
 # LOG_RANK=0,1 NGPU=4 ./run_train.sh
 # COMM_MODE="fake_backend" bash ./run_train.sh  # for config validation without NPU
+
+# TODO change to your environment
+source /usr/local/Ascend/ascend-toolkit/set_env.sh
+source /usr/local/Ascend/nnal/atb/set_env.sh
+# When enabling custom operators, you need to enable the following command
+# source /usr/local/Ascend/vendors/custom_transformer/bin/set_env.bash
+
 NGPU=${NGPU:-"8"}
 export LOG_RANK=${LOG_RANK:-0}
 CONFIG_FILE=${CONFIG_FILE:-"./torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml"}
@@ -37,7 +44,7 @@ else
     TASK_QUEUE_ENABLE=2 \
     HCCL_CONNECT_TIMEOUT=3600 \
     STREAMS_PER_DEVICE=32 \
-    MULTI_STREAM_MEMORY_RESERVE=2 \
+    MULTI_STREAM_MEMORY_RESERVE=1 \
     TORCHFT_LIGHTHOUSE=${TORCHFT_LIGHTHOUSE} \
     torchrun --nproc_per_node=${NGPU} --rdzv_backend c10d --rdzv_endpoint="localhost:0" \
     --local-ranks-filter ${LOG_RANK} --role rank --tee 3 \

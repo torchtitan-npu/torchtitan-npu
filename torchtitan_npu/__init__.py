@@ -63,12 +63,14 @@ def _apply_patches():
 
     new_set = set(titan_models._supported_models)
     new_set.add("deepseek_v32")
+    new_set.add("deepseek_v4")
     titan_models._supported_models = frozenset(new_set)
 
     # module injection
-    from .models import deepseek_v32  # noqa: F401
+    from .models import deepseek_v32, deepseek_v4  # noqa: F401
 
     _inject_module("torchtitan.models.deepseek_v32", deepseek_v32)
+    _inject_module("torchtitan.models.deepseek_v4", deepseek_v4)
 
     # patching model_converter
     from . import converters  # noqa: F401

@@ -95,6 +95,43 @@ def npu_apply_rotary_emb_deepseek(
     return y.to(dtype)
 
 
+def npu_apply_rotary_emb_deepseek_v4(
+    x: torch.Tensor, freqs_cis: torch.Tensor, inverse: bool = False
+) -> torch.Tensor:
+    dtype = x.dtype
+    x = x.float()
+
+    freqs_real = torch.view_as_real(freqs_cis)
+    cos = freqs_real[..., 0]  # (seq_len, head_dim/2)
+    sin = freqs_real[..., 1]  # (seq_len, head_dim/2)
+
+    if inverse:
+        sin = -sin
+
+    r1 = torch.stack([cos, cos], dim=-1).flatten(-2)  # (seq_len, head_dim)
+    r2 = torch.stack([sin, sin], dim=-1).flatten(-2)  # (seq_len, head_dim)
+
+    input_3d = x.ndim == 3
+    if input_3d:
+        # (batch, seq_len, head_dim) -> (batch, seq_len, 1, head_dim)
+        x_4d = x.unsqueeze(2)
+    elif x.ndim == 4:
+        x_4d = x
+    else:
+        raise ValueError(f"Input tensor must be 3D or 4D, got {x.ndim}D")
+
+    # (seq_len, head_dim) -> (1, seq_len, 1, head_dim)
+    r1 = r1.view(1, r1.size(0), 1, r1.size(1))
+    r2 = r2.view(1, r2.size(0), 1, r2.size(1))
+
+    y = torch_npu.npu_rotary_mul(x_4d, r1, r2, rotary_mode="interleave")
+
+    if input_3d:
+        y = y.squeeze(2)
+
+    return y.to(dtype)
+
+
 def npu_apply_rotary_emb_llama(
     xq: torch.Tensor,
     xk: torch.Tensor,
@@ -140,6 +177,7 @@ class RoPEKernel(BaseConverter):
     MODEL_IMPL = {
         "deepseek_v3": npu_apply_rotary_emb_deepseek,
         "deepseek_v32": npu_apply_rotary_emb_deepseek,
+        "deepseek_v4": npu_apply_rotary_emb_deepseek_v4,
         "qwen3": npu_apply_rotary_emb_qwen,
         "_default": npu_apply_rotary_emb_llama,
     }

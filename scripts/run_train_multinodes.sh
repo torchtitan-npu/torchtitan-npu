@@ -11,6 +11,8 @@ ps -ef |grep -i vllm |grep -i [name] |grep -v grep |awk '{print $2}' |xargs -t -
 # TODO change to your environment
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 source /usr/local/Ascend/nnal/atb/set_env.sh
+# When enabling custom operators, you need to enable the following command
+# source /usr/local/Ascend/vendors/custom_transformer/bin/set_env.bash
 
 export HCCL_CONNECT_TIMEOUT=7200
 export HCCL_EXEC_TIMEOUT=7200
@@ -21,7 +23,7 @@ export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
 export CPU_AFFINITY_CONF=1
 export TASK_QUEUE_ENABLE=2
 export STREAMS_PER_DEVICE=32
-export MULTI_STREAM_MEMORY_RESERVE=2
+export MULTI_STREAM_MEMORY_RESERVE=1
 
 # TODO change to your network interface
 Network_Interface=enp23s0f3
@@ -38,6 +40,7 @@ IPs=('192.168.xxx.xxx' '192.168.xxx.xxx')
 LOCAL_HOST=`ifconfig|grep "inet 192.168"| awk '{print $2}'`
 # if you have not ifconfig , use the following command
 # LOCAL_HOST=$(ip addr show ${Network_Interface} | grep "inet " | grep -v "127.0.0.1" | awk '{print $2}' | cut -d'/' -f1)
+# Or LOCAL_HOST=`hostname -I | awk '{print $1}'`
 echo $LOCAL_HOST
 NPUS_PER_NODE=16
 MASTER_ADDR=${IPs[0]}

@@ -83,12 +83,18 @@ def _run_experts_grouped_mm(
     w2: torch.Tensor,
     _w3: torch.Tensor,
     x: torch.Tensor,
-    num_tokens_per_expert: torch.Tensor | None,
+    num_tokens_per_expert: torch.Tensor,
+    swiglu_limit: float | None,
 ) -> torch.Tensor:
     # pyrefly: ignore [missing-attribute]
     offsets = num_tokens_per_expert.to(torch.int64)
 
     h = npu_grouped_mm(x.bfloat16(), w13.bfloat16().transpose(-2, -1), offsets)
+    if swiglu_limit is not None:
+        gate, up = h.chunk(2, -1)
+        up = torch.clamp(up, min=-swiglu_limit, max=swiglu_limit)
+        gate = torch.clamp(gate, max=swiglu_limit)
+        h = torch.cat([gate, up], dim=-1)
     h = torch_npu.npu_swiglu(h, dim=-1)
     out = npu_grouped_mm(h, w2.bfloat16().transpose(-2, -1), offsets).type_as(x)
 
@@ -135,8 +141,11 @@ def npu_grouped_experts_forward(
             // group_size_params["expert_model_parallel_size"]
         )
 
+    # XXX: Refactor this, only DSv4 inject this attribute to its experts.
+    swiglu_limit = getattr(self, "swiglu_limit", None)
+
     # pyrefly: ignore [bad-argument-type]
-    return run_experts_fn(w13, w2, None, x, num_tokens_per_expert)
+    return run_experts_fn(w13, w2, None, x, num_tokens_per_expert, swiglu_limit)
 
 
 def npu_grouped_experts_init_weights(self, init_std: float):

@@ -16,8 +16,11 @@ from torchtitan.train import Trainer
 from torchtitan_npu.patches.torchtitan.activation_checkpoint import (
     _patched_apply_full_ac,
 )
-from torchtitan_npu.train import _patch_torchtitan_model_reshape_for_broadcast
-
+from torchtitan_npu.train import (
+    _patch_for_garbage_collection_run,
+    _patch_for_parallel_dims_build_mesh,
+    _patch_torchtitan_model_reshape_for_broadcast,
+)
 
 if __name__ == "__main__":
     init_logger()
@@ -32,37 +35,40 @@ if __name__ == "__main__":
     else:
         activation_checkpoint_module._apply_full_ac = _patched_apply_full_ac
 
+    _patch_for_garbage_collection_run()
+    _patch_for_parallel_dims_build_mesh()
     _patch_torchtitan_model_reshape_for_broadcast()
 
     if config.compile.enable:
-        if config.model.name == "deepseek_v3":
-            # pyrefly: ignore [missing-import]
-            from torch_npu.op_plugin.meta._meta_registrations import (
-                npu_fusion_attention_forward as original_meta_func,
-            )
+        if config.model.name in ("deepseek_v3", "deepseek_v4"):
+            if config.model.name == "deepseek_v3":
+                # pyrefly: ignore [missing-import]
+                from torch_npu.op_plugin.meta._meta_registrations import (
+                    npu_fusion_attention_forward as original_meta_func,
+                )
 
-            # Lazy imports to avoid requiring NPU hardware at module load time
-            from torchtitan_npu.patches.torch_npu._meta_registrations import (
-                npu_fusion_attention_forward,
-            )
+                # Lazy imports to avoid requiring NPU hardware at module load time
+                from torchtitan_npu.patches.torch_npu._meta_registrations import (
+                    npu_fusion_attention_forward,
+                )
 
-            # MLA performs shape inference according to the value tensor
-            original_meta_func.__code__ = npu_fusion_attention_forward.__code__
+                # MLA performs shape inference according to the value tensor
+                original_meta_func.__code__ = npu_fusion_attention_forward.__code__
 
             try:
                 # pyrefly: ignore [missing-import]
                 import inductor_npu_ext  # noqa: F401
             except Exception as e:
                 raise RuntimeError(
-                    "compile.enable is True for deepseek_v3 model but inductor_npu_ext is not available. "
+                    f"compile.enable is True for {config.model.name} model but inductor_npu_ext is not available. "
                     "Please install inductor_npu_ext before enabling compile. "
                     "See docs/torch_compile.md for installation instructions."
                 ) from e
 
             if "npu_bypass_triton_codegen" in config.model.converters:
                 raise RuntimeError(
-                    "deepseek_v3 model with compile.enable=True should not use npu_bypass_triton_codegen. "
-                    "Please remove 'npu_bypass_triton_codegen' from model.converters in your config."
+                    f"{config.model.name} model with compile.enable=True should not use npu_bypass_triton_codegen. "
+                    f"Please remove 'npu_bypass_triton_codegen' from model.converters in your config."
                 )
         else:
             if "npu_bypass_triton_codegen" not in config.model.converters:
@@ -78,6 +84,19 @@ if __name__ == "__main__":
         )
 
         _patch_train_step_for_dsv32_indexer_loss()
+        _patch_init_for_dsa_set_loss_scale()
+
+        from torchtitan_npu.train import _patch_for_train_npu_memory
+
+        _patch_for_train_npu_memory()
+
+    if config.model.name == "deepseek_v4":
+        from torchtitan_npu.train import (
+            _patch_init_for_dsa_set_loss_scale,
+            _patch_train_step_for_dsv4_indexer_loss,
+        )
+
+        _patch_train_step_for_dsv4_indexer_loss()
         _patch_init_for_dsa_set_loss_scale()
 
         from torchtitan_npu.train import _patch_for_train_npu_memory

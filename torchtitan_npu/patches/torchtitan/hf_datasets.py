@@ -26,6 +26,11 @@ new_datasets = {
         loader=lambda path: load_dataset(path, split="train"),
         sample_processor=_process_c4_text,
     ),
+    "alpaca": DatasetConfig(
+        path="tests/assets/alpaca",
+        loader=lambda path: load_dataset(path, split="train"),
+        sample_processor=_process_c4_text,
+    ),
 }
 
 # Adding Datasets in Batches
@@ -63,7 +68,7 @@ def mtp_build_text_dataloader(
         hasattr(job_config.training, "num_mtp_modules")
         and job_config.training.num_mtp_modules > 0
     ):
-        if job_config.model.name in ["deepseek_v32"]:
+        if job_config.model.name in ["deepseek_v32", "deepseek_v4"]:
             job_config.training.seq_len += job_config.training.num_mtp_modules
             result = build_text_dataloader(
                 dp_world_size, dp_rank, tokenizer, job_config, infinite
@@ -71,7 +76,7 @@ def mtp_build_text_dataloader(
             job_config.training.seq_len -= job_config.training.num_mtp_modules
         else:
             raise AssertionError(
-                "Multi Token Prediction Module only can be used for deepseek_v32 model now!"
+                "Multi Token Prediction Module only can be used for deepseek_v32 and deepseek_v4 model now!"
             )
     else:
         result = build_text_dataloader(

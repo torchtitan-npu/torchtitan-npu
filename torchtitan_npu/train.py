@@ -7,10 +7,12 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import gc
 import importlib
 from functools import wraps
 
 import torch
+import torch_npu
 import torchtitan.train as titan_train
 from torchtitan.config import JobConfig
 from torchtitan.tools.logging import init_logger, logger
@@ -110,6 +112,39 @@ def _patch_train_step_for_dsv32_indexer_loss():
     titan_train.Trainer.train_step = wrapper_train_step
 
 
+def _patch_train_step_for_dsv4_indexer_loss():
+    _original_train_step = titan_train.Trainer.train_step
+
+    def wrapper_train_step(self, *args, **kwargs):
+        # Execute the original train_step (which includes gradient accumulation loops)
+        result = _original_train_step(self, *args, **kwargs)
+
+        # Handle indexer loss tracking
+        if (
+            hasattr(self.model_args, "enable_indexer_loss")
+            and self.model_args.enable_indexer_loss
+        ):
+            # Import dynamically to avoid circular dependencies
+            from torchtitan_npu.models.deepseek_v4.model.model import (
+                DSAIndexerLossLoggingHelper,
+            )
+
+            # Align logging frequency with the core metrics processor
+            if self.metrics_processor.should_log(self.step):
+                DSAIndexerLossLoggingHelper.track_dsa_indexer_metrics(
+                    total_acc_steps=get_grad_accumulation_steps(self)
+                )
+            else:
+                # Crucial: Clear tracker silently if this step is not being logged
+                # to prevent runaway accumulation of losses across steps.
+                DSAIndexerLossLoggingHelper.clean_loss_in_tracker()
+
+        return result
+
+    # Apply the monkey patch
+    titan_train.Trainer.train_step = wrapper_train_step
+
+
 def _patch_init_for_dsa_set_loss_scale():
     _original = titan_train.Trainer.__init__
 
@@ -128,9 +163,19 @@ def _patch_init_for_dsa_set_loss_scale():
                 loss_degree = loss_mesh.size()
 
         scale = 1.0 / float(get_grad_accumulation_steps(self) * loss_degree)
-        DSAIndexerLossAutoScaler.set_loss_scale(
-            torch.tensor(scale, device=self.device, dtype=torch.float32)
+        scale_tensor = torch.tensor(scale, device=self.device, dtype=torch.float32)
+
+        from torchtitan_npu.models.deepseek_v32.model.model import (
+            DSAIndexerLossAutoScaler as DSAIndexerLossAutoScalerV32,
         )
+
+        DSAIndexerLossAutoScalerV32.set_loss_scale(scale_tensor)
+
+        from torchtitan_npu.models.deepseek_v4.model.model import (
+            DSAIndexerLossAutoScaler as DSAIndexerLossAutoScalerV4,
+        )
+
+        DSAIndexerLossAutoScalerV4.set_loss_scale(scale_tensor)
 
     titan_train.Trainer.__init__ = wrapper_init
 
@@ -156,3 +201,71 @@ def _patch_for_train_npu_memory():
         return _original(self)
 
     titan_train.Trainer.train = wrapper_train
+
+
+def _patch_for_garbage_collection_run():
+    """
+    Apply monkey patch to GarbageCollection.run method.
+    To prevent NPUCachingAllocator from caching to much memory after checkpoint
+    loading, resulting in OOM later for NPUWorkspaceAllocator / HCCL.
+    """
+    from torchtitan.tools import utils
+
+    original_run = utils.GarbageCollection.run
+
+    @wraps(original_run)
+    def patched_run(self, step_count: int):
+        """Patched version with NPU cache clearing at step 1."""
+        if step_count == 1:
+            # Clear NPU cache at step 1
+            gc.collect()
+            torch.npu.empty_cache()
+            print(f"[NPU] Cleared NPU cache at step {step_count}")
+
+        # Call original method
+        return original_run(self, step_count)
+
+    # Apply the patch
+    utils.GarbageCollection.run = patched_run
+    print("[PATCH] Successfully patched GarbageCollection.run method")
+
+
+def _patch_for_parallel_dims_build_mesh():
+    """
+    Apply monkey patch to ParallelDims.build_mesh method.
+    To avoid FSDP and EP from using the same ProcessGroup, and therefore
+    makes AG/RS communication blocking EP A2A and becomes non-overlapped.
+    """
+    from torchtitan.distributed import ParallelDims
+
+    _original_build_mesh = ParallelDims.build_mesh
+
+    @wraps(_original_build_mesh)
+    def patched_build_mesh(self):
+        """Patched version which guarantees FSDP and EP uses different PG."""
+        world_mesh = _original_build_mesh(self)
+
+        sparse_dims = ("pp", "dp_replicate", "efsdp", "ep", "etp")
+        sparse_degrees = tuple(self._meshes[dim].size() for dim in sparse_dims)
+        backend_override = {
+            dim: "fake" if dim != "ep"
+            # Provide a non-None Option to force Pytorch to create
+            # a new ProcessGroup for EP communication.
+            else torch_npu._C._distributed_c10d.ProcessGroupHCCL.Options()
+            for dim in sparse_dims
+        }
+
+        sparse_mesh = world_mesh._unflatten(
+            0,
+            sparse_degrees,
+            sparse_dims,
+            backend_override,
+        )
+
+        self._global_meshes["sparse"] = sparse_mesh
+        self._meshes["ep"] = sparse_mesh["ep"]
+        return world_mesh
+
+    # Apply the patch
+    ParallelDims.build_mesh = patched_build_mesh
+    print("[PATCH] Successfully patched ParallelDims.build_mesh method")
