@@ -136,13 +136,22 @@ def sdpa_to_li_adapter(
 
 # ---- LI Loss (LiLoss) ----
 
-from mindspeed.op_builder.npu_sparse_lightning_indexer_grad_kl_loss_builder import (
-    NPUSparseLIGradKlLossOpBuilder,
-)
+ms_npu_sparse_lightning_indexer_grad_kl_loss = None
 
-ms_npu_sparse_lightning_indexer_grad_kl_loss = (
-    NPUSparseLIGradKlLossOpBuilder().load().npu_sparse_lightning_indexer_grad_kl_loss
-)
+
+def _get_ms_npu_sparse_lightning_indexer_grad_kl_loss():
+    global ms_npu_sparse_lightning_indexer_grad_kl_loss
+    if ms_npu_sparse_lightning_indexer_grad_kl_loss is None:
+        from mindspeed.op_builder.npu_sparse_lightning_indexer_grad_kl_loss_builder import (
+            NPUSparseLIGradKlLossOpBuilder,
+        )
+
+        ms_npu_sparse_lightning_indexer_grad_kl_loss = (
+            NPUSparseLIGradKlLossOpBuilder()
+            .load()
+            .npu_sparse_lightning_indexer_grad_kl_loss
+        )
+    return ms_npu_sparse_lightning_indexer_grad_kl_loss
 
 
 class SparseLightningIndexerGradKLLossWrapper(torch.autograd.Function):
@@ -193,7 +202,7 @@ class SparseLightningIndexerGradKLLossWrapper(torch.autograd.Function):
             d_key_index,
             d_weights,
             loss,
-        ) = ms_npu_sparse_lightning_indexer_grad_kl_loss(
+        ) = _get_ms_npu_sparse_lightning_indexer_grad_kl_loss()(
             query,
             key,
             query_index,

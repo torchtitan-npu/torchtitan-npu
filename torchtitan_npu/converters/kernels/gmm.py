@@ -123,15 +123,14 @@ def npu_grouped_experts_forward(
         # pyrefly: ignore [not-iterable]
         or "ep" not in self.w2.device_mesh.mesh_dim_names
     ):
-        run_experts_fn = indices_padding_wrapper(_run_experts_grouped_mm)
         group_size_params["expert_model_parallel_size"] = 1
     else:
-        run_experts_fn = _run_experts_grouped_mm
         # pyrefly: ignore [missing-attribute]
         ep_dim_index = self.w2.device_mesh.mesh_dim_names.index("ep")
         group_size_params["expert_model_parallel_size"] = self.w2.device_mesh.shape[
             ep_dim_index
         ]
+    run_experts_fn = _run_experts_grouped_mm
 
     if group_size_params["g_size"] is None:
         group_size_params["num_experts"] = self.num_experts

@@ -46,7 +46,6 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
             "layers.{}.ffn.experts.{}.w2.weight": "layers.{}.moe.experts.w2",
             "layers.{}.ffn.gate.weight": "layers.{}.moe.router.gate.weight",
             "layers.{}.ffn.gate.bias": "layers.{}.moe.expert_bias",
-
             "layers.{}.ffn.shared_experts.w1.weight": "layers.{}.moe.shared_experts.w1.weight",
             "layers.{}.ffn.shared_experts.w3.weight": "layers.{}.moe.shared_experts.w3.weight",
             "layers.{}.ffn.shared_experts.w2.weight": "layers.{}.moe.shared_experts.w2.weight",
