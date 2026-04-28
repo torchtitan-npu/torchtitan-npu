@@ -49,7 +49,7 @@ def mtp_build_cross_entropy_loss(job_config: JobConfig, **kwargs):
     if (
         hasattr(job_config.training, "num_mtp_modules")
         and job_config.training.num_mtp_modules > 0
-    ):  # pyrefly: ignore [missing-attribute]
+    ):
         loss_fn = functools.partial(
             multi_token_cross_entropy_loss,
             job_config=job_config,

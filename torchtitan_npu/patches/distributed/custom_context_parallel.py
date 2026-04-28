@@ -15,7 +15,6 @@ from collections.abc import Sequence
 import torch
 import torch.nn as nn
 
-# pyrefly: ignore [missing-import]
 import torchtitan.distributed.context_parallel as titan_cp
 from torch.distributed.device_mesh import DeviceMesh
 

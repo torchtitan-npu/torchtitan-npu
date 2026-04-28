@@ -134,10 +134,11 @@ class MHCPREKernel(BaseConverter):
     TARGET_CLASS = "HcPre"
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
 
         replacement_counts = 0
-        # Replace HcPre.forwad
+        # Replace HcPre.forward
         replacement_counts += replace_methods(
             class_name=cls.TARGET_CLASS,
             method_name="forward",
@@ -145,6 +146,7 @@ class MHCPREKernel(BaseConverter):
             package=cls.TARGET_PACKAGE,
         )
 
+        # pyrefly: ignore [bad-return]
         return replacement_counts
 
 
@@ -155,17 +157,18 @@ class MHCPOSTKernel(BaseConverter):
     TARGET_CLASS = ["HcPost", "HcHead"]
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
 
         replacement_counts = 0
-        # Replace HcPost.forwad
+        # Replace HcPost.forward
         replacement_counts += replace_methods(
             class_name=cls.TARGET_CLASS[0],
             method_name="forward",
             new_method=triton_hc_post_forward,
             package=cls.TARGET_PACKAGE,
         )
-        # Replace HcHead.forwad
+        # Replace HcHead.forward
         replacement_counts += replace_methods(
             class_name=cls.TARGET_CLASS[1],
             method_name="forward",
@@ -173,4 +176,5 @@ class MHCPOSTKernel(BaseConverter):
             package=cls.TARGET_PACKAGE,
         )
 
+        # pyrefly: ignore [bad-return]
         return replacement_counts

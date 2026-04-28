@@ -6,7 +6,6 @@
 
 import functools
 
-# pyrefly: ignore [missing-import]
 import torchtitan.distributed.context_parallel as titan_cp
 import torchtitan.models.deepseek_v3 as titan_deepseekv3
 
@@ -49,8 +48,8 @@ def _parallelize_deepseekv3_wrapper(model, parallel_dims, job_config):
             attention_modules,
             cp_mesh,
             "ulysses",
-            job_config=job_config,
-            model_args=model_args,
+            job_config=job_config,  # pyrefly: ignore [unexpected-keyword]
+            model_args=model_args,  # pyrefly: ignore [unexpected-keyword]
         )
 
     _origin.parallelize_deepseekv3.__globals__[

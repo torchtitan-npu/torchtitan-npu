@@ -65,7 +65,6 @@ class FusionAttentionKernel(BaseConverter):
     SUPPORTED_MODELS = {"llama3"}
 
     @classmethod
-    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
 
         count = 0
@@ -73,5 +72,4 @@ class FusionAttentionKernel(BaseConverter):
             model, r"ScaledDotProductAttentionWrapper", _create_npu_fusion_attention
         )
 
-        # pyrefly: ignore [bad-return]
         return count

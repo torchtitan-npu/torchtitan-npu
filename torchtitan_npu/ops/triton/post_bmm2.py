@@ -1,7 +1,6 @@
 import warnings
 
 import torch
-import torch_npu
 
 try:
     import triton

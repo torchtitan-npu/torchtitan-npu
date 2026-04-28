@@ -83,9 +83,7 @@ class SwapOptimizersContainer(OptimizersContainer):
 
         # create streams for swapping
         if SwapOptimizersContainer.swap_to_device_stream is None:
-            # pyrefly: ignore [missing-attribute]
             SwapOptimizersContainer.swap_to_device_stream = get_torch_device().Stream()
-            # pyrefly: ignore [missing-attribute]
             SwapOptimizersContainer.swap_to_host_stream = get_torch_device().Stream()
 
         # initialize states and cpu counterparts for each device param
@@ -152,10 +150,7 @@ class SwapOptimizersContainer(OptimizersContainer):
                 local_state.copy_(cpu_state[key], non_blocking=True)
 
         cls.swap_to_device_events_map[param] = (
-            # pyrefly: ignore [missing-attribute]
-            get_torch_device()
-            .current_stream()
-            .record_event()
+            get_torch_device().current_stream().record_event()
         )
 
     @classmethod
@@ -174,17 +169,13 @@ class SwapOptimizersContainer(OptimizersContainer):
                 local_state.untyped_storage().resize_(0)
 
         cls.swap_to_host_events_map[param] = (
-            # pyrefly: ignore [missing-attribute]
-            get_torch_device()
-            .current_stream()
-            .record_event()
+            get_torch_device().current_stream().record_event()
         )
 
     @classmethod
     def wait_swap_to_device_event(cls, param):
         event = cls.swap_to_device_events_map.get(param, None)
         if event is not None:
-            # pyrefly: ignore [missing-attribute]
             get_torch_device().current_stream().wait_event(event)
             cls.swap_to_device_events_map[param] = None
 
@@ -192,7 +183,6 @@ class SwapOptimizersContainer(OptimizersContainer):
     def wait_param_update_event(cls, param):
         event = cls.param_update_events_map.get(param, None)
         if event is not None:
-            # pyrefly: ignore [missing-attribute]
             get_torch_device().current_stream().wait_event(event)
             cls.param_update_events_map[param] = None
 
@@ -223,14 +213,11 @@ def param_update(param, state, param_group):
 
 def pipeline_load_param(swap_numel, params_list, start_index, current_swap_count):
     torch_device = get_torch_device()
-    # pyrefly: ignore [missing-attribute]
     torch_device.current_stream().wait_stream(
         SwapOptimizersContainer.swap_to_host_stream
     )
 
-    # pyrefly: ignore [missing-attribute]
     with torch_device.stream(SwapOptimizersContainer.swap_to_device_stream):
-        # pyrefly: ignore [missing-attribute]
         torch_device.current_stream().wait_stream(
             SwapOptimizersContainer.swap_to_host_stream
         )
@@ -274,7 +261,6 @@ def swap_optimizer_step(self, closure=None):
             group["step"] = torch.tensor(
                 1,
                 dtype=torch.int64,
-                # pyrefly: ignore [missing-attribute]
                 device=get_torch_device().current_device(),
             )
 
@@ -318,13 +304,9 @@ def swap_optimizer_step(self, closure=None):
         SwapOptimizersContainer.wait_swap_to_device_event(param)
         param_update(param, state, group)
         SwapOptimizersContainer.param_update_events_map[param] = (
-            # pyrefly: ignore [missing-attribute]
-            get_torch_device()
-            .current_stream()
-            .record_event()
+            get_torch_device().current_stream().record_event()
         )
         # offload
-        # pyrefly: ignore [missing-attribute]
         with get_torch_device().stream(SwapOptimizersContainer.swap_to_host_stream):
             SwapOptimizersContainer.wait_param_update_event(param)
             swap_count -= unwrap_dtensor(param).numel()

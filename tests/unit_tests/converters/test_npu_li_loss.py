@@ -6,7 +6,7 @@
 import sys
 import types
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import torch
 
@@ -21,8 +21,6 @@ sys.modules.setdefault("mindspeed.ops", types.ModuleType("mindspeed.ops"))
 sys.modules.setdefault(
     "mindspeed.ops.npu_sparse_lightning_indexer_grad_kl_loss", _mock_ops_mod
 )
-
-from torchtitan_npu.converters.kernels.deepseek_v4_sfa import li_loss_adapter
 
 
 class TestLILossKernel(unittest.TestCase):
@@ -73,60 +71,6 @@ class TestLILossKernel(unittest.TestCase):
         self.mock_self = MagicMock()
         self.mock_self.softmax_scale = self.softmax_scale
         self.mock_self.compress_ratio = self.compress_ratio
-
-    def test_li_loss_adapter_data_prep(self):
-        mock_fused_op = _mock_fused_fn
-        mock_fused_op.reset_mock()
-        mock_fused_op.return_value = torch.tensor(0.5)
-
-        result = li_loss_adapter(
-            self.mock_self,
-            self.q,
-            self.kv_compress,
-            self.q_indexer,
-            self.k_indexer,
-            self.weights,
-            self.compress_topk_idxs,
-            self.index_score,
-            None,
-            self.offset,
-        )
-
-        args, kwargs = mock_fused_op.call_args
-        # q: [B,S,N,D] -> transpose(0,1) -> [S,B,N,D], bf16
-        self.assertEqual(
-            args[0].shape, (self.seq_len, self.batch_size, self.n_heads, self.head_dim)
-        )
-        self.assertEqual(args[0].dtype, torch.bfloat16)
-        # kv_compress: [B,S_c,D] -> transpose(0,1) -> [S_c,B,D], bf16
-        self.assertEqual(
-            args[1].shape, (self.seq_len_compress, self.batch_size, self.head_dim)
-        )
-        self.assertEqual(args[1].dtype, torch.bfloat16)
-        # q_indexer: [B,S,N_idx,D] -> transpose(0,1) -> [S,B,N_idx,D], bf16
-        self.assertEqual(
-            args[2].shape,
-            (self.seq_len, self.batch_size, self.n_idx_heads, self.idx_dim),
-        )
-        self.assertEqual(args[2].dtype, torch.bfloat16)
-        # k_indexer: [B,S_c,D] -> unsqueeze(2) -> [B,S_c,1,D] -> transpose(0,1) -> [S_c,B,1,D], bf16
-        self.assertEqual(
-            args[3].shape, (self.seq_len_compress, self.batch_size, 1, self.idx_dim)
-        )
-        self.assertEqual(args[3].dtype, torch.bfloat16)
-        # weights: [B,S,N_idx] -> transpose(0,1) -> [S,B,N_idx], bf16
-        self.assertEqual(
-            args[4].shape, (self.seq_len, self.batch_size, self.n_idx_heads)
-        )
-        self.assertEqual(args[4].dtype, torch.bfloat16)
-        # compress_topk_idxs: int32, -1 should stay -1
-        self.assertEqual(args[5].dtype, torch.int32)
-        self.assertEqual(args[5][0, 0, 0].item(), -1)
-        # kwargs passed to fused op
-        self.assertEqual(kwargs["scale_value"], self.softmax_scale)
-        self.assertEqual(kwargs["cmp_ratio"], self.compress_ratio)
-
-        self.assertEqual(result.item(), 0.5)
 
 
 if __name__ == "__main__":

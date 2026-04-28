@@ -1,7 +1,7 @@
 import warnings
 
 import torch
-import torch_npu
+import torch_npu  # noqa: F401
 
 try:
     import triton
@@ -72,12 +72,12 @@ if TRITON_AVAILABLE:
 def add_fwd(A: torch.Tensor, B: torch.Tensor) -> torch.Tensor:
     if A.shape != B.shape:
         raise ValueError(
-            f"input shapes of add_fwd shoule keep same, but got {A.shape} and {B.shape}"
+            f"input shapes of add_fwd should keep same, but got {A.shape} and {B.shape}"
         )
 
     if not A.is_contiguous() or not B.is_contiguous():
         raise ValueError(
-            f"input of add_fwd shoule be contiguous, but got {A.is_contiguous()} and {B.is_contiguous()}"
+            f"input of add_fwd should be contiguous, but got {A.is_contiguous()} and {B.is_contiguous()}"
         )
 
     M, N = A.shape

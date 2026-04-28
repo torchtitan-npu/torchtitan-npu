@@ -1,7 +1,6 @@
 import warnings
 
 import torch
-import torch_npu
 
 try:
     import triton
@@ -189,13 +188,13 @@ def hc_post_bmm1_forward(h_out: torch.Tensor, H_post: torch.Tensor) -> torch.Ten
     out   : [B,S,4,C] fp32
     """
     if h_out.ndim != 3 or H_post.ndim != 3:
-        raise ValueError(f"input in hc_post_bmm1_forward dim error")
+        raise ValueError("input in hc_post_bmm1_forward dim error")
     B, S, C = h_out.shape
     B2, S2, N = H_post.shape
     if (B, S) != (B2, S2):
-        raise ValueError(f"input in hc_post_bmm1_forward shape error")
+        raise ValueError("input in hc_post_bmm1_forward shape error")
     if N != 4:
-        raise ValueError(f"input in hc_post_bmm1_forward shape error")
+        raise ValueError("input in hc_post_bmm1_forward shape error")
 
     BS = B * S
 
@@ -242,16 +241,16 @@ def hc_post_bmm1_backward(
       grad_H_post: [B,S,4] fp32
     """
     if h_out.ndim != 3 or H_post.ndim != 3 or grad_out.ndim != 4:
-        raise ValueError(f"input in hc_post_bmm1_backward dim error")
+        raise ValueError("input in hc_post_bmm1_backward dim error")
 
     B, S, C = h_out.shape
     B2, S2, N = H_post.shape
     B3, S3, N3, C3 = grad_out.shape
     if (B, S, C) != (B3, S3, C3) or (B, S, N) != (B2, S2, N3):
-        raise ValueError(f"input in hc_post_bmm1_backward shape error")
+        raise ValueError("input in hc_post_bmm1_backward shape error")
 
     if N != 4:
-        raise ValueError(f"input in hc_post_bmm1_backward shape error")
+        raise ValueError("input in hc_post_bmm1_backward shape error")
 
     BS = B * S
 

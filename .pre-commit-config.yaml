@@ -15,7 +15,7 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500']
       - id: end-of-file-fixer
-        exclude: '^(.*\.svg)$'
+        exclude: '^(\.agents/.*|.*\.svg)$'
 
   - repo: https://gitcode.com/gh_mirrors/fl/flake8.git
     rev: 34cbf8ef3950f43d09b85e2e45c15ae5717dc37b

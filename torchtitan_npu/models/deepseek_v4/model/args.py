@@ -2,16 +2,24 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
+# This file is copied from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/models/deepseek_v3/model/args.py
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+#
+# Copyright (c) Meta Platforms, Inc. All Rights Reserved.
+
 
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
 
 from torch import nn
 from torchtitan.config import JobConfig
 from torchtitan.models.utils import get_moe_model_nparams_and_flops
 from torchtitan.protocols.model import BaseModelArgs
 from torchtitan.tools.logging import logger
-from torchtitan.tools.utils import has_cuda_capability
 
 from .moe import MoEArgs
 
@@ -24,8 +32,8 @@ class DeepSeekV4ModelArgs(BaseModelArgs):
     index_topk: int = 512
     enable_indexer_loss: bool = True
     save_format: str = "dcp"
-    save_expert_format: Optional[str] = None
-    hf_save_dir: Optional[str] = None
+    save_expert_format: str | None = None
+    hf_save_dir: str | None = None
     save_patch_enabled: bool = False
     dim: int = 4096
     moe_args: MoEArgs = field(default_factory=MoEArgs)
@@ -39,7 +47,7 @@ class DeepSeekV4ModelArgs(BaseModelArgs):
     head_dim: int = 512
     o_groups: int = 8
     window_size: int = 128
-    compress_ratios: Tuple[int] = (
+    compress_ratios: tuple[int, ...] = (
         1,
         1,
         4,
@@ -112,6 +120,7 @@ class DeepSeekV4ModelArgs(BaseModelArgs):
 
         if (
             job_config.parallelism.context_parallel_degree > 1
+            # pyrefly: ignore [missing-attribute]
             and self.attn_type != "sdpa"
         ):
             raise NotImplementedError("CP support is only supported for SDPA.")
@@ -125,6 +134,7 @@ class DeepSeekV4ModelArgs(BaseModelArgs):
 
         self.use_sfa = "deepseek_v4_sfa" in job_config.model.converters
 
+        # pyrefly: ignore [missing-attribute]
         self.num_mtp_modules = job_config.training.num_mtp_modules
 
     def get_nparams_and_flops(self, model: nn.Module, seq_len: int) -> tuple[int, int]:

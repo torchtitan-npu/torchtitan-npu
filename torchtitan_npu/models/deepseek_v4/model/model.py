@@ -12,7 +12,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.distributed.tensor import DTensor
-from torchtitan.config import JobConfig
 from torchtitan.protocols.model import AttentionMasksType
 from torchtitan.protocols.train_spec import ModelProtocol
 
@@ -234,9 +233,11 @@ class Indexer(torch.nn.Module):
 class DSAIndexerLossAutoScaler(torch.autograd.Function):
     """An AutoScaler that triggers the backward pass and scales the grad for DSA indexer loss."""
 
+    # pyrefly: ignore [bad-assignment]
     main_loss_backward_scale: torch.Tensor = None
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(ctx, output: torch.Tensor, aux_loss: torch.Tensor):
         """Preserve the indexer_loss by storing it in the context to avoid garbage collection.
 
@@ -251,6 +252,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
         return output
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad_output: torch.Tensor):
         """Compute and scale the gradient for indexer loss.
 
@@ -263,6 +265,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
         """
         (loss,) = ctx.saved_tensors
         if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
+            # pyrefly: ignore [bad-assignment]
             DSAIndexerLossAutoScaler.main_loss_backward_scale = torch.tensor(
                 1.0, device=loss.device
             )
@@ -283,6 +286,7 @@ class DSAIndexerLossAutoScaler(torch.autograd.Function):
                                   matches the scale of the main_loss.
         """
         if DSAIndexerLossAutoScaler.main_loss_backward_scale is None:
+            # pyrefly: ignore [bad-assignment]
             DSAIndexerLossAutoScaler.main_loss_backward_scale = scale
         else:
             DSAIndexerLossAutoScaler.main_loss_backward_scale.copy_(scale)
@@ -394,7 +398,7 @@ class GetAttnScores(torch.nn.Module):
         num_head_k = key.shape[1]
         if num_head_q != num_head_k and num_head_k != 1:
             raise NotImplementedError(
-                f"Only suppport num_head_q == num_head_k or num_head_k == 1. "
+                f"Only support num_head_q == num_head_k or num_head_k == 1. "
                 f"Current {num_head_q=}, {num_head_k=}."
             )
 
@@ -1161,6 +1165,7 @@ class MTPModule(DeepSeekV4TransformerBlock):
         self.h_proj = nn.Linear(model_args.dim, model_args.dim, bias=False)
         self.hc_mult = hc_mult = model_args.hc_mult
 
+    # pyrefly: ignore [bad-param-name-override]
     def forward(
         self,
         input_offset: torch.Tensor,
@@ -1302,7 +1307,6 @@ class DeepSeekV4Model(ModelProtocol):
             torch.Tensor: Logits tensor of shape (batch_size, seq_len, vocab_size).
         """
         seq_len = tokens.shape[1]
-        # pyrefly: ignore [missing-attribute]
         seq_len -= self.model_args.num_mtp_modules
         if self.tok_embeddings is not None:
             input_ids = tokens[:, :seq_len].detach().long()
@@ -1319,6 +1323,7 @@ class DeepSeekV4Model(ModelProtocol):
                     h,
                     input_ids,
                     self.freqs_cis
+                    # pyrefly: ignore [bad-index]
                     if self.model_args.compress_ratios[layer.layer_id] > 1
                     else self.freqs_cis_wo_compressor,
                     self.hadamard_mat,
@@ -1335,15 +1340,13 @@ class DeepSeekV4Model(ModelProtocol):
         prev_embed = h
         h = self.norm(h) if self.norm is not None else h
         output = self.output(h.float()) if self.output is not None else h
-        # pyrefly: ignore [missing-attribute]
         if self.model_args.num_mtp_modules <= 0:
             return output
         else:
-            # pyrefly: ignore [missing-attribute]
             output_list = [None] * (1 + self.model_args.num_mtp_modules)
+            # pyrefly: ignore [unsupported-operation]
             output_list[0] = output
             # MTP module calculate
-            # pyrefly: ignore [missing-attribute]
             for mtp_layer_id in range(self.model_args.num_mtp_modules):
                 token_offset_id = mtp_layer_id + 1
                 token_end_idx = token_offset_id + seq_len
@@ -1378,6 +1381,7 @@ class DeepSeekV4Model(ModelProtocol):
             self.freqs_cis = precompute_freqs_cis(self.model_args, True)
             self.freqs_cis_wo_compressor = precompute_freqs_cis(self.model_args, False)
             self.hadamard_mat = torch.tensor(
+                # pyrefly: ignore [implicit-import]
                 scipy.linalg.hadamard(self.model_args.index_head_dim, float),
                 dtype=torch.bfloat16,
             )
@@ -1385,6 +1389,7 @@ class DeepSeekV4Model(ModelProtocol):
             nn.init.normal_(self.tok_embeddings.weight)
         for layer in self.layers.values():
             if layer is not None:
+                # pyrefly: ignore [not-callable]
                 layer.init_weights(buffer_device=buffer_device)
         if self.norm is not None:
             nn.init.trunc_normal_(self.norm.weight, mean=1, std=0.02)

@@ -257,10 +257,10 @@ def patch_dsa_for_context_parallel(
     CP sharding (sequence dimension) is handled by TorchTitan v0.2.2 module-level CP.
     """
     for cls in (DSASparseAttention, DSV32_SDPA):
-        cls.cp_mesh = cp_mesh  # pyrefly: ignore [no-access]
+        cls.cp_mesh = cp_mesh
         if model_args is not None:
             cls.model_args = model_args  # pyrefly: ignore [no-access]
-        cls.tp_mesh = tp_mesh  # pyrefly: ignore [no-access]
+        cls.tp_mesh = tp_mesh
         cls.compute_dsa_indexer_loss = (  # pyrefly: ignore [no-access]
             SparseLightningIndexerKLLoss()
         )

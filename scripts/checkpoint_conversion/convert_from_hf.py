@@ -25,7 +25,7 @@ def convert_from_hf(input_dir, output_dir, model_name, model_flavor):
 
     with torch.device("cpu"):
         model = train_spec.model_cls(model_args)
-    model = ModelWrapper(model)  # pyrefly: ignore [bad-argument-type]
+    model = ModelWrapper(model)
 
     sd_adapter = train_spec.state_dict_adapter(  # pyrefly: ignore [not-callable]
         model_args, None

@@ -1,0 +1,43 @@
+{
+  "name": "torchtitan-npu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "runArgs": [
+    "--device=/dev/davinci0",
+    "--device=/dev/davinci1",
+    "--device=/dev/davinci2",
+    "--device=/dev/davinci3",
+    "--device=/dev/davinci4",
+    "--device=/dev/davinci5",
+    "--device=/dev/davinci6",
+    "--device=/dev/davinci7",
+    "--device=/dev/davinci8",
+    "--device=/dev/davinci9",
+    "--device=/dev/davinci10",
+    "--device=/dev/davinci11",
+    "--device=/dev/davinci12",
+    "--device=/dev/davinci13",
+    "--device=/dev/davinci14",
+    "--device=/dev/davinci15",
+    "--device=/dev/davinci_manager",
+    "--device=/dev/devmm_svm",
+    "--device=/dev/hisi_hdc",
+    "--net=host",
+    "--privileged"
+  ],
+  "mounts": [
+    "source=/usr/local/dcmi,target=/usr/local/dcmi,type=bind",
+    "source=/usr/local/bin/npu-smi,target=/usr/local/bin/npu-smi,type=bind",
+    "source=/usr/local/sbin/,target=/usr/local/sbin/,type=bind",
+    "source=/data/,target=/data/,type=bind",
+    "source=/home/,target=/home/,type=bind",
+    "source=/etc/localtime,target=/etc/localtime,type=bind",
+    "source=/usr/local/Ascend/driver,target=/usr/local/Ascend/driver,type=bind",
+    "source=/dev/shm,target=/dev/shm,type=bind"
+  ]
+}

@@ -34,6 +34,7 @@ def _make_cpu_mesh():
     return init_device_mesh("cpu", (1,))
 
 
+@pytest.mark.usefixtures("single_rank_process_group")
 class TestToLocalWithPartialGrad:
     @staticmethod
     def test_backward_returns_none_none_for_none_grad():
@@ -74,7 +75,6 @@ class TestToLocalWithPartialGrad:
             assert grad_dtensor is mock_partial_dtensor
             assert grad_mesh is None
 
-    @pytest.mark.usefixtures("single_rank_process_group")
     @staticmethod
     def test_forward_stores_mesh_and_returns_local():
         mesh = _make_cpu_mesh()
@@ -88,8 +88,8 @@ class TestToLocalWithPartialGrad:
         assert torch.allclose(result, local)
 
 
+@pytest.mark.usefixtures("single_rank_process_group")
 class TestAllgatherSequence:
-    @pytest.mark.usefixtures("single_rank_process_group")
     @staticmethod
     def test_single_rank_preserves_shape_and_values():
         mesh = _make_cpu_mesh()
@@ -100,7 +100,6 @@ class TestAllgatherSequence:
         assert result.shape == tensor.shape
         assert torch.allclose(result, tensor)
 
-    @pytest.mark.usefixtures("single_rank_process_group")
     @staticmethod
     def test_output_is_plain_tensor():
         mesh = _make_cpu_mesh()
@@ -316,6 +315,7 @@ class TestAllToAll:
         assert torch.allclose(t.grad, grad_ref)
 
 
+@pytest.mark.usefixtures("single_rank_process_group")
 class TestPatchUlyssesForContextParallel:
     @staticmethod
     def test_sets_cp_mesh_on_class():
@@ -338,7 +338,6 @@ class TestPatchUlyssesForContextParallel:
         finally:
             TestPatchUlyssesForContextParallel._restore_class_state(snapshot)
 
-    @pytest.mark.usefixtures("single_rank_process_group")
     @staticmethod
     def test_patched_forward_calls_all_to_all_for_qkv_and_output():
         snapshot = TestPatchUlyssesForContextParallel._snapshot_class_state()

@@ -88,7 +88,7 @@ def patch_ulysses_for_context_parallel(*, cp_mesh: DeviceMesh) -> None:
     After SDPA:    [B, n_heads // CP, seq,       v_head_dim]
     After A2A:     [B, n_heads,       seq // CP, v_head_dim]
     """
-    ScaledDotProductAttentionWrapper.cp_mesh = cp_mesh  # pyrefly: ignore [no-access]
+    ScaledDotProductAttentionWrapper.cp_mesh = cp_mesh
     orig_forward = ScaledDotProductAttentionWrapper.forward
 
     @functools.wraps(orig_forward)

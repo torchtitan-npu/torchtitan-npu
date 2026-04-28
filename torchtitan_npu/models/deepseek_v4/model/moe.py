@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -62,6 +62,7 @@ class TokenChoiceTopKRouter(TokenChoiceTopKRouter):
             args.num_expert_groups,
             args.num_limited_groups,
             top_k,
+            # pyrefly: ignore [bad-argument-type]
             score_func,
             route_norm,
             route_scale,
@@ -70,6 +71,7 @@ class TokenChoiceTopKRouter(TokenChoiceTopKRouter):
         self.gate = nn.Linear(dim, num_experts, bias=False)
         self.num_experts = num_experts
         self.top_k = top_k
+        # pyrefly: ignore [bad-assignment]
         self.score_func = score_func
         self.route_norm = route_norm
         self.route_scale = route_scale
@@ -89,6 +91,7 @@ class TokenChoiceTopKRouter(TokenChoiceTopKRouter):
                 persistent=True,
             )
 
+    # pyrefly: ignore [bad-override]
     def forward(
         self,
         x: torch.Tensor,
@@ -165,20 +168,27 @@ class MoE(MoE):
     def __init__(
         self, moe_args: MoEArgs, dim: int, hidden_dim: int, layer_id, vocab_size
     ):
+        # pyrefly: ignore [bad-argument-type]
         super().__init__(moe_args, dim, hidden_dim)
+        # pyrefly: ignore [missing-argument]
         self.router = TokenChoiceTopKRouter(
             dim=dim,
+            # pyrefly: ignore [unexpected-keyword]
             layer_id=layer_id,
+            # pyrefly: ignore [unexpected-keyword]
             args=moe_args,
             num_experts=moe_args.num_experts,
             top_k=moe_args.top_k,
+            # pyrefly: ignore [bad-argument-type]
             score_func=moe_args.score_func,
             route_norm=moe_args.route_norm,
             route_scale=moe_args.route_scale,
+            # pyrefly: ignore [unexpected-keyword]
             vocab_size=vocab_size,
             _debug_force_load_balance=moe_args._debug_force_load_balance,
         )
         self.score_before_experts = moe_args.score_before_experts
+        # pyrefly: ignore [bad-argument-type]
         self.experts.swiglu_limit = moe_args.swiglu_limit
 
         # Remove expert_bias buffer for hash layers. Note that init_weight of
@@ -187,6 +197,7 @@ class MoE(MoE):
         if layer_id < moe_args.n_hash_layers:
             del self.expert_bias
 
+    # pyrefly: ignore [bad-override]
     def forward(self, x: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         """
         Forward pass for the DeepSeek MoE module.

@@ -2,7 +2,6 @@ import warnings
 
 import torch
 import torch.nn.functional as F
-import torch_npu
 
 try:
     import triton
@@ -637,9 +636,9 @@ def hc_pre_fwd(
     group: int = 48,
 ):
     if mixes.dim() != 3 or hc_scale.shape != (3,):
-        raise ValueError(f"shape error in hc_pre_fwd")
+        raise ValueError("shape error in hc_pre_fwd")
     if hc_base.shape != ((2 + hc_mult) * hc_mult,):
-        raise ValueError(f"shape error in hc_pre_fwd")
+        raise ValueError("shape error in hc_pre_fwd")
 
     origin_dtype = mixes.dtype
 
@@ -720,17 +719,17 @@ def hc_pre_bwd(
     group_p1: int = 48,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     if mixes.dim() != 3 or mixes.shape[-1] != (2 + hc_mult) * hc_mult:
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
     if grad_pre.shape[-1] != hc_mult:
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
     if grad_post.shape[-1] != hc_mult:
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
     if grad_comb.shape[-2:] != (hc_mult, hc_mult):
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
     if hc_scale.shape != (3,):
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
     if hc_base.shape != ((2 + hc_mult) * hc_mult,):
-        raise ValueError(f"shape error in hc_pre_bwd")
+        raise ValueError("shape error in hc_pre_bwd")
 
     b, s, total_dim = mixes.shape
     batch_seq_size = b * s
@@ -904,7 +903,7 @@ def hc_pre_only_fwd(
     group: int = 48,
 ):
     if mixes.dim() != 3:
-        raise ValueError(f"shape error in hc_pre_only_fwd")
+        raise ValueError("shape error in hc_pre_only_fwd")
 
     b, s, _ = mixes.shape
     feat_dim = hc_mult
@@ -949,7 +948,7 @@ def hc_pre_only_bwd(
     group_p1: int = 48,
 ):
     if mixes.dim() != 3 or mixes.shape[-1] != hc_mult:
-        raise ValueError(f"shape error in hc_pre_only_bwd")
+        raise ValueError("shape error in hc_pre_only_bwd")
 
     b, s, total_dim = mixes.shape
     batch_seq_size = b * s
@@ -991,7 +990,7 @@ def hc_pre_only_bwd(
         GROUP=group_p1,
     )
 
-    # determin reduce
+    # determine reduce
     _triton_hc_preonly_bwd_dst_reduce_kernel[(1,)](
         tmp_grad_hc_scale_f32,
         tmp_grad_hc_base_f32,

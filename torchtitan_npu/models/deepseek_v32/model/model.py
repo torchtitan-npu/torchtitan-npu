@@ -11,7 +11,6 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange
 
-# pyrefly: ignore [missing-import]
 from scipy.linalg import hadamard
 from torch import nn
 from torch.nn.attention import sdpa_kernel, SDPBackend
@@ -84,7 +83,6 @@ def hadamard_transform_ref(x, scale=1.0):
     log_dim = math.ceil(math.log2(dim))
     dim_padded = 2**log_dim
     if dim != dim_padded:
-        # pyrefly: ignore [bad-argument-type]
         x = F.pad(x, (0, dim_padded - dim))
     out = F.linear(
         x,
@@ -392,7 +390,6 @@ class DSV32_SDPA(torch.nn.Module):  # noqa: N801
 
         # prepare attention_mask for sparse attention according to lightning_indexer score
         index_score = bf16_index(
-            # pyrefly: ignore [missing-attribute]
             q_indexer.contiguous(),
             # pyrefly: ignore [missing-attribute]
             weights.unsqueeze(-1),
@@ -424,7 +421,6 @@ class DSV32_SDPA(torch.nn.Module):  # noqa: N801
             torch.arange(seqlen, device=topk_indices.device).unsqueeze(0).unsqueeze(-1)
         )
         valid_positions = topk_indices <= query_positions
-        # pyrefly: ignore [no-matching-overload]
         topk_indices = torch.where(
             valid_positions, topk_indices, torch.full_like(topk_indices, -1)
         )
@@ -455,7 +451,6 @@ class DSV32_SDPA(torch.nn.Module):  # noqa: N801
             topk_indices,
             1.0,
         )
-        # pyrefly: ignore [bad-return]
         return loss, output
 
 
@@ -833,7 +828,6 @@ class DeepSeekV32Model(DeepSeekV3Model):
         # pyrefly: ignore [bad-assignment]
         self.norm = RMSNorm(model_args.dim)
 
-    # pyrefly: ignore [bad-override]
     def forward(
         self,
         tokens: torch.Tensor,

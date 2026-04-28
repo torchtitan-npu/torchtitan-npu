@@ -211,7 +211,6 @@ def parallelize_deepseekv32(
         maybe_enable_async_tp(job_config, tp_mesh)
 
     if parallel_dims.cp_enabled:
-        # pyrefly: ignore [missing-import]
         from torchtitan.distributed.context_parallel import apply_cp_to_attention_module
 
         cp_attn_type = attn_type
@@ -232,9 +231,9 @@ def parallelize_deepseekv32(
             cp_attn_type,
             job_config=job_config,  # pyrefly: ignore [unexpected-keyword]
             model_args=model.model_args,  # pyrefly: ignore [unexpected-keyword]
-            tp_mesh=parallel_dims.get_mesh("tp")
+            tp_mesh=parallel_dims.get_mesh("tp")  # pyrefly: ignore [unexpected-keyword]
             if parallel_dims.tp_enabled
-            else None,  # pyrefly: ignore [unexpected-keyword]
+            else None,
         )
 
     # Check if using DeepEP for MoE communication

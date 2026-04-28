@@ -2,10 +2,19 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
+# This file is copied from torchtitan,
+# https://github.com/pytorch/torchtitan/blob/v0.2.2/torchtitan/models/deepseek_v3/model/state_dict_adapter.py
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+#
+# Copyright (c) Meta Platforms, Inc. All Rights Reserved.
 
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
 from torch.distributed.checkpoint import HuggingFaceStorageReader
@@ -22,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
-    def __init__(self, model_args, hf_assets_path: Optional[str] = None):
+    def __init__(self, model_args, hf_assets_path: str | None = None):
         super().__init__(model_args, hf_assets_path)
 
         # key mapping
@@ -70,22 +79,42 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                 compressor_attr = "compressor" if cr == 4 else "compressor_128"
                 self.from_hf_map.update(
                     {
-                        f"layers.{layer_id}.attn.compressor.ape": f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.ape",
-                        f"layers.{layer_id}.attn.compressor.norm.weight": f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.norm.weight",
-                        f"layers.{layer_id}.attn.compressor.wgate.weight": f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.wgate.weight",
-                        f"layers.{layer_id}.attn.compressor.wkv.weight": f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.wkv.weight",
+                        f"layers.{layer_id}.attn.compressor.ape": (
+                            f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.ape"
+                        ),
+                        f"layers.{layer_id}.attn.compressor.norm.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.norm.weight"
+                        ),
+                        f"layers.{layer_id}.attn.compressor.wgate.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.wgate.weight"
+                        ),
+                        f"layers.{layer_id}.attn.compressor.wkv.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.{compressor_attr}.wkv.weight"
+                        ),
                     }
                 )
             # indexer
             if cr == 4:
                 self.from_hf_map.update(
                     {
-                        f"layers.{layer_id}.attn.indexer.compressor.ape": f"layers.{layer_id}.attention.pre_attention.indexer.compressor.ape",
-                        f"layers.{layer_id}.attn.indexer.compressor.norm.weight": f"layers.{layer_id}.attention.pre_attention.indexer.compressor.norm.weight",
-                        f"layers.{layer_id}.attn.indexer.compressor.wgate.weight": f"layers.{layer_id}.attention.pre_attention.indexer.compressor.wgate.weight",
-                        f"layers.{layer_id}.attn.indexer.compressor.wkv.weight": f"layers.{layer_id}.attention.pre_attention.indexer.compressor.wkv.weight",
-                        f"layers.{layer_id}.attn.indexer.wq_b.weight": f"layers.{layer_id}.attention.pre_attention.indexer.wq_b.weight",
-                        f"layers.{layer_id}.attn.indexer.weights_proj.weight": f"layers.{layer_id}.attention.pre_attention.indexer.weights_proj.weight",
+                        f"layers.{layer_id}.attn.indexer.compressor.ape": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.compressor.ape"
+                        ),
+                        f"layers.{layer_id}.attn.indexer.compressor.norm.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.compressor.norm.weight"
+                        ),
+                        f"layers.{layer_id}.attn.indexer.compressor.wgate.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.compressor.wgate.weight"
+                        ),
+                        f"layers.{layer_id}.attn.indexer.compressor.wkv.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.compressor.wkv.weight"
+                        ),
+                        f"layers.{layer_id}.attn.indexer.wq_b.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.wq_b.weight"
+                        ),
+                        f"layers.{layer_id}.attn.indexer.weights_proj.weight": (
+                            f"layers.{layer_id}.attention.pre_attention.indexer.weights_proj.weight"
+                        ),
                     }
                 )
             if layer_id <= model_args.moe_args.n_hash_layers - 1:
@@ -126,6 +155,21 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
         # apply checkpoint patch
         self._setup_checkpoint_patch(model_args)
 
+    @staticmethod
+    def _get_abstract_key(key: str, count: int) -> str:
+        return re.sub(r"(\d+)", "{}", key, count=count)
+
+    @staticmethod
+    def _first_number(key: str) -> str:
+        # pyrefly: ignore [missing-attribute]
+        return re.search(r"\d+", key).group(0)
+
+    @classmethod
+    def _map_layer_key(cls, key: str, mapping: dict[str, str]) -> str:
+        abstract_key = cls._get_abstract_key(key, count=1)
+        layer_num = cls._first_number(key)
+        return mapping[abstract_key].format(layer_num)
+
     def to_hf_mtp(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         new_state_dict = {}
         for key, tensor in state_dict.items():
@@ -134,6 +178,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                 num = int(match.group(1))
                 rest = match.group(2)
 
+                # pyrefly: ignore [missing-attribute]
                 if num >= self.model_args.n_layers:
                     new_key = f"mtp.0.{rest}"
                 else:
@@ -184,10 +229,11 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                 else:
                     # keep this path for offline conversion
                     split_values = self._split_experts_weights(
-                        value, self.model_args.moe_args.num_experts
+                        value,
+                        self.n_experts,
                     )
 
-                    for expert_num in range(0, self.model_args.moe_args.num_experts):
+                    for expert_num in range(0, self.n_experts):
                         new_key = new_abstract_key.format(layer_num, expert_num)
                         hf_state_dict[new_key] = split_values[expert_num].squeeze()
 
@@ -202,6 +248,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
 
         return hf_state_dict
 
+    # pyrefly: ignore [bad-override]
     def get_hf_storage_reader(self, path: str, from_quantized: bool = False):
         self._input_format = detect_input_format_by_path(path)
 
@@ -212,7 +259,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
 
             return FileSystemReader(path)
 
-    def to_hf(self, state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def to_hf(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Create a load plan/ Convert to HF format"""
         if self._input_format == "dcp":
             return state_dict
@@ -225,7 +272,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
         else:
             return self.to_hf_new(state_dict)
 
-    def from_hf(self, hf_state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def from_hf(self, hf_state_dict: dict[str, Any]) -> dict[str, Any]:
         """Convert loaded data to runtime format"""
         filtered = {
             k: v
@@ -249,6 +296,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
             if match:
                 num = int(match.group(1))
                 rest = match.group(2)
+                # pyrefly: ignore [missing-attribute]
                 new_key = f"layers.{self.model_args.n_layers}.{rest}"
             else:
                 new_key = key
@@ -304,6 +352,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                         expert_weights_by_layer,
                         titan_abstract_key,
                         layer_num,
+                        # pyrefly: ignore [missing-attribute]
                         self.model_args.moe_args.num_experts,
                     )
 
@@ -338,7 +387,7 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                 f"Failed to setup checkpoint patch, training will continue with original saving configs: {e}"
             )
 
-    def _split_w13_for_mapping(self, state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _split_w13_for_mapping(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Split w13 into w1 and w3 for HF mapping"""
         result = {}
 
@@ -390,17 +439,3 @@ class DeepSeekV4StateDictAdapter(DeepSeekV3StateDictAdapter):
                 result[key] = value
 
         return result
-
-    @staticmethod
-    def _get_abstract_key(key: str, count: int) -> str:
-        return re.sub(r"(\d+)", "{}", key, count=count)
-
-    @staticmethod
-    def _first_number(key: str) -> str:
-        return re.search(r"\d+", key).group(0)
-
-    @classmethod
-    def _map_layer_key(cls, key: str, mapping: dict[str, str]) -> str:
-        abstract_key = cls._get_abstract_key(key, count=1)
-        layer_num = cls._first_number(key)
-        return mapping[abstract_key].format(layer_num)

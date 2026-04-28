@@ -171,9 +171,7 @@ def build_muon_hybrid_optimizers(
     )
     adamw_kwargs = _build_adamw_kwargs(lr, weight_decay, optimizer_config)
 
-    muon = torch.optim.Muon(
-        muon_params, **muon_kwargs
-    )  # pyrefly: ignore[bad-argument-type]
+    muon = torch.optim.Muon(muon_params, **muon_kwargs)
     adamw = torch.optim.AdamW(adamw_params, **adamw_kwargs)
 
     return MuonHybridOptimizersContainer(

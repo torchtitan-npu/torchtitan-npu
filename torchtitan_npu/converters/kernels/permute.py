@@ -84,6 +84,7 @@ def _npu_moe_forward_for_dsv4(self, x, input_ids):
 @register_npu_converter("npu_permute")
 class PermuteKernel(BaseConverter):
 
+    # pyrefly: ignore [bad-assignment]
     MODEL_IMPL = {
         "deepseek_v3": ("torchtitan.models.moe", _npu_moe_forward_for_dsv32),
         "deepseek_v4": (
@@ -93,12 +94,12 @@ class PermuteKernel(BaseConverter):
     }
 
     @classmethod
-    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
         impl = cls.get_impl_cls(model_name)
         if not impl:
             return 0
 
+        # pyrefly: ignore [not-iterable]
         module_path, replace_func = impl
 
         count = replace_methods(
@@ -108,5 +109,4 @@ class PermuteKernel(BaseConverter):
             package=module_path,
         )
 
-        # pyrefly: ignore [bad-return]
         return count

@@ -47,7 +47,7 @@ version = {file = "assets/version.txt"}
 
 [tool.codespell]
 skip = ["*.json"]
-ignore-words-list = ["cann"]
+ignore-words-list = ["cann", "nD"]
 
 # ---- Explicit project build information ---- #
 [build-system]
@@ -71,7 +71,7 @@ markers = [
 ]
 
 [tool.pyrefly]
-project-excludes = ["**/tests/**", "CI"]
+project-excludes = ["**/tests/**", "CI", "torchtitan_npu/ops/triton"]
 ignore-missing-imports = ["torchao.*", "torchft"]  # optional dependencies
 search-path = ["../pytorch"]  # local built pytorch
 replace-imports-with-any = ["torch_npu", "torch.npu"]

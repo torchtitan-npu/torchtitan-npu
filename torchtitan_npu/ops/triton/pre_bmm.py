@@ -1,7 +1,6 @@
 import warnings
 
 import torch
-import torch_npu
 
 try:
     import triton
@@ -198,13 +197,13 @@ if TRITON_AVAILABLE:
 
 def hc_pre_bmm_forward(H_pre: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     if H_pre.ndim != 3 or x.ndim != 4:
-        raise ValueError(f"shape error in hc_pre_bmm_forward")
+        raise ValueError("shape error in hc_pre_bmm_forward")
     B, S, N = H_pre.shape
     B2, S2, N2, D = x.shape
     if (B, S, N) != (B2, S2, N2):
-        raise ValueError(f"shape error in hc_pre_bmm_forward")
+        raise ValueError("shape error in hc_pre_bmm_forward")
     if N != 4:
-        raise ValueError(f"shape error in hc_pre_bmm_forward")
+        raise ValueError("shape error in hc_pre_bmm_forward")
 
     BS = B * S
 
@@ -241,11 +240,11 @@ def hc_pre_bmm_forward(H_pre: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
 
 def hc_pre_bmm_backward(H_pre: torch.Tensor, x: torch.Tensor, grad_out: torch.Tensor):
     if H_pre.ndim != 3 or x.ndim != 4 or grad_out.ndim != 3:
-        raise ValueError(f"shape error in hc_pre_bmm_backward")
+        raise ValueError("shape error in hc_pre_bmm_backward")
     B, S, N = H_pre.shape
     _, _, _, D = x.shape
     if N != 4:
-        raise ValueError(f"shape error in hc_pre_bmm_backward")
+        raise ValueError("shape error in hc_pre_bmm_backward")
     BS = B * S
 
     GROUP = 1

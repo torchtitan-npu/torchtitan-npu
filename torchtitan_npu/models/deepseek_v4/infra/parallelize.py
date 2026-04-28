@@ -17,7 +17,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     CheckpointWrapper,
 )
 from torch.distributed.device_mesh import DeviceMesh
-from torch.distributed.tensor import distribute_tensor, DTensor, Replicate, Shard
+from torch.distributed.tensor import distribute_tensor, Replicate, Shard
 from torch.distributed.tensor.parallel import (
     ColwiseParallel,
     parallelize_module,
@@ -44,8 +44,6 @@ from torchtitan.distributed.tensor_parallel import maybe_enable_async_tp
 from torchtitan.models.llama3.infra.parallelize import apply_ddp
 from torchtitan.models.llama4.infra.parallelize import apply_fsdp
 from torchtitan.models.moe import moe as moe_module
-
-from torchtitan_npu.converters.kernels.rms_norm import NPURMSNorm
 
 from torchtitan_npu.models.deepseek_v4.model.model import (
     Attention,
@@ -263,6 +261,7 @@ def parallelize_deepseek_v4(
             model,
             job_config.activation_checkpoint,
             model_compile_enabled=model_compile_enabled,
+            # pyrefly: ignore [bad-argument-type]
             op_sac_save_list=_op_sac_save_list,
             base_folder=job_config.job.dump_folder,
         )
@@ -332,6 +331,7 @@ def apply_non_moe_tp(
     # whether the npu_dsa kernel is enabled
     parallel_cfg = job_config.parallelism
     use_cp = (
+        # pyrefly: ignore [missing-attribute]
         parallel_cfg.enable_custom_context_parallel
         and parallel_cfg.context_parallel_degree > 1
     )
@@ -536,34 +536,62 @@ def apply_non_moe_tp(
     # NOTE: At the cost of model code change, we can accelerate Sequence Parallel
     #       by folding (and unfolding) the batch dimension and the sequence dimension.
     #       Examples can be found at https://github.com/pytorch/torchtitan/pull/437
+    # pyrefly: ignore [not-callable]
     for transformer_block in model.layers.values():
         _register_distributed_parameter(
+            # pyrefly: ignore [missing-attribute]
             transformer_block.attention.inner_attention,
             "attn_sink",
             tp_mesh,
             [Shard(0)],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_attn_fn", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_attn_fn",
+            tp_mesh,
+            [Replicate()],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_ffn_fn", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_ffn_fn",
+            tp_mesh,
+            [Replicate()],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_attn_base", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_attn_base",
+            tp_mesh,
+            [Replicate()],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_ffn_base", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_ffn_base",
+            tp_mesh,
+            [Replicate()],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_attn_scale", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_attn_scale",
+            tp_mesh,
+            [Replicate()],
         )
         _register_distributed_parameter(
-            transformer_block, "hc_ffn_scale", tp_mesh, [Replicate()]
+            # pyrefly: ignore [bad-argument-type]
+            transformer_block,
+            "hc_ffn_scale",
+            tp_mesh,
+            [Replicate()],
         )
 
+        # pyrefly: ignore [missing-attribute]
         if transformer_block.attention.compress_ratio == 1:
             attention_kernel_plan = attention_kernel_plan_ratio1
+        # pyrefly: ignore [missing-attribute]
         elif transformer_block.attention.compress_ratio == 4:
             attention_kernel_plan = attention_kernel_plan_ratio4
         else:
@@ -598,14 +626,18 @@ def apply_non_moe_tp(
             "cal_index_loss.li_loss": li_loss_plan,
             "ffn_norm": SequenceParallel(),
         }
+        # pyrefly: ignore [missing-attribute]
         if transformer_block.attention.compress_ratio > 1:
+            # pyrefly: ignore [missing-attribute]
             compress_ratio = transformer_block.attention.compress_ratio
             if compress_ratio == 4:
                 compressor_attr = "compressor"
             else:
                 compressor_attr = "compressor_128"
             compressor_module = getattr(
-                transformer_block.attention.pre_attention, compressor_attr
+                # pyrefly: ignore [missing-attribute]
+                transformer_block.attention.pre_attention,
+                compressor_attr,
             )
             compressor_key = f"attention.pre_attention.{compressor_attr}"
             _register_distributed_parameter(
@@ -621,6 +653,7 @@ def apply_non_moe_tp(
             )
             if compress_ratio == 4:
                 _register_distributed_parameter(
+                    # pyrefly: ignore [missing-attribute]
                     transformer_block.attention.pre_attention.indexer.compressor,
                     "ape",
                     tp_mesh,
@@ -649,6 +682,7 @@ def apply_non_moe_tp(
                     }
                 )
 
+        # pyrefly: ignore [missing-attribute]
         if not transformer_block.moe_enabled:
             # Select the appropriate parallel strategy:
             # Use AwaitRowwiseParallel when activation checkpoint is enabled to handle
@@ -671,6 +705,7 @@ def apply_non_moe_tp(
                 }
             )
 
+        # pyrefly: ignore [missing-attribute]
         if transformer_block.layer_id >= model.model_args.n_layers:
             layer_plan.update(
                 {
@@ -682,8 +717,10 @@ def apply_non_moe_tp(
             )
 
         parallelize_module(
+            # pyrefly: ignore [bad-argument-type]
             module=transformer_block,
             device_mesh=tp_mesh,
+            # pyrefly: ignore [bad-argument-type]
             parallelize_plan=layer_plan,
         )
 
@@ -709,7 +746,9 @@ def apply_moe_ep_tp(
         Current status: tp_mesh={tp_mesh}, ep_mesh={ep_mesh}
         """
 
+    # pyrefly: ignore [not-callable]
     for transformer_block in model.layers.values():
+        # pyrefly: ignore [missing-attribute]
         if not transformer_block.moe_enabled:
             continue
 
@@ -727,9 +766,11 @@ def apply_moe_ep_tp(
                     sequence_dim=0, use_local_output=True
                 ),
             }
+            # pyrefly: ignore [missing-attribute]
             if transformer_block.moe.shared_experts is not None:
                 # input: sharded on fused batch-seq dimension (dim=0)
                 # all-gather for input, reduce-scatter for output
+                # pyrefly: ignore [no-matching-overload]
                 moe_layer_plan.update(
                     {
                         "moe.shared_experts": PrepareModuleInput(
@@ -744,8 +785,10 @@ def apply_moe_ep_tp(
                     }
                 )
             parallelize_module(
+                # pyrefly: ignore [bad-argument-type]
                 module=transformer_block,
                 device_mesh=tp_mesh,
+                # pyrefly: ignore [bad-argument-type]
                 parallelize_plan=moe_layer_plan,
             )
 
@@ -757,6 +800,7 @@ def apply_moe_ep_tp(
         elif tp_mesh is None or etp_mesh is None:
             experts_mesh = ep_mesh
             if use_deepep:
+                # pyrefly: ignore [missing-attribute]
                 score_before_experts = transformer_block.moe.score_before_experts
                 experts_plan = DeepEPExpertParallel(
                     score_before_experts=score_before_experts,
@@ -771,6 +815,7 @@ def apply_moe_ep_tp(
             experts_plan = DualPipeExpertParallel(experts_plan)
 
         parallelize_module(
+            # pyrefly: ignore [missing-attribute]
             module=transformer_block.moe.experts,
             device_mesh=experts_mesh,
             parallelize_plan=experts_plan,
@@ -909,6 +954,7 @@ def apply_distributed_indexer_loss_tracking(parallel_dims: ParallelDims):
     and Context Parallel (CP) groups, to obtain the globally accurate metric.
     """
 
+    # pyrefly: ignore [invalid-decorator]
     @staticmethod
     def distributed_track_dsa_indexer_metrics(total_acc_steps: int):
         tracker = DSAIndexerLossLoggingHelper.tracker

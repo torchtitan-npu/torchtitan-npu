@@ -152,10 +152,6 @@ def _patch_init_for_dsa_set_loss_scale():
     def wrapper_init(self, job_config: JobConfig):
         _original(self, job_config)
 
-        from torchtitan_npu.models.deepseek_v32.model.model import (
-            DSAIndexerLossAutoScaler,
-        )
-
         loss_degree = 1
         if getattr(self.parallel_dims, "dp_cp_enabled", False):
             loss_mesh = self.parallel_dims.get_optional_mesh("loss")
@@ -219,6 +215,7 @@ def _patch_for_garbage_collection_run():
         if step_count == 1:
             # Clear NPU cache at step 1
             gc.collect()
+            # pyrefly: ignore [missing-attribute]
             torch.npu.empty_cache()
             print(f"[NPU] Cleared NPU cache at step {step_count}")
 

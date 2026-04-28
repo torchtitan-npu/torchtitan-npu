@@ -159,7 +159,7 @@ class MHCPostTriton(torch.autograd.Function):
 
         # Validate shapes
         if residual.shape[:-1] != (B, S):
-            raise ValueError(f"residual shape mismatch")
+            raise ValueError("residual shape mismatch")
 
         if residual.shape[-1] != N * D:
             raise ValueError(f"residual last dim {residual.shape[-1]} != N*D={N * D}")

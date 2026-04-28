@@ -16,7 +16,7 @@ import inspect
 from typing import Any
 
 import torch
-import torchtitan.distributed.context_parallel as titan_cp  # pyrefly: ignore [missing-import]
+import torchtitan.distributed.context_parallel as titan_cp
 from torch.distributed.device_mesh import DeviceMesh
 from torchtitan.tools.logging import init_logger, logger
 

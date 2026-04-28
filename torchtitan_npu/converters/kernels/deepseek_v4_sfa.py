@@ -47,6 +47,7 @@ def npu_sparse_attn_shared_kv(
         cmp_sparse_indices = None
     else:
         cmp_sparse_indices = cmp_sparse_indices.unsqueeze(2).contiguous()
+    # pyrefly: ignore [missing-import]
     from mindspeed.ops.npu_sparse_attn_shared_kv import SparseAttnSharedKV
 
     output = SparseAttnSharedKV.apply(
@@ -113,6 +114,7 @@ def sdpa_to_li_adapter(
     q_indexer = q_indexer.to(torch.bfloat16)
     k_indexer = k_indexer.to(torch.bfloat16).unsqueeze(2)
     weights = weights.to(torch.bfloat16)
+    # pyrefly: ignore [missing-import]
     import mindspeed.ops.npu_lightning_indexer as mindspeed_li
 
     compress_topk_idxs, index_score = mindspeed_li.npu_lightning_indexer(
@@ -127,6 +129,7 @@ def sdpa_to_li_adapter(
     compress_topk_idxs = compress_topk_idxs.squeeze(2)
     index_score = index_score.squeeze(2)
     if offset != 0:
+        # pyrefly: ignore [no-matching-overload]
         compress_topk_idxs = torch.where(
             compress_topk_idxs == -1, compress_topk_idxs, compress_topk_idxs + offset
         )
@@ -142,6 +145,7 @@ ms_npu_sparse_lightning_indexer_grad_kl_loss = None
 def _get_ms_npu_sparse_lightning_indexer_grad_kl_loss():
     global ms_npu_sparse_lightning_indexer_grad_kl_loss
     if ms_npu_sparse_lightning_indexer_grad_kl_loss is None:
+        # pyrefly: ignore [missing-import]
         from mindspeed.op_builder.npu_sparse_lightning_indexer_grad_kl_loss_builder import (
             NPUSparseLIGradKlLossOpBuilder,
         )
@@ -156,6 +160,7 @@ def _get_ms_npu_sparse_lightning_indexer_grad_kl_loss():
 
 class SparseLightningIndexerGradKLLossWrapper(torch.autograd.Function):
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def forward(
         ctx,
         query,
@@ -188,11 +193,12 @@ class SparseLightningIndexerGradKLLossWrapper(torch.autograd.Function):
         ctx.next_tokens = next_tokens
 
         # Return dummy loss during fwd, real operation will be postponed
-        # to bwd, to avoid redundent computation of the loss function in
+        # to bwd, to avoid redundant computation of the loss function in
         # case where activation checkpointing is enabled.
         return torch.zeros(1, dtype=torch.float32, device=query.device)[0]
 
     @staticmethod
+    # pyrefly: ignore [bad-override]
     def backward(ctx, grad):
         query, key, query_index, key_index, weights, sparse_indices = ctx.saved_tensors
         softmax_max = softmax_sum = query_rope = key_rope = None
@@ -309,6 +315,7 @@ class DeepSeekV4SFAKernel(BaseConverter):
     SUPPORTED_MODELS = {"deepseek_v4"}
 
     @classmethod
+    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> nn.Module:
         pkg = cls.MODEL_PACKAGE
         total = 0
@@ -327,4 +334,5 @@ class DeepSeekV4SFAKernel(BaseConverter):
         logger.info(f"  [LiLoss forward] Applied {count} replacement(s)")
         total += count
 
+        # pyrefly: ignore [bad-return]
         return total

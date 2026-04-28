@@ -11,7 +11,6 @@ import torch
 import torch_npu
 from torch import nn
 from torch.distributed.tensor import DTensor
-from torchtitan.models.moe.moe import indices_padding_wrapper
 
 from ..base_converter import BaseConverter
 from ..convert_utils import replace_functions, replace_methods
@@ -84,9 +83,8 @@ def _run_experts_grouped_mm(
     _w3: torch.Tensor,
     x: torch.Tensor,
     num_tokens_per_expert: torch.Tensor,
-    swiglu_limit: float | None,
+    swiglu_limit: float | None = None,
 ) -> torch.Tensor:
-    # pyrefly: ignore [missing-attribute]
     offsets = num_tokens_per_expert.to(torch.int64)
 
     h = npu_grouped_mm(x.bfloat16(), w13.bfloat16().transpose(-2, -1), offsets)
@@ -160,7 +158,6 @@ class GMMKernel(BaseConverter):
     TARGET_CLASS = "GroupedExperts"
 
     @classmethod
-    # pyrefly: ignore [bad-override]
     def apply(cls, model: nn.Module, model_name: str, **kwargs) -> int:
 
         replacement_counts = 0
@@ -191,7 +188,6 @@ class GMMKernel(BaseConverter):
         # Initialize w13
         cls._change_existing_instances(model)
 
-        # pyrefly: ignore [bad-return]
         return replacement_counts
 
     @classmethod
