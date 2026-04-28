@@ -133,6 +133,7 @@
 <a href="https://gitcode.com/cann/torchtitan-npu/blob/master/CONTRIBUTING.md"><img src="https://img.shields.io/badge/CONTRIBUTING-teal" alt="contributing"></a>
 <a href="https://gitcode.com/cann/community/tree/master/CANN/sigs/framework-adapter"><img src="https://img.shields.io/badge/SIG-framework--adapter-yellow" alt="SIG"></a>
 <a href="https://pypi.org/project/torchtitan-npu/"><img src="https://img.shields.io/badge/pypi-0.2.2.post1-blue" alt="pypi"></a>
+<a href="https://zread.ai/hicann/torchtitan-npu"><img src="https://img.shields.io/badge/Ask_Zread-_.svg?style=plastic&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff" alt="zread"></a>
 </div>
 
 <hr />
@@ -145,8 +146,13 @@
 <hr />
 <h1 id="_3">最新消息</h1>
 <ul>
-<li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>：基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
-<li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>：在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
+<li>[Apr. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Flash 续训练 0day 支持</a></strong>:基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图，开箱即优。</li>
+<li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>:基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
+<li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>:在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
+</ul>
+<hr />
+<ul>
+<li><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/docs/llm_pretrain/deepseek-v4_torchtitan_npu_autofuse.md">TorchTitan-NPU 0day支持DeepSeekV4续训练，助力训练场景轻松入图，开箱即优</a></li>
 </ul>
 <hr />
 <h1 id="roadmap">Roadmap</h1>
@@ -255,6 +261,8 @@ pip install -e .
 ├── docs/               # 文档
 
 </code></pre>
+<p>上下游软件栈架构图如下:
+<img alt="Architecture" src="assets/Architecture.png" /></p>
 <hr />
 <h1 id="_8">性能基准</h1>
 <h3 id="202604">2026.04</h3>
@@ -274,11 +282,27 @@ pip install -e .
 <th style="text-align: left;">CP</th>
 <th style="text-align: left;">EP</th>
 <th style="text-align: left;">Throughput (tokens/p/s)</th>
+<th style="text-align: left;">MFU</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_32k_128die.toml">Deepseek V3.2-671B</a></td>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v4/train_configs/deepseek_v4_285b_43layers_4k_128die.toml">DeepSeek-V4-Flash</a></td>
+<td style="text-align: left;">64</td>
+<td style="text-align: left;">BF16</td>
+<td style="text-align: left;">1024</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">4096</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">128</td>
+<td style="text-align: left;">1100</td>
+<td style="text-align: left;">28.78%</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_32k_128die.toml">Deepseek-V3.2-671B</a></td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">BF16</td>
 <td style="text-align: left;">128</td>
@@ -290,9 +314,10 @@ pip install -e .
 <td style="text-align: left;">8</td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">103</td>
+<td style="text-align: left;">/</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_4k_128die.toml">Deepseek V3.2-671B</a></td>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_61layers_4k_128die.toml">Deepseek-V3.2-671B</a></td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">BF16</td>
 <td style="text-align: left;">512</td>
@@ -304,9 +329,10 @@ pip install -e .
 <td style="text-align: left;">1</td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">146</td>
+<td style="text-align: left;">/</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek V3-671B</a></td>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek-V3-671B</a></td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">BF16</td>
 <td style="text-align: left;">1024</td>
@@ -318,9 +344,10 @@ pip install -e .
 <td style="text-align: left;">1</td>
 <td style="text-align: left;">128</td>
 <td style="text-align: left;">546</td>
+<td style="text-align: left;">/</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek V3-671B + compile(Autofuse)</a></td>
+<td style="text-align: left;"><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_61layers_4k_128die.toml">Deepseek-V3-671B + compile(Autofuse)</a></td>
 <td style="text-align: left;">64</td>
 <td style="text-align: left;">BF16</td>
 <td style="text-align: left;">1024</td>
@@ -332,6 +359,7 @@ pip install -e .
 <td style="text-align: left;">1</td>
 <td style="text-align: left;">128</td>
 <td style="text-align: left;">576</td>
+<td style="text-align: left;">/</td>
 </tr>
 </tbody>
 </table>
@@ -400,5 +428,5 @@ pip install -e .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-04-24 08:50:22.745837+00:00
+Build Date UTC : 2026-04-28 09:13:04.081675+00:00
 -->
