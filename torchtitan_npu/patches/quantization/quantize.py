@@ -102,7 +102,7 @@ def grouped_quantize_(
     filter_fn: Callable[[torch.nn.Module, str], bool] | None = None,
     recipe_name=None,
 ):
-    TARGET_PACKAGE = "torchtitan_npu.converter.kernels.gmm"
+    TARGET_PACKAGE = "torchtitan_npu.converters.kernels.gmm"
     replacement_counts = 0
     if config.recipe_name == MoEGroupedRecipeName.GMM_MXFP8:
         func_replacements = replace_functions(
