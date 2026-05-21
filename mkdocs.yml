@@ -1,0 +1,8 @@
+site_name: torchtitan-npu
+docs_dir: docs
+hooks:
+  - mkdocs_hooks.py
+plugins:
+  - include-markdown
+theme:
+  name: readthedocs
