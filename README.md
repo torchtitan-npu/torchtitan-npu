@@ -1,6 +1,6 @@
 <div align="center">
 
-# torchtitan-npu
+<h1>torchtitan-npu</h1>
 
 <h4>基于 torchtitan 的昇腾全流程大模型训练适配插件</h4>
 
