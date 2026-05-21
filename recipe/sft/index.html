@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>SFT 指令微调 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "SFT \u6307\u4ee4\u5fae\u8c03";
+        var mkdocs_page_input_path = "recipe/sft.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/model_custom/">Model Custom框架介绍</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Recipe</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">SFT 指令微调</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#qwen3-30b-a3b-sft">快速开始：Qwen3-30B-A3B SFT</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_1">前置条件</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">一键启动</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">数据预处理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">消息格式</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ulysses-context-parallel">Ulysses Context Parallel</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">权重加载与保存</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">加载预训练权重</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">切换为自己的预训练权重</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">保存训练后的权重</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_9">常见问题</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Source</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" >Community</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/cloud_platform_development_guide/">Qwen3-0.6B 单机样例（云开发平台）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Recipe</li>
+      <li class="breadcrumb-item active">SFT 指令微调</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="sft">SFT 指令微调</h1>
+<p>torchtitan-npu 支持基于对话数据的指令微调（Supervised Fine-Tuning, SFT）。当前已提供 Qwen3-30B-A3B 模型在 NPU 上的开箱即用 SFT 配置，支持 Ulysses Context Parallel 长序列训练。</p>
+<h2 id="qwen3-30b-a3b-sft">快速开始：Qwen3-30B-A3B SFT</h2>
+<h3 id="_1">前置条件</h3>
+<ul>
+<li>准备 Qwen3-30B-A3B 的 HuggingFace 预训练权重（如 <code>./assets/hf/Qwen3-30B-A3B</code>）</li>
+<li>准备训练数据集（详见<a href="#数据预处理">数据预处理</a>）</li>
+</ul>
+<h3 id="_2">一键启动</h3>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.qwen3 CONFIG=sft_qwen3_30ba3b_math bash scripts/run_train.sh
+</code></pre>
+<h2 id="_3">数据预处理</h2>
+<p>SFT 的数据预处理在 <code>torchtitan_npu/models/qwen3/config_registry.py</code> 的配置函数中完成。以 <code>sft_qwen3_30ba3b_math</code> 为例，它使用 GSM8K 数据集，<code>process_sample</code> 将原始样本转为 <code>[user, assistant]</code> 消息列表：</p>
+<pre><code class="language-python">def sft_qwen3_30ba3b_math() -&gt; Trainer.Config:
+
+    def process_sample(sample):
+        answer = sample[&quot;answer&quot;]
+        reasoning, final_answer = answer.rsplit(&quot;####&quot;, 1)
+        return [
+            {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: sample[&quot;question&quot;]},
+            {
+                &quot;role&quot;: &quot;assistant&quot;,
+                &quot;reasoning_content&quot;: reasoning.strip(),
+                &quot;content&quot;: final_answer.strip(),
+            },
+        ]
+
+    # ... 其余配置 ...
+    dataloader=ChatDataLoader.Config(
+        dataset_path=&quot;openai/gsm8k&quot;,
+        load_dataset_kwargs={&quot;name&quot;: &quot;main&quot;, &quot;split&quot;: &quot;train&quot;},
+        sample_processor=process_sample,
+    )
+</code></pre>
+<p>框架拿到 <code>process_sample</code> 返回的消息列表后，自动完成以下处理：
+1. 调用 tokenizer 的 chat template 将消息渲染为完整文本
+2. 通过增量前缀重 tokenize 定位 prompt/response 边界，对 prompt 部分做 label mask（仅对 assistant 回复计算 loss）
+3. 对多个样本做 greedy packing（将短样本打包到同一 seq_len 窗口，EOS 分隔，per-document position 重置）
+4. 超过 seq_len 的样本自动丢弃（而非截断）</p>
+<h3 id="_4">消息格式</h3>
+<p><code>process_sample</code> 需返回如下格式的消息列表：</p>
+<pre><code class="language-python">[
+    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;用户输入&quot;},
+    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;助手回复&quot;},
+]
+</code></pre>
+<p>Qwen3 支持 thinking mode，可在 assistant 消息中添加 <code>reasoning_content</code> 字段：</p>
+<pre><code class="language-python">[
+    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;用户输入&quot;},
+    {&quot;role&quot;: &quot;assistant&quot;, &quot;reasoning_content&quot;: &quot;思考过程&quot;, &quot;content&quot;: &quot;最终回答&quot;},
+]
+</code></pre>
+<blockquote>
+<p><strong>限制</strong>：当前仅支持单轮对话（一条 user + 一条 assistant），暂不支持多轮。</p>
+</blockquote>
+<h2 id="ulysses-context-parallel">Ulysses Context Parallel</h2>
+<p>torchtitan-npu 为 Qwen3 提供了 Ulysses 风格的 CP 实现。在配置中设置 <code>context_parallel_degree &gt; 1</code> 即可启用：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh --parallelism.context_parallel_degree 4
+</code></pre>
+<p>关于 Ulysses CP 的实现原理和约束条件，详见<a href="parallelism/custom_cp.md">自定义 Context Parallel 特性文档</a>。</p>
+<h2 id="_5">权重加载与保存</h2>
+<h3 id="_6">加载预训练权重</h3>
+<p>SFT 配置默认从 HuggingFace 格式加载预训练权重：</p>
+<pre><code class="language-bash">--checkpoint.initial_load_in_hf true \
+--checkpoint.initial_load_path /path/to/Qwen3-30B-A3B
+</code></pre>
+<blockquote>
+<p><strong>注意</strong>：<code>checkpoint.folder</code> 不能与 <code>checkpoint.initial_load_path</code> 相同，否则框架会跳过 HuggingFace 权重加载。</p>
+</blockquote>
+<h3 id="_7">切换为自己的预训练权重</h3>
+<p>修改 <code>checkpoint.initial_load_path</code> 和 <code>hf_assets_path</code> 指向新的权重目录：</p>
+<pre><code class="language-bash">--checkpoint.initial_load_path /path/to/your/model \
+--model.hf_assets_path /path/to/your/model
+</code></pre>
+<h3 id="_8">保存训练后的权重</h3>
+<p>训练完成后，权重会自动保存到 <code>checkpoint.folder</code> 指定的路径。可通过 <code>checkpoint.interval</code> 设置保存间隔：</p>
+<pre><code class="language-bash">--checkpoint.folder /path/to/save \
+--checkpoint.interval 100
+</code></pre>
+<p>如仅需加载权重而不保存（如调试时），设置 <code>--checkpoint.load_only true</code>。</p>
+<h2 id="_9">常见问题</h2>
+<p><strong>Q: 数据集跑完一轮就停了？</strong></p>
+<p>默认 <code>dataloader.infinite=true</code>，数据集会无限循环。如果设为 false，数据遍历完一轮后训练会停止。可通过 CLI 覆盖：</p>
+<pre><code class="language-bash">--dataloader.infinite true
+</code></pre>
+<p><strong>Q: 超长样本被丢弃了？</strong></p>
+<p><code>ChatDataset</code> 会自动丢弃 token 数超过 <code>seq_len</code> 的样本（而非截断），日志中会打印 <code>Dropping sample</code> 提示。可增大 <code>seq_len</code> 或开启 Ulysses CP 来容纳更长样本。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../feature_guides/parallelism/custom_cp/" class="btn btn-neutral float-left" title="自定义Context Parallel特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../source/community/versioning_policy/" class="btn btn-neutral float-right" title="版本策略（Versioning Policy）">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../feature_guides/parallelism/custom_cp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../source/community/versioning_policy/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

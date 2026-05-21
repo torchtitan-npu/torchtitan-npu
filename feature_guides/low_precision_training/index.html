@@ -77,6 +77,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../model_custom/">Model Custom框架介绍</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
@@ -85,11 +87,18 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
                 <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
                 </li>
     </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Recipe</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Source</span></p>
@@ -114,6 +123,8 @@
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/cloud_platform_development_guide/">Qwen3-0.6B 单机样例（云开发平台）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
@@ -245,7 +256,7 @@
 <td><code>fqns</code></td>
 <td>list[str]</td>
 <td>[]</td>
-<td>需要进行低精度替换的 MoE 模块名称列表。匹配规则为子字符串包含，如 <code>"experts"</code> 将匹配所有全限定名（Fully Qualified Name, FQN）中包含 "experts" 的模块。</td>
+<td>需要进行低精度替换的 MoE 模块名称列表。保留字段，暂不生效；目前对所有 MoE 专家层的GMM执行全量低精度替换。</td>
 </tr>
 </tbody>
 </table>
@@ -276,7 +287,6 @@ filter_fqns = [&quot;output&quot;, &quot;router.gate&quot;]
 
 [quantize.grouped_mm.mx]
 recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
-fqns = [&quot;experts&quot;]
 </code></pre>
 <h2 id="_6">验证清单</h2>
 <ol>
@@ -286,7 +296,7 @@ fqns = [&quot;experts&quot;]
 <li><strong>确认模块替换数量</strong>：日志中 <code>Replaced &lt;N&gt; NPU GMM methods/functions</code> 的数量应与预期的 MoE 专家模块数一致；线性层可通过 <code>model.named_modules()</code> 检查 <code>MXLinear</code> 类型的模块数量。</li>
 <li><strong>常见未生效场景排查</strong>：</li>
 <li><code>converters</code> 顺序错误：<code>"npu_gmm"</code> 未放在 <code>"quantize.grouped_mm.mx"</code> 之前，导致 MoE 专家层替换失败</li>
-<li><code>filter_fqns</code> / <code>fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
+<li><code>filter_fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
 <li>硬件不满足要求：日志报错 <code>[MXFP8/Hif8] is only supported on Ascend950 or higher architecture</code></li>
 </ol>
               

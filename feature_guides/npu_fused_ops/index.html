@@ -51,6 +51,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../model_custom/">Model Custom框架介绍</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">NPU 融合算子适配</a>
@@ -67,19 +69,24 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#rope">RoPE</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#nep-npu-expert-parallel">NEP (NPU Expert Parallel)</a>
-    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
                 <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
                 </li>
     </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Recipe</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Source</span></p>
@@ -104,6 +111,8 @@
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/cloud_platform_development_guide/">Qwen3-0.6B 单机样例（云开发平台）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
@@ -142,15 +151,14 @@
 name = &quot;deepseek_v32&quot;
 flavor = &quot;debugmodel&quot;
 hf_assets_path = &quot;./assets/hf/DeepSeek-V3.2&quot;
-converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;, &quot;npu_expert_parallel&quot;]
+converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;]
 </code></pre>
 <p>当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
   - <a href="#dsa-deepseek-sparse-attention">DSA</a>
   - <a href="#gmmgrouped-matmul">GMM</a>
   - <a href="#permute">Permute</a>
   - <a href="#rmsnorm">RMSNorm</a>
-  - <a href="#rope">Rope</a>
-  - <a href="#nep-npu-expert-parallel">NEP</a></p>
+  - <a href="#rope">Rope</a></p>
 <p>关于本仓库适配的各融合算子的详细说明，请查看对应的 NPU 融合算子开发者文档。</p>
 <hr />
 <h2 id="dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</h2>
@@ -228,15 +236,6 @@ converters = [... &quot;npu_rope&quot;, ...] # 添加 `npu_rope` 配置项
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rope.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_rotary_mul.md"><code>npu_rope</code></a></p>
-<hr />
-<h2 id="nep-npu-expert-parallel">NEP (NPU Expert Parallel)</h2>
-<p>MoE的专家并行机制需要_token_dispatch分发token到各rank，_token_combine收集结果并恢复顺序。</p>
-<p>本 ModelConverter 将“重排”和“恢复”操作替换为基于 <code>npu_moe_token_permute</code> 和 <code>NPUMoeTokenUnpermute</code> 算子的实现。</p>
-<p><strong>配置示例</strong>：</p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_moe_expert_parallel&quot;, ...] # 添加 `npu_moe_expert_parallel` 配置项
-</code></pre>
-<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/expert_parallel.py</code></p>
               
             </div>
           </div><footer>
