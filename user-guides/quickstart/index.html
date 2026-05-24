@@ -113,6 +113,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#_5">多机训练任务</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#rank">排查启动报错:查看更多 rank 日志</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#torchtitan">torchtitan 仓库内置训练任务</a>
     </li>
         </ul>
@@ -204,6 +206,16 @@ bash scripts/run_train_multinodes.sh \
 <p>[!NOTE]
 * 脚本会自动通过 <code>LOCAL_HOST</code> 匹配 <code>IPs</code> 数组以推导当前机器的 <code>NODE_RANK</code>。若提取规则错误导致未匹配成功，脚本将报错退出。
 * 多机通信依赖相应的端口开放，请确保 <code>MASTER_PORT</code> (默认 6300) 以及 HCCL 通信基础端口 (默认 30000) 不被防火墙拦截。</p>
+</blockquote>
+<h3 id="rank">排查启动报错:查看更多 rank 日志</h3>
+<blockquote>
+<p>[!TIP]
+默认启动脚本只在控制台打印 <code>LOG_RANK=0</code>(即 rank 0)的日志。若任务异常退出、但控制台没有具体的Python报错,真正报错可能记录在其他rank。此时可临时通过 <code>LOG_RANK</code> 指定需要打印日志的rank(用逗号分隔)后重新运行,以定位报错。例如同时查看本机 8 个 rank:</p>
+<p><code>bash
+LOG_RANK=0,1,2,3,4,5,6,7 bash scripts/run_train.sh</code></p>
+<blockquote>
+<p>排查时建议覆盖本机全部rank。多机任务中,各节点日志会自动写入本节点 <code>logs/</code> 目录，需登录对应节点查看(同样默认只记录local rank 0)。</p>
+</blockquote>
 </blockquote>
 <h3 id="torchtitan">torchtitan 仓库内置训练任务</h3>
 <p>除了 torchtitan-npu 已经适配的模型外，还可以直接下载 torchtitan 代码，使用原生配置启动训练任务：</p>
