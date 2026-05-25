@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -75,7 +86,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -83,15 +94,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -154,23 +156,22 @@ cd torchair/experimental/_inductor_npu_ext/
 pip3 install -e ./python/
 cd -
 </code></pre>
-<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v3/train_configs/deepseek_v3_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的 TOML 配置文件）中，找到对应的 <code>[compile]</code> 节，添加以下配置以完整编译模型：</p>
-<pre><code class="language-toml">[compile]
-# 启用编译
-enable = true
-# 编译完整模型，而不是只编译 loss 。
-components = [&quot;model&quot;, &quot;loss&quot;]
+<p>编译配置在模型的 <code>config_registry.py</code> 中，对应<code>CompileConfig</code> 类：</p>
+<pre><code class="language-python">from torchtitan.config import CompileConfig
+
+compile = CompileConfig(
+    enable=True,
+    # 编译完整模型，而不是只编译loss
+    components=[&quot;model&quot;, &quot;loss&quot;],
+)
 </code></pre>
 <p>启动训练任务前，设置以下环境变量：</p>
 <pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
-bash run_train.sh
+bash scripts/run_train.sh --compile.enable
 </code></pre>
 <h2 id="_1">支持范围</h2>
-<p>torchtitan-npu 当前支持 DeepSeek-V3 模型的全流程编译。
-其他模型的 Codegen 处于待调试状态，启用 torch.compile时，需要引入补丁 <code>npu_bypass_triton_codegen</code> 以跳过 Codegen 流程：</p>
-<pre><code class="language-toml">[model]
-converters = [..., &quot;npu_bypass_triton_codegen&quot;]
-</code></pre>
+<p>当前主线正在加速适配中。您可先在 <code>v0.2.2-dev</code> 分支体验该功能。
+```</p>
 <h2 id="_2">注意事项</h2>
 <blockquote>
 <p>⚠️ <strong>修改模型结构后，需要清理缓存重新 compile</strong></p>

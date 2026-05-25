@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -65,7 +76,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -73,15 +84,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -148,11 +150,11 @@
               
                 <h1 id="_1">测试设计</h1>
 <h2 id="_2">文档目的</h2>
-<p>这份文档说明 <code>torchtitan-npu</code> 当前的测试分层，帮助补测试的同学判断新用例应该放在哪一层。</p>
-<p>目标很直接：
+<p>这份文档说明 <code>torchtitan-npu</code> 当前的测试分层，帮助开发者判断测试新用例应该放在哪一层。</p>
+<p>测试目标：
 - 单元测试保持快速、硬件无关
 - 冒烟测试聚焦真实执行链路
-- 让新同学更容易判断测试该写在哪里</p>
+- 让开发者更容易判断测试该写在哪里</p>
 <h2 id="_3">测试分层</h2>
 <table>
 <thead>
@@ -247,7 +249,7 @@
 <ol>
 <li>测试是不是放在正确目录？</li>
 <li>验证的是不是实际行为，而不是占位路径？</li>
-<li>新同学能不能很快看懂这条测试？</li>
+<li>其他开发者能不能很快看懂这条测试？</li>
 <li>如果改动影响了测试入口或使用方式，文档有没有同步更新？</li>
 </ol>
               

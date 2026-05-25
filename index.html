@@ -47,8 +47,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -69,7 +80,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -77,15 +88,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -165,6 +167,7 @@ LICENSE file in the root directory of this source tree.
 <hr />
 <ul>
 <li>[May. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Pro 模型续训练支持</a></strong>:基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图。</li>
+<li>[May. 2026]: ⚠️ <strong>配置系统重构</strong>: master 分支对齐 torchtitan main 的 <code>config_registry.py</code> / <code>ConfigManager</code> 机制，模型训练使用 <code>--module</code> 和 <code>--config</code> 启动，不再通过 <code>--job.config_file</code> 加载 TOML。</li>
 <li>[Apr. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Flash 续训练 0day 支持</a></strong>:基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图，开箱即优。</li>
 <li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>:基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
 <li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>:在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
@@ -239,7 +242,7 @@ pip install -e .
     <!-- 训练调试与监控 -->
     <tr>
       <td rowspan="2">训练调试与监控</td>
-      <td>分布式 Checkpoint</td>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/checkpoint.md">分布式 Checkpoint</a></td>
       <td>✅</td>
       <td>✅</td>
     </tr>
@@ -267,7 +270,7 @@ pip install -e .
 <p>torchtitan-npu 充分利用了 torchtitan 提供的 ModelConverter 插件化机制。该机制介入模型定义之后、并行策略（如 TP/FSDP）应用之前，支持以非侵入式的方式，通过注册机制对特定模块进行替换或重写。基于此方案，我们实现了融合算子优化、量化支持以及优化器增强等功能。见以下项目结构：</p>
 <pre><code>torchtitan-npu/
 ├── torchtitan_npu/     # torchtitan_npu核心源代码
-│   ├── config/         # 对Config的补丁
+│   ├── config/         # NPU 扩展配置 dataclass
 │   ├── converters/     # 基于torchtitan ModelConverter机制的补丁
 │   ├── distributed/    # 自定义分布式代码
 │   ├── models/         # 基于torchtitan-npu的模型 (如Deepseek-V3.2)
@@ -366,5 +369,5 @@ pip install -e .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-05-24 22:36:37.591158+00:00
+Build Date UTC : 2026-05-25 16:21:28.693331+00:00
 -->

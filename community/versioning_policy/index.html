@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Test Design - torchtitan-npu</title>
+    <title>版本策略 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Test Design";
-        var mkdocs_page_input_path = "test_guides/test_design.md";
+        var mkdocs_page_name = "\u7248\u672c\u7b56\u7565";
+        var mkdocs_page_input_path = "community/versioning_policy.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -44,12 +44,22 @@
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../contributors/">提交者与贡献者（Committers and Contributors）</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../governance/">社区治理</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">版本策略</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">发布兼容性表</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">分支同步表</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">分支策略</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">同步更新策略</a>
+    </li>
+    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
@@ -87,32 +97,14 @@
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
-              <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Test Design</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#purpose">Purpose</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#test-layers">Test Layers</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#how-to-choose-a-layer">How to Choose a Layer</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#what-smoke-means-here">What "Smoke" Means Here</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#rules-for-adding-tests">Rules for Adding Tests</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#readability-guidelines">Readability Guidelines</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#build-entry-points">Build Entry Points</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#pre-submission-checklist">Pre-Submission Checklist</a>
-    </li>
-    </ul>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_design_zh/">测试设计</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_guide/">Test Guide</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_guide_zh/">测试使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -138,8 +130,8 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
-          <li class="breadcrumb-item">Test guides</li>
-      <li class="breadcrumb-item active">Test Design</li>
+          <li class="breadcrumb-item">Community</li>
+      <li class="breadcrumb-item active">版本策略</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -148,116 +140,90 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="test-design">Test Design</h1>
-<h2 id="purpose">Purpose</h2>
-<p>This document explains the current test layering in <code>torchtitan-npu</code> and helps contributors decide where a new test should live.</p>
-<p>The goals are simple:
-- Keep unit tests fast and hardware-independent
-- Keep smoke tests focused on real execution paths
-- Make test placement easy to understand for new contributors</p>
-<h2 id="test-layers">Test Layers</h2>
+                <h1 id="_1">版本策略</h1>
+<p><code>torchtitan-npu</code> 采用“分支 + commit 基线”的方式与上游 <code>torchtitan</code> 保持对齐。
+本政策用于定义发布兼容性约束，以及分支同步信息的唯一事实来源（source of truth）。</p>
+<h2 id="_2">发布兼容性表</h2>
+<p>下表列出了已发布 <code>torchtitan-npu</code> 版本对应的上游 <code>torchtitan</code> 基线及关键依赖兼容范围。</p>
 <table>
 <thead>
 <tr>
-<th>Layer</th>
-<th>Directory</th>
-<th>NPU Required</th>
-<th>Use Cases</th>
+<th>torchtitan-npu</th>
+<th>torchtitan</th>
+<th>Python</th>
+<th>Stable CANN</th>
+<th>PyTorch/torch_npu</th>
+<th>triton-ascend</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Function UT</td>
-<td><code>tests/unit_tests/functions/</code></td>
-<td>No</td>
-<td>Pure functions, config parsing, helpers, validation logic</td>
+<td>master</td>
+<td>main (ac13e536c84e7f6647b14fa9375c3c8a8a2b8578)</td>
+<td>3.11.x</td>
+<td>9.0.0</td>
+<td>2.12.0 / 2.12.0rc1</td>
+<td>3.2.1</td>
 </tr>
 <tr>
-<td>Module UT</td>
-<td><code>tests/unit_tests/modules/</code></td>
-<td>No</td>
-<td>Wrappers, checkpoint logic, distributed initialization logic</td>
-</tr>
-<tr>
-<td>Converter UT</td>
-<td><code>tests/unit_tests/converters/</code></td>
-<td>No</td>
-<td>Converter registration, replacement, and mapping logic</td>
-</tr>
-<tr>
-<td>Patch UT</td>
-<td><code>tests/unit_tests/patches/</code></td>
-<td>No</td>
-<td>Patch activation, wiring, and small patch behavior</td>
-</tr>
-<tr>
-<td>Feature Smoke</td>
-<td><code>tests/smoke_tests/features/</code></td>
-<td>Yes</td>
-<td>Real NPU feature paths, fused ops, wrapper execution chains</td>
-</tr>
-<tr>
-<td>Model Parallel Smoke</td>
-<td><code>tests/smoke_tests/model_parallel/</code></td>
-<td>Yes</td>
-<td>CP/TP/EP behavior, mesh setup, DTensor, model-parallel scenarios</td>
+<td>v0.2.2-dev</td>
+<td>v0.2.2 (73a0e6979dd10b6b1904098eb3c8f62c18ab87ce)</td>
+<td>3.11.x</td>
+<td>9.0.0</td>
+<td>2.10.0 / 2.10.0</td>
+<td>3.2.1</td>
 </tr>
 </tbody>
 </table>
-<h2 id="how-to-choose-a-layer">How to Choose a Layer</h2>
+<p>对于活跃开发分支，请始终以 <code>分支同步表</code> 为准。</p>
+<h2 id="_3">分支同步表</h2>
+<p>本表是 <code>torchtitan-sync</code> skill 的唯一事实来源。
+在执行同步前，必须先读取与当前 <code>torchtitan-npu</code> 分支对应的数据行。</p>
+<table>
+<thead>
+<tr>
+<th>torchtitan_npu_branch</th>
+<th>torchtitan_repo_url</th>
+<th>torchtitan_branch</th>
+<th>torchtitan_commit</th>
+<th>updated_at</th>
+<th>notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>master</td>
+<td>https://github.com/pytorch/torchtitan.git</td>
+<td>main</td>
+<td>ac13e536c84e7f6647b14fa9375c3c8a8a2b8578</td>
+<td>2026-05-11</td>
+<td>f7d0133 breaking refactor: adapt to upstream dataclass ConfigManager/config_registry, remove TOML/custom_config flow for migrated models, flatten models layout.</td>
+</tr>
+</tbody>
+</table>
+<p>格式规则：
+- <code>torchtitan_commit</code> 必须仅包含纯 commit hash。
+- 不得在 <code>torchtitan_commit</code> 中附加说明性文本（例如 <code>, v0.2.2 tag</code>）。</p>
+<h2 id="_4">分支策略</h2>
 <ul>
-<li>If the test can run without NPU, prefer UT</li>
-<li>If the value of the test depends on real NPU execution, use smoke</li>
-<li>If the change is about mesh, shard, placement, or DTensor behavior, use model-parallel smoke</li>
-<li>If the change is about a small helper or pure transformation, keep it in UT</li>
+<li><code>master</code>：长期集成分支，应跟踪稳定上游基线。</li>
+<li><code>releases/vX.Y.Z</code>（如使用）：发布维护分支，使用固定上游基线。</li>
+<li><code>feature/*</code> 或 <code>dev_*</code>：开发分支，仍必须维护同步元数据的准确性与时效性。</li>
 </ul>
-<h2 id="what-smoke-means-here">What "Smoke" Means Here</h2>
-<p>In this repository, smoke tests are not import checks. They are integration-style checks over real execution paths.</p>
-<p><code>build.sh -s</code> runs two parts by default:
-- Core smoke: minimal end-to-end training path validation
-- Extended smoke: local feature and model-parallel smoke suites</p>
-<p>Upstream smoke is kept as a separate targeted entry. It is heavier, takes longer, and may be affected by low-level hardware issues, so it is not part of the default smoke path.</p>
-<h2 id="rules-for-adding-tests">Rules for Adding Tests</h2>
-<ol>
-<li>Prefer real behavior validation over import-only checks.</li>
-<li>Do not add placeholder tests that only make the suite look larger.</li>
-<li>Keep UT fully hardware-independent.</li>
-<li>Use smoke only when the behavior matters on real NPU.</li>
-<li>If a test depends on external artifacts or a special runtime setup, state that clearly.</li>
-</ol>
-<h2 id="readability-guidelines">Readability Guidelines</h2>
-<ul>
-<li>Use test names that describe behavior and expected outcome directly</li>
-<li>Keep setup short and easy to scan</li>
-<li>Use blank lines to separate Arrange, Act, and Assert when it helps readability</li>
-<li>Let assertions show the exact behavior being protected</li>
-</ul>
-<p>Avoid:
-- Long per-test docstrings
-- Comments that just restate the test name
-- Decorative section comments with no real meaning</p>
-<h2 id="build-entry-points">Build Entry Points</h2>
-<ul>
-<li><code>build.sh -u</code>: run all unit tests</li>
-<li><code>build.sh -s</code>: run all smoke tests</li>
-</ul>
-<p>Useful variants:
-- <code>ONLY_CORE_SMOKE=true build.sh -s</code>
-- <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code>
-- <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></p>
-<h2 id="pre-submission-checklist">Pre-Submission Checklist</h2>
-<ol>
-<li>Is the test in the right directory?</li>
-<li>Does it validate real behavior instead of a placeholder path?</li>
-<li>Can a new contributor understand the test quickly?</li>
-<li>If the change affects test execution or test usage, did you update the docs?</li>
-</ol>
+<p>常规流程应先将变更合入 <code>master</code>，再按需回移（backport）到维护分支。</p>
+<h2 id="_5">同步更新策略</h2>
+<p>每次完成上游同步后，必须同步更新本文件：
+1. 将 <code>torchtitan_commit</code> 更新为本次同步目标 commit。
+2. 更新 <code>updated_at</code>。
+3. 在 <code>notes</code> 中记录 commit 区间与主要适配点。
+4. 若兼容性发生变化，同步更新 <code>发布兼容性表</code>。</p>
+<p>若当前分支在表中无映射行，必须先补充该行后再执行同步。</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../recipe/sft/" class="btn btn-neutral float-left" title="SFT 指令微调"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../test_design_zh/" class="btn btn-neutral float-right" title="测试设计">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../governance/" class="btn btn-neutral float-left" title="社区治理"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../feature_guides/checkpoint/" class="btn btn-neutral float-right" title="Checkpoint 使用指南">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -280,10 +246,10 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../recipe/sft/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../governance/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../test_design_zh/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../feature_guides/checkpoint/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

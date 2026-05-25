@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">多Token预测特性(Multi Token Prediction, MTP)</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">实现原理</a>
@@ -75,7 +86,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -83,15 +94,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -142,10 +144,12 @@
 <p>在大规模语言模型的训练与推理优化中，MTP 通过单次前向传播同时预测多个连续目标 Token，大幅提升模型训练效率与数据利用率。传统单 Token 预测仅能学习逐词依赖关系，MTP 则通过扩展预测长度、引入辅助损失函数，显著加速模型收敛速度，尤其在长文本、代码、多轮对话等任务上效果显著。
 torchtitan_npu在deepseek_v32模型的基础上进一步适配了MTP训练特性，实现了可配置长度的MTP训练，同时支持FSDP2/EP/TP等分布式训练。</p>
 <h2 id="_1">实现原理</h2>
-<p>参考<a href="https://arxiv.org/pdf/2412.19437">Deepseek-V3的技术报告</a>,我们在Deepseek_V32模型代码中引入了<code>MTPModule</code>类的定义，其继承于原有的<code>TransformerBlock_V32</code>类，并在此基础上新增了MTP模块所需的额外结构与参数。此外，为最大化复用原有 Transformer 层成熟的分布式训练实现，我们在模型顶层定义中，将标准 Transformer Layer 与 MTP Layer 统一封装至<code>model.layers</code>列表中，实现与原有FSDP2、EP、TP等分布式并行逻辑的无缝兼容。相关代码见<code>torchtitan_npu/models/deepseek_v32/model/model.py</code></p>
+<p>参考<a href="https://arxiv.org/pdf/2412.19437">Deepseek-V3的技术报告</a>,我们在Deepseek_V32模型代码中引入了<code>MTPModule</code>类的定义，其继承于原有的<code>TransformerBlock_V32</code>类，并在此基础上新增了MTP模块所需的额外结构与参数。此外，为最大化复用原有 Transformer 层成熟的分布式训练实现，我们在模型顶层定义中，将标准 Transformer Layer 与 MTP Layer 统一封装至<code>model.layers</code>列表中，实现与原有FSDP2、EP、TP等分布式并行逻辑的无缝兼容。相关代码见<code>torchtitan_npu/models/deepseek_v32/model.py</code></p>
 <p>为了实现 MTP 模块的有效训练，我们新增了适配 MTP 模块的训练损失函数。具体而言，每个MTPModule都会独立计算对应的交叉熵损失；在此基础上，模型总训练损失被定义为主损失与 MTP 损失的加权和。相关代码实现见<code>torchtitan-npu/patches/torchtitan/loss.py</code></p>
 <h2 id="_2">配置选项</h2>
-<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 [training] 节，并添加以下配置以启用 MTP训练：</p>
+<p><code>num_mtp_modules</code> 和 <code>mtp_loss_weight</code> 已作为 NPU 扩展字段定义在
+<code>torchtitan_npu.config.configs.TrainingConfig</code> 中，在模型
+<code>config_registry.py</code> 中配置。</p>
 <table>
 <thead>
 <tr>
@@ -171,17 +175,25 @@ torchtitan_npu在deepseek_v32模型的基础上进一步适配了MTP训练特性
 </tbody>
 </table>
 <h3 id="_3">配置示例</h3>
-<p><code>toml
-[training]
-local_batch_size = 4
-seq_len = 2048
-num_mtp_modules = 1
-mtp_loss_weight = 0.3</code></p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import TrainingConfig
+
+training = TrainingConfig(
+    local_batch_size=4,
+    seq_len=2048,
+    num_mtp_modules=1,
+    mtp_loss_weight=0.3,
+)
+</code></pre>
+<p>启动时也可以通过命令行覆盖：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --training.num_mtp_modules 1 \
+  --training.mtp_loss_weight 0.3
+</code></pre>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../lint_guide/" class="btn btn-neutral float-left" title="Lint 指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../checkpoint/" class="btn btn-neutral float-left" title="Checkpoint 使用指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../low_precision_training/" class="btn btn-neutral float-right" title="低精度训练特性（MXFP8 / HiFloat8）">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -205,7 +217,7 @@ mtp_loss_weight = 0.3</code></p>
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../lint_guide/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../checkpoint/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../low_precision_training/" style="color: #fcfcfc">Next &raquo;</a></span>

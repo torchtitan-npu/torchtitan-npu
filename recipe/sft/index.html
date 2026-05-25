@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -65,7 +76,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -102,15 +113,6 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_9">常见问题</a>
     </li>
-    </ul>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
     </ul>
                   </li>
               </ul>
@@ -221,7 +223,7 @@
 <h2 id="_5">权重加载与保存</h2>
 <h3 id="_6">加载预训练权重</h3>
 <p>SFT 配置默认从 HuggingFace 格式加载预训练权重：</p>
-<pre><code class="language-bash">--checkpoint.initial_load_in_hf true \
+<pre><code class="language-bash">--checkpoint.initial_load_in_hf \
 --checkpoint.initial_load_path /path/to/Qwen3-30B-A3B
 </code></pre>
 <blockquote>
@@ -237,11 +239,12 @@
 <pre><code class="language-bash">--checkpoint.folder /path/to/save \
 --checkpoint.interval 100
 </code></pre>
-<p>如仅需加载权重而不保存（如调试时），设置 <code>--checkpoint.load_only true</code>。</p>
+<p>如仅需加载权重而不保存（如调试时），设置 <code>--checkpoint.load_only</code>。</p>
 <h2 id="_9">常见问题</h2>
 <p><strong>Q: 数据集跑完一轮就停了？</strong></p>
-<p>默认 <code>dataloader.infinite=true</code>，数据集会无限循环。如果设为 false，数据遍历完一轮后训练会停止。可通过 CLI 覆盖：</p>
-<pre><code class="language-bash">--dataloader.infinite true
+<p>默认 <code>dataloader.infinite=true</code>，数据集会无限循环。如果设为 false，数据遍历完一轮后训练会停止。tyro 的 bool 参数通过 flag 设置，显式开启或关闭可使用：</p>
+<pre><code class="language-bash">--dataloader.infinite
+--dataloader.no-infinite
 </code></pre>
 <p><strong>Q: 超长样本被丢弃了？</strong></p>
 <p><code>ChatDataset</code> 会自动丢弃 token 数超过 <code>seq_len</code> 的样本（而非截断），日志中会打印 <code>Dropping sample</code> 提示。可增大 <code>seq_len</code> 或开启 Ulysses CP 来容纳更长样本。</p>
@@ -249,8 +252,8 @@
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../feature_guides/parallelism/custom_cp/" class="btn btn-neutral float-left" title="自定义Context Parallel特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../../source/community/versioning_policy/" class="btn btn-neutral float-right" title="版本策略（Versioning Policy）">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../feature_guides/parallelism/custom_cp/" class="btn btn-neutral float-left" title="自定义 Context Parallel 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../test_guides/test_design/" class="btn btn-neutral float-right" title="Test Design">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -276,7 +279,7 @@
       <span><a href="../../feature_guides/parallelism/custom_cp/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../../source/community/versioning_policy/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../test_guides/test_design/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

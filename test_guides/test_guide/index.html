@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -65,7 +76,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -73,15 +84,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -108,7 +110,7 @@
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#steps-to-add-a-new-test-case">Steps to Add a New Test Case</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#base_testtoml-configuration">base_test.toml Configuration</a>
+    <li class="toctree-l4"><a class="reference internal" href="#config-registry-configuration">Config Registry Configuration</a>
     </li>
         </ul>
     </li>
@@ -214,11 +216,6 @@ python tests/smoke_tests/integration_test.py output_dir \
 <td>Output directory for test results</td>
 </tr>
 <tr>
-<td><code>--config_path</code></td>
-<td><code>./tests/smoke_tests/base_test.toml</code></td>
-<td>Base config file path</td>
-</tr>
-<tr>
 <td><code>--test_name</code></td>
 <td><code>all</code></td>
 <td>Specific test case name</td>
@@ -248,8 +245,8 @@ python tests/smoke_tests/integration_test.py output_dir \
 <pre><code class="language-python">OverrideDefinitions(
     [
         [
-            &quot;--model.name your_model&quot;,
-            &quot;--model.flavor your_flavor&quot;,
+            &quot;--module your_model&quot;,
+            &quot;--config your_config&quot;,
             &quot;--parallelism.tensor_parallel_degree 2&quot;,
         ],
     ],
@@ -263,8 +260,10 @@ python tests/smoke_tests/integration_test.py output_dir \
 </ol>
 <pre><code class="language-bash">python tests/smoke_tests/integration_test.py ./outputs --test_name your_model_tp
 </code></pre>
-<h4 id="base_testtoml-configuration">base_test.toml Configuration</h4>
-<p><code>tests/smoke_tests/base_test.toml</code> is the base configuration for integration tests. All tests run based on this configuration file, and parameters in <code>override_args</code> override identically-named parameters in the base configuration.</p>
+<h4 id="config-registry-configuration">Config Registry Configuration</h4>
+<p>Integration tests no longer use <code>tests/smoke_tests/base_test.toml</code>. Each test passes
+<code>--module</code> and <code>--config</code> to <code>scripts/run_train.sh</code>, then appends nested tyro overrides
+such as <code>--training.steps 2</code> or <code>--parallelism.tensor_parallel_degree 2</code>.</p>
 <h3 id="model-parallel-commands">Model Parallel Commands</h3>
 <pre><code class="language-bash"># Basic model-parallel smoke
 python3 -m pytest -v tests/smoke_tests/model_parallel/

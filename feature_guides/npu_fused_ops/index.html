@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -79,7 +90,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -87,15 +98,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -145,14 +147,22 @@
                 <h1 id="npu">NPU 融合算子适配</h1>
 <p>torchtitan_npu 在 <code>torchtitan_npu/converters/kernels</code> 下定义了多个 torchtitan ModelConverter 。在启动模型训练任务时，它们会根据用户配置，自动将模型中的原始模块替换为基于 NPU 融合算子的实现，从而实现模型在 NPU 平台上的亲和适配。</p>
 <h2 id="_1">如何配置</h2>
-<p>所有融合算子均通过在训练配置 TOML 文件 （例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）的 <code>[model]</code> 节中的 <code>converters</code> 列表中添加对应的配置项来启用。
-示例：</p>
-<pre><code class="language-toml">[model]
-name = &quot;deepseek_v32&quot;
-flavor = &quot;debugmodel&quot;
-hf_assets_path = &quot;./assets/hf/DeepSeek-V3.2&quot;
-converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;]
+<p>NPU融合算子通过 <code>ModelConvertersContainer.Config</code> 的 <code>converters</code> 列表启用。
+每个 NPU converter 需要通过 <code>get_model_converter_config()</code> 转成 Config 对象：</p>
+<pre><code class="language-python">from torchtitan.protocols.model_converter import ModelConvertersContainer
+
+from torchtitan_npu.converters.npu_registry import get_model_converter_config
+
+model_converters = ModelConvertersContainer.Config(
+    converters=[
+        get_model_converter_config(&quot;npu_dsa&quot;),
+        get_model_converter_config(&quot;npu_rms_norm&quot;),
+        get_model_converter_config(&quot;npu_permute&quot;),
+        get_model_converter_config(&quot;npu_gmm&quot;),
+    ],
+)
 </code></pre>
+<p>旧 TOML 样例中的 <code>converters = ["..."]</code> 仅适用于尚未迁移的旧入口。</p>
 <p>当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
   - <a href="#dsa-deepseek-sparse-attention">DSA</a>
   - <a href="#gmmgrouped-matmul">GMM</a>
@@ -191,8 +201,7 @@ converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&q
 </tbody>
 </table>
 <p><strong>配置示例：</strong></p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_dsa&quot;, ...] # 添加 `npu_dsa` 配置项
+<pre><code class="language-python">get_model_converter_config(&quot;npu_dsa&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/dsa.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_lightning_indexer.md"><code>npu_lightning_indexer</code></a> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_lightning_indexer_grad_kl_loss.md"><code>npu_sparse_lightning_indexer_grad_kl_loss</code></a>   <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_flash_attention.md"><code>npu_sparse_flash_attention</code></a></p>
@@ -201,8 +210,7 @@ converters = [... &quot;npu_dsa&quot;, ...] # 添加 `npu_dsa` 配置项
 <p>在 MoE 模块中，每个专家执行前馈网络（FFN）运算：如 Swiglu FFN：输入先经过升维变换 <code>w1</code>，再通过激活函数，最后经过降维变换 <code>w2</code> 得到输出。</p>
 <p>由于各专家执行结构相同的矩阵乘法，为了将同类矩阵运算合并为一次算子调用，提升计算效率，本ModelConverter 引入分组矩阵乘法（GMM）算子 <code>npu_grouped_matmul</code>。该算子接收 <a href="#permute">Permute</a> 模块输出的重排后 token 及对应的专家索引，在一次调用中并行计算所有专家的同一线性层，如所有专家的 <code>w1</code>。</p>
 <p><strong>配置示例</strong>：</p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_gmm&quot;, ...] # 添加 `npu_gmm` 配置项
+<pre><code class="language-python">get_model_converter_config(&quot;npu_gmm&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/gmm.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_grouped_matmul.md"><code>npu_grouped_matmul</code></a></p>
@@ -211,18 +219,16 @@ converters = [... &quot;npu_gmm&quot;, ...] # 添加 `npu_gmm` 配置项
 <p>MoE 前向计算中，为了利用 <a href="#gmmgrouped-matmul">GMM</a> 提升计算效率，token 需要根据 MoE Router 为每个 token 分配的专家，以特定顺序重排，输出重排列后的 token 及其对应的专家索引；计算完成后，再将结果恢复至原始 token 顺序。</p>
 <p>本 ModelConverter 将“重排”和“恢复”操作替换为基于 <code>npu_moe_token_permute</code> 和 <code>npu_moe_token_unpermute</code> 算子的实现。</p>
 <p><strong>配置示例</strong>：</p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_permute&quot;, ...] # 添加 `npu_permute` 配置项
+<pre><code class="language-python">get_model_converter_config(&quot;npu_permute&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/permute.py</code></p>
 <hr />
 <h2 id="rmsnorm">RMSNorm</h2>
 <p>RMSNorm 通过计算输入张量每个样本的平方均值的平方根来稳定深层网络的训练。</p>
 <p>本 ModelConverter 将模型中的 RmsNorm 操作替换为基于 <code>npu_rms_norm</code> 融合算子的实现。</p>
-<p><strong>TOML 配置项</strong>：<code>npu_rms_norm</code>\
+<p><strong>配置项</strong>：<code>npu_rms_norm</code>\
 <strong>配置示例</strong>：</p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_rms_norm&quot;, ...] # 添加 `npu_rms_norm` 配置项
+<pre><code class="language-python">get_model_converter_config(&quot;npu_rms_norm&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rms_norm.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/（beta）torch_npu-npu_rms_norm.md"><code>npu_grouped_matmul</code></a></p>
@@ -231,8 +237,7 @@ converters = [... &quot;npu_rms_norm&quot;, ...] # 添加 `npu_rms_norm` 配置�
 <p>RoPE 将 token 位置相关的旋转矩阵应用于自注意力机制中的 Query 和 Key 向量，使每对 token 之间的相对位置信息在 Attention 计算中自然包含 Query 和 Key 的乘积。</p>
 <p>在模型实现中，通常预先生成每个位置的旋转角度，在 Attention 计算时，即时对 Query 和 Key 进行旋转变换。本 ModelConverter 将这一旋转变换操作替换为基于 <code>npu_rotary_mul</code> 融合算子的实现。</p>
 <p><strong>配置示例</strong>：</p>
-<pre><code class="language-toml">[model]
-converters = [... &quot;npu_rope&quot;, ...] # 添加 `npu_rope` 配置项
+<pre><code class="language-python">get_model_converter_config(&quot;npu_rope&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rope.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_rotary_mul.md"><code>npu_rope</code></a></p>

@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../../img/favicon.ico" />
-    <title>自定义Context Parallel特性 - torchtitan-npu</title>
+    <title>自定义 Context Parallel 特性 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../../css/theme.css" />
     <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "\u81ea\u5b9a\u4e49Context Parallel\u7279\u6027";
+        var mkdocs_page_name = "\u81ea\u5b9a\u4e49 Context Parallel \u7279\u6027";
         var mkdocs_page_input_path = "feature_guides/parallelism/custom_cp.md";
         var mkdocs_page_url = null;
       </script>
@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -65,7 +76,7 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" >Parallelism</a>
     <ul class="current">
-                <li class="toctree-l2 current"><a class="reference internal current" href="#">自定义Context Parallel特性</a>
+                <li class="toctree-l2 current"><a class="reference internal current" href="#">自定义 Context Parallel 特性</a>
     <ul class="current">
     <li class="toctree-l3"><a class="reference internal" href="#_1">实现原理</a>
         <ul>
@@ -75,13 +86,17 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_2">配置选项</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#sdpa-ulysses-cpdeepseek-v3">配置示例：SDPA Ulysses CP（DeepSeek-V3）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">支持范围</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#dsa-context-paralleldeepseek-v32">配置示例：DSA Context Parallel（DeepSeek-V3.2）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">配置选项</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#sdpa-ulysses-cpdeepseek-v3">配置示例一：SDPA Ulysses CP（DeepSeek-V3）</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#dsa-context-paralleldeepseek-v32">配置示例二：DSA Context Parallel（DeepSeek-V3.2）</a>
     </li>
         </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">约束与注意事项</a>
     </li>
     </ul>
                 </li>
@@ -91,15 +106,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -138,7 +144,7 @@
     <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
           <li class="breadcrumb-item">Parallelism</li>
-      <li class="breadcrumb-item active">自定义Context Parallel特性</li>
+      <li class="breadcrumb-item active">自定义 Context Parallel 特性</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -147,19 +153,64 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="context-parallel">自定义Context Parallel特性</h1>
-<p>在分布式训练任务中，上下文并行（Context Parallelism, CP）是突破单卡内存瓶颈、支持超长序列训练的核心技术。在基于 NPU 硬件生态推进 torchtitan 框架适配时，现有技术方案暴露出显著的局限性：
-1. PyTorch 原生 CP 设计强绑定于标准的 SDPA 算子，仅提供 RingAttention 或原生 AllGatherKV 的特定实现，无法支持采用复杂稀疏注意力机制的模型如 DeepSeek-V3.2 模型的DSA。
-2. 框架需要允许开发者灵活扩展新的 CP 范式，如 UlyssesCP。</p>
+                <h1 id="context-parallel">自定义 Context Parallel 特性</h1>
+<p>在分布式训练任务中，上下文并行（Context Parallelism, CP）是突破单卡内存瓶颈、
+支持超长序列训练的核心技术。在基于 NPU 硬件生态推进 torchtitan 框架适配时，
+现有技术方案暴露出显著的局限性：</p>
+<ol>
+<li>PyTorch 原生 CP 设计强绑定于标准 SDPA 算子，仅提供 RingAttention 或原生
+   AllGatherKV 的特定实现，无法覆盖 DeepSeek-V3.2 DSA
+   （DeepSeek Sparse Attention）等稀疏注意力路径。</li>
+<li>框架需要允许开发者灵活扩展新的 CP 范式，如 Ulysses CP。</li>
+</ol>
 <h2 id="_1">实现原理</h2>
-<p>torchtitan_npu在<code>torchtitan_npu/patches/distributed/custom_context_parallel.py</code>对原生CP context 进行替换，从而使能自定义的CP context，增强CP的可扩展性。目前已提供如下两个自定义的CP context：</p>
+<p><code>torchtitan_npu</code> 在
+<code>torchtitan_npu/patches/distributed/custom_context_parallel.py</code> 中扩展
+<code>torchtitan.distributed.context_parallel.apply_cp_to_attention_module</code>，
+通过 <code>attention_type</code> 将 CP 路由到 NPU 自定义实现，同时保留上游 CP 的默认路径。
+目前已提供如下两个自定义 CP context：</p>
 <h3 id="sdpa-ulysses-cp">SDPA Ulysses CP</h3>
-<p>定义在<code>torchtitan_npu/distributed/context_parallel/ulysses_cp.py</code>，为常用的SDPA实现Ulysses风格的CP。通过自定义Context Parallel Context，我们在基于torch_npu提供的融合算子的Attention计算前后插入All-to-All通信算子，将数据从"序列并行分布"转换为"多头维度分布"，使单计算节点获得完整上下文。</p>
+<p>定义在 <code>torchtitan_npu/distributed/context_parallel/ulysses_cp.py</code>，为常用的
+SDPA 实现 Ulysses 风格的 CP。通过自定义 Context Parallel Context，我们在
+基于 <code>torch_npu</code> 提供的融合算子的 Attention 计算前后插入 All-to-All 通信算子，
+将数据从“序列并行分布”转换为“多头维度分布”，使单计算节点获得完整上下文。</p>
 <h3 id="dsa-cp">DSA CP</h3>
-<p>定义在<code>torchtitan_npu/distributed/context_parallel/dsa_cp.py</code>，为DeepSeek Sparse Attention提供AllGatherKV风格的CP。本项目在遵循torch原生CP设计逻辑的基础上，通过自定义Context Parallel Context，将注意力部分的forward函数进行替换，对KV相关激活做CP域的AllGather，以此确保注意力计算在CP场景下的正确性。</p>
-<p>关于DSA CP的更多原理介绍，参考<a href="https://gitcode.com/cann/cann-recipes-train/blob/master/docs/llm_pretrain/deepseekv32_pre_train_optimization.md#自定义CP策略">技术文档</a>。</p>
-<h2 id="_2">配置选项</h2>
-<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 <code>[parallelism]</code> 节，并添加以下配置以启用 Custom CP：</p>
+<p>定义在 <code>torchtitan_npu/distributed/context_parallel/dsa_cp.py</code>，为
+DeepSeek Sparse Attention 提供 AllGatherKV 风格的 CP。本项目在遵循
+torch 原生 CP 设计逻辑的基础上，通过自定义 Context Parallel Context，
+将注意力部分的 forward 函数替换为 CP 感知实现，对 KV 相关激活做 CP 域的
+AllGather，并在反向传播中完成对应的 ReduceScatter，以确保 DSA 注意力在
+CP 场景下的正确性。</p>
+<p>关于 DSA CP 的更多原理介绍，参考
+<a href="https://gitcode.com/cann/cann-recipes-train/blob/master/docs/llm_pretrain/deepseekv32_pre_train_optimization.md#自定义CP策略">技术文档</a>。</p>
+<h2 id="_2">支持范围</h2>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>CP 实现</th>
+<th>触发条件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek-V3</td>
+<td>Ulysses CP</td>
+<td><code>context_parallel_degree &gt; 1</code> 且 <code>enable_custom_context_parallel=True</code></td>
+<td>SDPA 路径使用 All-to-All 变换</td>
+</tr>
+<tr>
+<td>DeepSeek-V3.2</td>
+<td>DSA CP</td>
+<td><code>context_parallel_degree &gt; 1</code> 且启用 <code>npu_dsa</code> converter</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">配置选项</h2>
+<p>Custom CP 配置写在模型的 <code>config_registry.py</code> 中。对应字段
+<code>torchtitan_npu.config.configs.ParallelismConfig</code>。</p>
 <table>
 <thead>
 <tr>
@@ -174,42 +225,90 @@
 <td><code>context_parallel_degree</code></td>
 <td>int</td>
 <td>1</td>
-<td>Context并行度</td>
+<td>Context 并行度；大于 1 时启用 CP mesh</td>
 </tr>
 <tr>
 <td><code>enable_custom_context_parallel</code></td>
 <td>bool</td>
-<td>false</td>
-<td>是否启用自定义CP</td>
+<td>False</td>
+<td>启用 NPU 自定义 CP 路径；DeepSeek-V3.2 长序列配置中已显式开启</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p><strong>注意</strong>：<code>enable_custom_context_parallel</code> 目前仅对 DeepSeek-V3 和 DeepSeek-V3.2 的并行化实现生效，其他模型（如 Llama3）的并行化实现暂不支持。</p>
+<p><strong>注意</strong>：DeepSeek-V3.2 的 DSA CP 依赖 <code>npu_dsa</code> converter。
+若 <code>context_parallel_degree &gt; 1</code> 但 converters 中没有 <code>npu_dsa</code>，
+并行化阶段会报错，提示 <code>CP on deepseek_v32 requires 'npu_dsa' converter</code>。</p>
 </blockquote>
-<p>CP类型由框架根据模型及转换器配置<strong>自动选择</strong>，无需手动指定：
-- <strong>DeepSeek-V3</strong>：启用自定义CP后自动使用 Ulysses CP。
-- <strong>DeepSeek-V3.2</strong>：当 <code>model.converters</code> 中包含 <code>npu_dsa</code> 时，自动使用 DSA CP。</p>
-<h3 id="sdpa-ulysses-cpdeepseek-v3">配置示例：SDPA Ulysses CP（DeepSeek-V3）</h3>
-<p>首先在配置文件中使能本代码仓的自定义配置，随后在<code>[parallelism]</code>节中添加以下配置：</p>
-<pre><code class="language-toml">[job]
-custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+<p>CP类型由框架根据模型及转换器配置<strong>自动选择</strong>，无需手动指定：</p>
+<ul>
+<li><strong>DeepSeek-V3</strong>：启用自定义 CP 后自动使用 Ulysses CP。</li>
+<li><strong>DeepSeek-V3.2</strong>：当 converters 中包含 <code>npu_dsa</code> 且 CP 开启时，自动使用 DSA CP。</li>
+</ul>
+<h3 id="sdpa-ulysses-cpdeepseek-v3">配置示例一：SDPA Ulysses CP（DeepSeek-V3）</h3>
+<p>在 <code>torchtitan_npu/models/deepseek_v3/config_registry.py</code> 的配置函数中设置：</p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import ParallelismConfig
 
-[parallelism]
-context_parallel_degree = 2
-enable_custom_context_parallel = true
+parallelism = ParallelismConfig(
+    context_parallel_degree=2,
+    enable_custom_context_parallel=True,
+)
 </code></pre>
-<h3 id="dsa-context-paralleldeepseek-v32">配置示例：DSA Context Parallel（DeepSeek-V3.2）</h3>
-<pre><code class="language-toml">[job]
-custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
-
-[model]
-converters = [&quot;npu_dsa&quot;, &quot;npu_rms_norm&quot;, &quot;npu_permute&quot;, &quot;npu_gmm&quot;, &quot;npu_rope&quot;]    # 需包含 npu_dsa 以启用 DSA CP
-
-[parallelism]
-context_parallel_degree = 2
-enable_custom_context_parallel = true
+<p>启动时也可以直接覆盖：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --parallelism.context_parallel_degree 2 \
+  --parallelism.enable_custom_context_parallel
 </code></pre>
+<h3 id="dsa-context-paralleldeepseek-v32">配置示例二：DSA Context Parallel（DeepSeek-V3.2）</h3>
+<p>DeepSeek-V3.2 <code>config_registry.py</code> 中的
+<code>deepseek_v32_671b_61layers_32k_128die</code> 配置默认启用 32k 长序列 CP：</p>
+<pre><code class="language-python">from torchtitan.protocols.model_converter import ModelConvertersContainer
+
+from torchtitan_npu.config.configs import ParallelismConfig
+from torchtitan_npu.converters.npu_registry import get_model_converter_config
+
+model_converters = ModelConvertersContainer.Config(
+    converters=[
+        get_model_converter_config(&quot;npu_dsa&quot;),
+        get_model_converter_config(&quot;npu_rms_norm&quot;),
+        get_model_converter_config(&quot;npu_rope&quot;),
+        get_model_converter_config(&quot;npu_permute&quot;),
+        get_model_converter_config(&quot;npu_gmm&quot;),
+    ],
+)
+parallelism = ParallelismConfig(
+    context_parallel_degree=8,
+    enable_custom_context_parallel=True,
+)
+</code></pre>
+<p>多机长序列训练推荐在 <code>scripts/run_train_multinodes.sh</code> 中配置节点 IP、
+<code>NPUS_PER_NODE</code> 等集群信息后，直接覆盖为 32k 预置配置启动：</p>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v32 \
+CONFIG=deepseek_v32_671b_61layers_32k_128die \
+bash scripts/run_train_multinodes.sh
+</code></pre>
+<p>调试时也可以基于已有配置覆盖 CP 参数，例如：</p>
+<pre><code class="language-bash">NGPU=16 \
+MODULE=torchtitan_npu.models.deepseek_v32 \
+CONFIG=deepseek_v32_671b_4layers_debug \
+bash scripts/run_train.sh \
+  --parallelism.context_parallel_degree 2 \
+  --parallelism.enable_custom_context_parallel
+</code></pre>
+<p>上述覆盖方式仍要求 DeepSeek-V3.2 配置中保留 <code>npu_dsa</code> converter。</p>
+<h2 id="_4">约束与注意事项</h2>
+<ul>
+<li>DeepSeek-V3.2 CP 当前仅支持 <code>attn_type="sdpa"</code> 的入口，并在 CP 路径中根据
+  <code>npu_dsa</code> converter 自动切换到 DSA CP 路由。</li>
+<li><code>training.seq_len</code> 需要能被 TP 与 CP 共同切分。当前实现中会校验
+  <code>training.seq_len % parallel_dims.seq_len_divisor == 0</code>，报错信息会提示
+  <code>seq_len</code> 需要能被 <code>TP degree * 2 * CP degree</code> 整除。</li>
+<li>DeepSeek-V3.2 DSA CP 会对 <code>block.attention.inner_attention</code> 应用 CP patch，
+  并将 <code>model_args</code>、<code>tp_mesh</code> 和 converters 传入自定义 CP 路由。</li>
+<li>若使用 32k 长序列训练，建议优先从
+  <code>deepseek_v32_671b_61layers_32k_128die</code> 预置配置开始调整，避免遗漏 DSA
+  converter、CP 并行度和长序列 batch 配置。</li>
+</ul>
               
             </div>
           </div><footer>

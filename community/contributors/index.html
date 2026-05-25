@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>提交者与贡献者（Committers and Contributors） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u63d0\u4ea4\u8005\u4e0e\u8d21\u732e\u8005\uff08Committers and Contributors\uff09";
+        var mkdocs_page_input_path = "community/contributors.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">提交者与贡献者（Committers and Contributors）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#committers">Committers</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#contributors">Contributors</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">如何成为贡献者</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/model_custom/">Model Custom框架介绍</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
+                </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Recipe</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Test guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/cloud_platform_development_guide/">Qwen3-0.6B 单机样例（云开发平台）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Community</li>
+      <li class="breadcrumb-item active">提交者与贡献者（Committers and Contributors）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="committers-and-contributors">提交者与贡献者（Committers and Contributors）</h1>
+<p>感谢所有参与 <code>torchtitan-npu</code> 的开发者。<code>torchtitan-npu</code> 是基于 <code>torchtitan</code>
+的昇腾全流程大模型训练适配插件，社区贡献共同推动了 NPU 融合算子、图优化、
+分布式并行、调试维测、模型适配和文档体系的持续演进。</p>
+<h2 id="committers">Committers</h2>
+<p><code>torchtitan-npu</code> 的日常维护由 GitCode 仓库 Committers 与 CANN
+<code>framework-adapter</code> SIG 协同推进。Committers 负责协助维护代码质量、
+评审社区贡献、推动版本适配，并按项目治理流程合入已满足质量要求的 PR。</p>
+<table>
+<thead>
+<tr>
+<th>GitCode ID</th>
+<th>GitCode 主页</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>depeng1994</td>
+<td><a href="https://gitcode.com/depeng1994">https://gitcode.com/depeng1994</a></td>
+</tr>
+<tr>
+<td>zhong_lin</td>
+<td><a href="https://gitcode.com/zhong_lin">https://gitcode.com/zhong_lin</a></td>
+</tr>
+<tr>
+<td>lrwei0709</td>
+<td><a href="https://gitcode.com/lrwei0709">https://gitcode.com/lrwei0709</a></td>
+</tr>
+<tr>
+<td>zzyyjj012</td>
+<td><a href="https://gitcode.com/zzyyjj012">https://gitcode.com/zzyyjj012</a></td>
+</tr>
+<tr>
+<td>xuyujun</td>
+<td><a href="https://gitcode.com/xuyujun">https://gitcode.com/xuyujun</a></td>
+</tr>
+<tr>
+<td>panchao-gitcode</td>
+<td><a href="https://gitcode.com/panchao-gitcode">https://gitcode.com/panchao-gitcode</a></td>
+</tr>
+<tr>
+<td>zhaowei1936</td>
+<td><a href="https://gitcode.com/zhaowei1936">https://gitcode.com/zhaowei1936</a></td>
+</tr>
+<tr>
+<td>zhanghz1</td>
+<td><a href="https://gitcode.com/zhanghz1">https://gitcode.com/zhanghz1</a></td>
+</tr>
+</tbody>
+</table>
+<p>Committer 名单、仓库权限和职责边界以 GitCode 仓库权限配置、CANN 社区治理安排
+以及 SIG 会议纪要为准。</p>
+<p>相关入口：</p>
+<ul>
+<li>项目仓库：<a href="https://gitcode.com/cann/torchtitan-npu">cann/torchtitan-npu</a></li>
+<li>贡献指南：<a href="../../CONTRIBUTING.md">CONTRIBUTING.md</a></li>
+<li>SIG 页面：<a href="https://gitcode.com/cann/community/tree/master/CANN/sigs/framework-adapter">framework-adapter</a></li>
+<li>SIG 例会：<a href="https://meeting.osinfra.cn/cann?sig=sig-framework-adapter">sig-framework-adapter</a></li>
+</ul>
+<p>如果需要新增或更新 Committer 信息，请通过 PR 修改本文档，并在 PR 中说明依据，
+例如仓库权限调整、SIG 决议或持续贡献记录。</p>
+<h2 id="contributors">Contributors</h2>
+<p>以下列表基于 <code>master</code> 分支 git author 历史生成，统计范围截至
+<code>29718c1</code>。该列表仅用于感谢和记录贡献，不代表仓库权限或治理角色。</p>
+<table>
+<thead>
+<tr>
+<th>序号</th>
+<th>贡献者</th>
+<th>首次贡献</th>
+<th>最近贡献</th>
+<th>提交数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>mystri</td>
+<td>2026/01/29</td>
+<td>2026/05/09</td>
+<td>25</td>
+</tr>
+<tr>
+<td>2</td>
+<td>CjianForBetter</td>
+<td>2026/03/02</td>
+<td>2026/05/09</td>
+<td>14</td>
+</tr>
+<tr>
+<td>3</td>
+<td>hitwdy</td>
+<td>2026/02/28</td>
+<td>2026/05/20</td>
+<td>13</td>
+</tr>
+<tr>
+<td>4</td>
+<td>xuyujun</td>
+<td>2026/01/29</td>
+<td>2026/05/20</td>
+<td>11</td>
+</tr>
+<tr>
+<td>5</td>
+<td>caojingyi</td>
+<td>2026/01/30</td>
+<td>2026/04/13</td>
+<td>9</td>
+</tr>
+<tr>
+<td>6</td>
+<td>zhanghz1</td>
+<td>2026/01/27</td>
+<td>2026/03/11</td>
+<td>9</td>
+</tr>
+<tr>
+<td>7</td>
+<td>zhangwei1177</td>
+<td>2026/03/11</td>
+<td>2026/05/09</td>
+<td>9</td>
+</tr>
+<tr>
+<td>8</td>
+<td>xubin787</td>
+<td>2026/01/26</td>
+<td>2026/03/20</td>
+<td>8</td>
+</tr>
+<tr>
+<td>9</td>
+<td>qianbi1999</td>
+<td>2026/02/04</td>
+<td>2026/03/30</td>
+<td>6</td>
+</tr>
+<tr>
+<td>10</td>
+<td>depeng1994</td>
+<td>2026/01/27</td>
+<td>2026/04/24</td>
+<td>4</td>
+</tr>
+<tr>
+<td>11</td>
+<td>lrwei0709</td>
+<td>2026/02/11</td>
+<td>2026/03/31</td>
+<td>4</td>
+</tr>
+<tr>
+<td>12</td>
+<td>zhaiyukun</td>
+<td>2026/03/18</td>
+<td>2026/05/15</td>
+<td>4</td>
+</tr>
+<tr>
+<td>13</td>
+<td>zzyyjj012</td>
+<td>2026/04/01</td>
+<td>2026/05/19</td>
+<td>4</td>
+</tr>
+<tr>
+<td>14</td>
+<td>liuyuanchen1</td>
+<td>2026/04/25</td>
+<td>2026/05/07</td>
+<td>3</td>
+</tr>
+<tr>
+<td>15</td>
+<td>MissingPompeii</td>
+<td>2026/03/26</td>
+<td>2026/05/09</td>
+<td>2</td>
+</tr>
+<tr>
+<td>16</td>
+<td>cann-robot</td>
+<td>2026/01/21</td>
+<td>2026/01/30</td>
+<td>2</td>
+</tr>
+<tr>
+<td>17</td>
+<td>zhangjianshe</td>
+<td>2026/04/01</td>
+<td>2026/04/10</td>
+<td>2</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Yong-An</td>
+<td>2026/04/30</td>
+<td>2026/04/30</td>
+<td>1</td>
+</tr>
+<tr>
+<td>19</td>
+<td>aoyoukeji</td>
+<td>2026/04/29</td>
+<td>2026/04/29</td>
+<td>1</td>
+</tr>
+<tr>
+<td>20</td>
+<td>m0_62051609</td>
+<td>2026/05/18</td>
+<td>2026/05/18</td>
+<td>1</td>
+</tr>
+<tr>
+<td>21</td>
+<td>panchao-gitcode</td>
+<td>2026/04/02</td>
+<td>2026/04/02</td>
+<td>1</td>
+</tr>
+<tr>
+<td>22</td>
+<td>weijie11</td>
+<td>2026/03/11</td>
+<td>2026/03/11</td>
+<td>1</td>
+</tr>
+<tr>
+<td>23</td>
+<td>weixin_47893573</td>
+<td>2026/04/30</td>
+<td>2026/04/30</td>
+<td>1</td>
+</tr>
+<tr>
+<td>24</td>
+<td>zcklllyao</td>
+<td>2026/05/20</td>
+<td>2026/05/20</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_1">如何成为贡献者</h2>
+<p>任何人都可以通过以下方式参与 <code>torchtitan-npu</code>：</p>
+<ul>
+<li>提交 Issue，报告训练、精度、性能、安装或文档问题。</li>
+<li>提交 PR，修复缺陷、补充测试、完善文档或适配新的 NPU 训练特性。</li>
+<li>参与 <code>framework-adapter</code> SIG 讨论，反馈真实训练场景中的需求和风险。</li>
+<li>在 PR 中提供清晰的验证结果，例如单元测试、冒烟测试、loss 曲线、
+  吞吐量、显存峰值或端到端训练结果。</li>
+</ul>
+<p>请在贡献前阅读 <a href="../../CONTRIBUTING.md">贡献指南</a>。涉及上游 <code>torchtitan</code>
+基线同步时，还需要同步维护 <a href="../versioning_policy/">版本策略</a>。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../lint_guide/" class="btn btn-neutral float-left" title="Lint 指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../governance/" class="btn btn-neutral float-right" title="社区治理">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../lint_guide/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../governance/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -91,7 +102,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -99,15 +110,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -209,7 +211,9 @@
 <p><strong>注意</strong>：MoE 低精度功能依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 <code>converters</code> 配置中 <code>"npu_gmm"</code> 必须位于 <code>"quantize.grouped_mm.mx"</code> 之前。</p>
 </blockquote>
 <h2 id="_4">配置选项</h2>
-<p>在训练任务的 TOML 配置文件中，通过 <code>[model]</code> 节的 <code>converters</code> 字段启用低精度 converter，并在对应的 <code>[quantize.linear.mx]</code> 和 <code>[quantize.grouped_mm.mx]</code> 节中设置详细参数。</p>
+<p>低精度训练通过 <code>ModelConvertersContainer.Config</code> 的
+<code>converters</code> 列表启用，在模型的 <code>config_registry.py</code> 中设置。NPU 侧会 patch 上游 <code>MXFP8Converter.Config</code>，使其支持
+<code>recipe_name</code>、<code>filter_fqns</code> 和 <code>fqns</code> 字段。</p>
 <h3 id="quantizelinearmx_1">线性层低精度配置（<code>quantize.linear.mx</code>）</h3>
 <table>
 <thead>
@@ -261,32 +265,36 @@
 </tbody>
 </table>
 <h3 id="_5">配置示例</h3>
-<p>首先在配置文件中使能本代码仓的自定义配置，随后在 <code>[model]</code> 节中配置 <code>converters</code> 并添加对应的量化参数节：</p>
+<p>在模型的 <code>config_registry.py</code> 中配置 <code>model_converters</code> 并添加对应的量化参数：</p>
 <p><strong>示例一：仅对线性层启用低精度训练</strong></p>
-<pre><code class="language-toml">[job]
-custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+<pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
+from torchtitan.protocols.model_converter import ModelConvertersContainer
 
-[model]
-converters = [&quot;quantize.linear.mx&quot;]
-
-[quantize.linear.mx]
-recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
-filter_fqns = [&quot;output&quot;, &quot;router.gate&quot;]   # output 和 router.gate 层不做低精度替换
+model_converters = ModelConvertersContainer.Config(
+    converters=[
+        MXFP8Converter.Config(
+            recipe_name=&quot;mxfp8&quot;,
+            filter_fqns=[&quot;output&quot;, &quot;router.gate&quot;],
+        ),
+    ],
+)
 </code></pre>
 <p><strong>示例二：同时对线性层和 MoE 专家层启用低精度训练</strong></p>
-<pre><code class="language-toml">[job]
-custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;
+<pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
+from torchtitan.protocols.model_converter import ModelConvertersContainer
 
-[model]
-# npu_gmm 必须在 quantize.grouped_mm.mx 之前
-converters = [&quot;npu_gmm&quot;, &quot;quantize.linear.mx&quot;, &quot;quantize.grouped_mm.mx&quot;]
+from torchtitan_npu.converters.registry import get_npu_converter_config
 
-[quantize.linear.mx]
-recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
-filter_fqns = [&quot;output&quot;, &quot;router.gate&quot;]
-
-[quantize.grouped_mm.mx]
-recipe_name = &quot;mxfp8&quot;                     # 可选 &quot;mxfp8&quot; 或 &quot;hif8&quot;
+model_converters = ModelConvertersContainer.Config(
+    converters=[
+        # npu_gmm 必须在 MXFP8Converter 之前
+        get_npu_converter_config(&quot;npu_gmm&quot;),
+        MXFP8Converter.Config(
+            recipe_name=&quot;mxfp8&quot;,
+            filter_fqns=[&quot;output&quot;, &quot;router.gate&quot;],
+        ),
+    ],
+)
 </code></pre>
 <h2 id="_6">验证清单</h2>
 <ol>

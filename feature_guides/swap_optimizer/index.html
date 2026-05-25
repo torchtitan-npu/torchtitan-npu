@@ -43,8 +43,19 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiFloat8）</a>
@@ -81,7 +92,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义Context Parallel特性</a>
+                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
                 </li>
     </ul>
                   </li>
@@ -89,15 +100,6 @@
               <p class="caption"><span class="caption-text">Recipe</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Source</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" >Community</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../source/community/versioning_policy/">版本策略（Versioning Policy）</a>
-                </li>
-    </ul>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
@@ -149,7 +151,14 @@
 1. 优化器状态在整个前向和反向传播过程中静态驻留在设备显存中，但实际上仅在最后的参数更新阶段才会被使用，造成了计算过程中的显存严重浪费。
 2. 传统的单纯卸载（Offload）方案通常会引入巨大的 CPU 与加速卡之间的传输延迟，阻塞主计算流，导致训练吞吐量大幅下降。</p>
 <h2 id="_1">实现原理</h2>
-<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md">MindSpeed框架设计的SwapOptimizer特性</a>，我们在 <code>torchtitan</code> 框架的优化器构建逻辑中引入了自定义的 <code>SwapOptimizersContainer</code>，对原生的 <code>Adam</code> 和 <code>AdamW</code> 优化器的 <code>step</code> 方法进行了无缝拦截与替换，从而使能了优化器状态的动态显存管理。相关代码定义在<code>torchtitan_npu/patches/optimizer/swap_optimizer.py</code>。</p>
+<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md">MindSpeed框架设计的SwapOptimizer特性</a>，我们在 <code>torchtitan</code> 框架的优化器构建逻辑中引入了自定义的 <code>SwapOptimizersContainer</code>，对原生的 <code>Adam</code> 和 <code>AdamW</code> 优化器的 <code>step</code> 方法进行了无缝拦截与替换，从而使能了优化器状态的动态显存管理。相关代码定义在 <code>torchtitan_npu/patches/optimizer/swap_optimizer.py</code>。</p>
+<p>当前配置路由统一到 NPU <code>OptimizerConfig</code>：</p>
+<ul>
+<li>模型的 <code>config_registry.py</code> 只使用 <code>torchtitan_npu.config.configs.OptimizerConfig</code> 描述优化器参数。</li>
+<li><code>torchtitan_npu/config/configs.py</code> 只承载参数定义，不维护 swap optimizer 的分支构建逻辑。</li>
+<li><code>SwapOptimizersContainer.Config.build()</code> 负责唯一的 swap 开关路由：<code>swap_optimizer=True</code> 时构造 <code>SwapOptimizersContainer</code>，<code>swap_optimizer=False</code> 时回退到上游基础 <code>OptimizersContainer</code>。</li>
+<li>NPU <code>OptimizerConfig.build()</code> 由 swap optimizer patch 层适配，转换为 <code>SwapOptimizersContainer.Config.build()</code> 复用同一套路由逻辑。</li>
+</ul>
 <p>本特性主要遵循“按块加载 -&gt; 异步更新 -&gt; 及时卸载”的流水线机制，在确保训练精度的前提下，用多流通算重叠换取巨大的显存空间收益。具体拆解如下：</p>
 <h3 id="_2">状态初始化与零显存占位</h3>
 <p>在初始化阶段，系统会在host内存中为每个参数分配固定内存（<code>pin_memory=True</code>）以存放一阶动量 <code>exp_avg</code>、二阶动量 <code>exp_avg_sq</code> 等状态。而在device端，通过底层接口 <code>untyped_storage().resize_(0)</code> 巧妙地将这些状态的底层物理显存清空，仅保留 Tensor 的元数据。这使得在耗时较长的前向和反向传播期间，优化器状态完全不占用宝贵的设备显存。</p>
@@ -165,7 +174,8 @@
 <li><strong>Offload（卸载）</strong>：更新完成后，记录事件，并在主机流中将更新后的最新状态异步写回 CPU，同时再次清空设备侧显存以复用给下一个参数块。</li>
 </ol>
 <h2 id="_4">配置选项</h2>
-<p>在训练任务的 TOML 配置文件（例如 <code>torchtitan_npu/models/deepseek_v32/train_configs/deepseek_v32_671b_debug.toml</code>，或实际启动训练时 <code>--job.config_file</code> 所指向的路径）中，找到对应的 <code>[optimizer]</code> 节，并添加以下配置以启用 Swap Optimizer：</p>
+<p>Swap Optimizer 配置在模型的 <code>config_registry.py</code> 中，统一使用
+<code>torchtitan_npu.config.configs.OptimizerConfig</code>。</p>
 <table>
 <thead>
 <tr>
@@ -186,7 +196,7 @@
 <td><code>swap_optimizer</code></td>
 <td>bool</td>
 <td>false</td>
-<td>是否启用 Swap Optimizer 特性以进行显存流水线卸载。</td>
+<td>是否启用 Swap Optimizer 特性以进行显存流水线卸载。为 false 时使用上游基础 optimizer container。</td>
 </tr>
 <tr>
 <td><code>swap_optimizer_times</code></td>
@@ -197,16 +207,31 @@
 </tbody>
 </table>
 <h3 id="_5">配置示例</h3>
-<p>首先在配置文件中使能本代码仓的自定义配置，随后在 <code>[optimizer]</code> 节中添加以下配置，为AdamW优化器开启SwapOptimizer特性并设置流水线切片参数：</p>
-<pre><code class="language-toml">[job]
-custom_config_module = &quot;torchtitan_npu.config.custom_config&quot;    # 使能本代码仓的自定义配置
+<p>在 <code>torchtitan_npu/models/&lt;model&gt;/config_registry.py</code> 的配置函数中设置：</p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
 
-[optimizer]
-name = &quot;AdamW&quot;
-lr = 3e-4
-weight_decay = 0.01
-swap_optimizer = true       # 启用 Swap Optimizer
-swap_optimizer_times = 16   # 设置流水切分次数
+optimizer = OptimizerConfig(
+    name=&quot;AdamW&quot;,
+    lr=3e-4,
+    weight_decay=0.01,
+    swap_optimizer=True,
+    swap_optimizer_times=16,
+)
+</code></pre>
+<p>关闭 Swap Optimizer 时，可以省略 <code>swap_optimizer</code>，或显式设置为 <code>False</code>。
+此时构建流程会回退到上游基础 <code>OptimizersContainer</code>，不会构造
+<code>SwapOptimizersContainer</code>：</p>
+<pre><code class="language-python">optimizer = OptimizerConfig(
+    name=&quot;AdamW&quot;,
+    lr=3e-4,
+    weight_decay=0.01,
+    swap_optimizer=False,
+)
+</code></pre>
+<p>启动时也可以通过命令行覆盖同名字段：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --optimizer.swap_optimizer \
+  --optimizer.swap_optimizer_times 16
 </code></pre>
               
             </div>
