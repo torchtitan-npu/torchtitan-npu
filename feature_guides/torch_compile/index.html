@@ -74,11 +74,23 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#npu-torchcompile">NPU 上的 torch.compile</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
-    </li>
     <li class="toctree-l2"><a class="reference internal" href="#_1">支持范围</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#1-inductor_npu_ext">1. 安装 inductor_npu_ext</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#2-compile">2. 配置 compile</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#_2">注意事项</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#nameerror-name-_world-is-not-defined">NameError: name '_world' is not defined</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">修改模型结构后清理编译产物</a>
+    </li>
+        </ul>
     </li>
     </ul>
                   </li>
@@ -147,40 +159,57 @@
 </p>
 
 <p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
+<h2 id="_1">支持范围</h2>
+<p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V4</code> 模型的全流程编译。</p>
+<p>其他模型的 Codegen 仍处于待调试状态。启用 <code>torch.compile</code> 时，需要在模型配置中启用
+<code>npu_bypass_triton_codegen</code>，跳过 Inductor Codegen 流程，仅保留 Dynamo / AOTAutograd
+/ Inductor 图优化等前置流程。请在模型 <code>config_registry.py</code> 中确保 <code>ModelConvertersContainer.Config</code> 的
+<code>converters</code> 列表中包含该 converter：</p>
+<pre><code class="language-python">model_converters = ModelConvertersContainer.Config(
+    converters=[
+        get_model_converter_config(&quot;npu_rms_norm&quot;),
+        # ... 其他 converter ...
+        get_model_converter_config(&quot;npu_bypass_triton_codegen&quot;),
+    ],
+)
+</code></pre>
 <h2 id="torchcompile_1">torch.compile 示例</h2>
+<h3 id="1-inductor_npu_ext">1. 安装 inductor_npu_ext</h3>
 <p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
 <pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
 cd torchair/experimental/_inductor_npu_ext/
 pip3 install -e ./python/
 cd -
 </code></pre>
-<p>编译配置在模型的 <code>config_registry.py</code> 中，对应<code>CompileConfig</code> 类：</p>
+<h3 id="2-compile">2. 配置 compile</h3>
+<p>方式一：在模型的 <code>config_registry.py</code> 中配置 <code>CompileConfig</code>：</p>
 <pre><code class="language-python">from torchtitan.config import CompileConfig
 
 compile = CompileConfig(
     enable=True,
-    # 编译完整模型，而不是只编译loss
+    # 编译完整模型，而不是只编译 loss
     components=[&quot;model&quot;, &quot;loss&quot;],
 )
 </code></pre>
-<p>启动训练任务前，设置以下环境变量：</p>
+<p>方式二：启动训练时通过命令行开启：</p>
 <pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
 bash scripts/run_train.sh --compile.enable
 </code></pre>
-<h2 id="_1">支持范围</h2>
-<p>当前主线正在加速适配中。您可先在 <code>v0.2.2-dev</code> 分支体验该功能。
-```</p>
 <h2 id="_2">注意事项</h2>
-<blockquote>
-<p>⚠️ <strong>修改模型结构后，需要清理缓存重新 compile</strong></p>
-<p>torch.compile 会缓存编译结果。当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的缓存可能导致编译失败或运行异常。请执行以下命令清理缓存：</p>
-<p><code>bash
-rm -rf /root/.cache
+<h3 id="nameerror-name-_world-is-not-defined"><code>NameError: name '_world' is not defined</code></h3>
+<p>如果编译时报错 <code>NameError: name '_world' is not defined</code>，训练前需要关闭 Inductor 的
+FxGraph / AOTAutograd 缓存：</p>
+<pre><code class="language-bash">export TORCHINDUCTOR_FX_GRAPH_CACHE=0
+export TORCHINDUCTOR_AUTOGRAD_CACHE=0
+</code></pre>
+<p>关闭上述两个缓存后，Inductor 不再走 <code>FxGraphCache.load_with_key</code> 路径，可以规避该问题，代价是每次启动都会重新走
+完整编译流程，一次性 warmup 时间会增加，稳态步长不受影响。</p>
+<h3 id="_3"><code>修改模型结构</code>后清理编译产物</h3>
+<p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致
+编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
+<pre><code class="language-bash">rm -rf /root/.cache
 rm -rf /tmp/*
-rm -rf ./torchinductor_root
-rm -rf ./torch_compile_debug
-rm -rf .npu_kernels_root</code></p>
-</blockquote>
+</code></pre>
               
             </div>
           </div><footer>
