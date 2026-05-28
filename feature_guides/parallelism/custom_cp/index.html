@@ -74,6 +74,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../vlm/">VLM NPU 支持</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" >Parallelism</a>
     <ul class="current">
                 <li class="toctree-l2 current"><a class="reference internal current" href="#">自定义 Context Parallel 特性</a>
@@ -263,7 +265,7 @@ parallelism = ParallelismConfig(
 <pre><code class="language-python">from torchtitan.protocols.model_converter import ModelConvertersContainer
 
 from torchtitan_npu.config.configs import ParallelismConfig
-from torchtitan_npu.converters.npu_registry import get_model_converter_config
+from torchtitan_npu.converters import get_model_converter_config
 
 model_converters = ModelConvertersContainer.Config(
     converters=[
@@ -311,7 +313,7 @@ bash scripts/run_train.sh \
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../virtual_optimizer/" class="btn btn-neutral float-left" title="Virtual Optimizer - 优化器显存虚拟化特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../vlm/" class="btn btn-neutral float-left" title="VLM NPU 支持"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../../../recipe/sft/" class="btn btn-neutral float-right" title="SFT 指令微调">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -335,7 +337,7 @@ bash scripts/run_train.sh \
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../virtual_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../vlm/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../../../recipe/sft/" style="color: #fcfcfc">Next &raquo;</a></span>

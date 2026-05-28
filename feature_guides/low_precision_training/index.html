@@ -100,6 +100,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../vlm/">VLM NPU 支持</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
                 <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
@@ -281,12 +283,12 @@ model_converters = ModelConvertersContainer.Config(
 <pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
 from torchtitan.protocols.model_converter import ModelConvertersContainer
 
-from torchtitan_npu.converters.registry import get_npu_converter_config
+from torchtitan_npu.converters import get_model_converter_config
 
 model_converters = ModelConvertersContainer.Config(
     converters=[
         # npu_gmm 必须在 MXFP8Converter 之前
-        get_npu_converter_config(&quot;npu_gmm&quot;),
+        get_model_converter_config(&quot;npu_gmm&quot;),
         MXFP8Converter.Config(
             recipe_name=&quot;mxfp8&quot;,
             filter_fqns=[&quot;output&quot;, &quot;router.gate&quot;],

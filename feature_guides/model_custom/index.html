@@ -120,6 +120,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../vlm/">VLM NPU 支持</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
                 <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
@@ -347,8 +349,7 @@ class GMMStateDictUpdater(StateDictUpdater):
 <pre><code class="language-python"># ──────────────────────────────────────────────────
 # 4. 声明配置 + 注册
 # ──────────────────────────────────────────────────
-from torchtitan_npu.converters.model_custom_config import ModelCustomConfig
-from torchtitan_npu.converters.npu_registry import register_model_converter
+from torchtitan_npu.converters import ModelCustomConfig, register_model_converter
 
 @register_model_converter(&quot;npu_gmm&quot;)                         # &lt;-- 装饰器完成注册
 class GMMModelConfig(ModelCustomConfig):                     # &lt;-- 声明配置
@@ -377,7 +378,7 @@ converters = [&quot;npu_gmm&quot;]
 <tbody>
 <tr>
 <td><code>register_model_converter()</code></td>
-<td><code>converters/npu_registry.py</code></td>
+<td><code>converters/registry.py</code></td>
 <td><strong>注册装饰器</strong>，将自定义配置注册到全局单例 <code>_ConverterRegistry</code>，并通过ModelConverter应用到模型</td>
 </tr>
 <tr>
@@ -419,6 +420,11 @@ converters = [&quot;npu_gmm&quot;]
 <td><code>_ConverterRegistry</code></td>
 <td><code>converters/framework/model_custom_config_registry.py</code></td>
 <td><strong>全局注册单例</strong>，管理 ModelCustomConfig 和动态生成的 Converter 类</td>
+</tr>
+<tr>
+<td><code>init_distributed_wrapper</code> / <code>get_using_model_spec()</code></td>
+<td><code>patches/torchtitan/trainer_init_distributed.py</code></td>
+<td><strong>拦截 Trainer.init_distributed</strong> 捕获 Trainer.Config，供 converter 读取 ModelSpec；由 <code>_apply_patches()</code> 显式调用 <code>apply()</code> 安装</td>
 </tr>
 </tbody>
 </table>
@@ -541,17 +547,20 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
     Note over reg: 动态生成的 converter_cls 会被 torchtitan 通过 Configurable.Config 发现
 </code></pre>
 <h3 id="42-trainerinit_distributed">4.2 模型入口阶段（Trainer.init_distributed 拦截）</h3>
+<p>该拦截通过 <code>patches/torchtitan/trainer_init_distributed.py</code> 实现，
+由 <code>_apply_patches()</code> 在最早期调用 <code>apply()</code> 安装，确保在其它 patch 之前
+捕获原始的 <code>Trainer.init_distributed</code>。</p>
 <pre><code class="language-mermaid">sequenceDiagram
     participant trainer as Trainer
     participant wrapper as init_distributed_wrapper
-    participant reg as npu_registry
+    participant patch as trainer_init_distributed
 
     trainer-&gt;&gt;wrapper: init_distributed()
     wrapper-&gt;&gt;wrapper: G_USING_TRAIN_CONFIG = self.config
-    wrapper-&gt;&gt;trainer: _original_init_distributed(self)
+    wrapper-&gt;&gt;trainer: _original_init_distributed(self, *args, **kwargs)
     trainer--&gt;&gt;trainer: 返回 ParallelDims
 
-    Note over trainer,reg: G_USING_TRAIN_CONFIG 存储 Trainer.Config，包含 model_spec
+    Note over trainer,patch: G_USING_TRAIN_CONFIG 存储 Trainer.Config，包含 model_spec
 </code></pre>
 <h3 id="43-torchtitan-convert">4.3 转换执行阶段（torchtitan 调用 convert 时）</h3>
 <pre><code class="language-mermaid">sequenceDiagram
@@ -559,7 +568,7 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
     participant mcc as ModelCustomConfigConverter
     participant config as ModelCustomConfig
     participant model as nn.Module (模型)
-    participant reg as npu_registry
+    participant reg as registry
     participant spec as ModelSpec
     participant cmc as ModelCustomConverter
     participant lpw as parallelize_plan_update_wrapper
@@ -567,7 +576,7 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
 
     tt-&gt;&gt;mcc: convert(model)
 
-    mcc-&gt;&gt;reg: get_using_model_spec()
+    mcc-&gt;&gt;patch: get_using_model_spec()
     reg--&gt;&gt;mcc: model_spec
 
     mcc-&gt;&gt;config: model_converter

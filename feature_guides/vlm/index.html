@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>torch.compile 支持 - torchtitan-npu</title>
+    <title>VLM NPU 支持 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "torch.compile \u652f\u6301";
-        var mkdocs_page_input_path = "feature_guides/torch_compile.md";
+        var mkdocs_page_name = "VLM NPU \u652f\u6301";
+        var mkdocs_page_input_path = "feature_guides/vlm.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -70,33 +70,21 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">torch.compile 支持</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#npu-torchcompile">NPU 上的 torch.compile</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_1">支持范围</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1-inductor_npu_ext">1. 安装 inductor_npu_ext</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#2-compile">2. 配置 compile</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_2">注意事项</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#nameerror-name-_world-is-not-defined">NameError: name '_world' is not defined</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_3">修改模型结构后清理编译产物</a>
-    </li>
-        </ul>
-    </li>
-    </ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../vlm/">VLM NPU 支持</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">VLM NPU 支持</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">支持内容</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">并行化支持</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">运行示例</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">复用建议</a>
+    </li>
+    </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
     <ul>
@@ -143,7 +131,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">torch.compile 支持</li>
+      <li class="breadcrumb-item active">VLM NPU 支持</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -152,72 +140,34 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="torchcompile">torch.compile 支持</h1>
-<p>torch.compile 是 PyTorch 2.0 的核心特性。通过 JIT （即时编译），将 PyTorch 代码转化为高度优化的融合算子，在几乎不改动原有代码的前提下显著提升性能。作为 PyTorch 原生的分布式训练框架，torchtitan 的一大优势便是可以便捷、充分地发挥 torch.compile 的性能收益。在此基础上，torchtitan_npu 结合 CANN 生态的编译能力，在 NPU 平台上的分布式训练任务中为 torch.compile 提供支持。</p>
-<h2 id="npu-torchcompile">NPU 上的 torch.compile</h2>
-<p>在 torch.compile 的工作流程中，PyTorch 代码依次经过 Dynamo 成图， Inductor 图编译优化、Codegen，生成在硬件 runtime 上执行的优化 DSL 代码。</p>
-<p align="center">
-<img src="../../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
-</p>
-
-<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
-<h2 id="_1">支持范围</h2>
-<p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V4</code> 模型的全流程编译。</p>
-<p>其他模型的 Codegen 仍处于待调试状态。启用 <code>torch.compile</code> 时，需要在模型配置中启用
-<code>npu_bypass_triton_codegen</code>，跳过 Inductor Codegen 流程，仅保留 Dynamo / AOTAutograd
-/ Inductor 图优化等前置流程。请在模型 <code>config_registry.py</code> 中确保 <code>ModelConvertersContainer.Config</code> 的
-<code>converters</code> 列表中包含该 converter：</p>
-<pre><code class="language-python">model_converters = ModelConvertersContainer.Config(
-    converters=[
-        get_model_converter_config(&quot;npu_rms_norm&quot;),
-        # ... 其他 converter ...
-        get_model_converter_config(&quot;npu_bypass_triton_codegen&quot;),
-    ],
-)
+                <h1 id="vlm-npu">VLM NPU 支持</h1>
+<p>本文档说明 <code>torchtitan_npu.models.vlm</code> 对上游 TorchTitan VLM debug model 的 NPU 适配范围。</p>
+<h2 id="_1">支持内容</h2>
+<ul>
+<li>通过 <code>torchtitan_npu.models.vlm</code> 注册 NPU 版本 <code>vlm</code> 模型入口。</li>
+</ul>
+<h2 id="_2">并行化支持</h2>
+<p>VLM NPU 目前仅支持 FSDP/HSDP 数据并行。</p>
+<h2 id="_3">运行示例</h2>
+<pre><code class="language-bash">PYTHONPATH=/path/to/torchtitan:$PWD:${PYTHONPATH:-} \
+NGPU=1 \
+MODULE=torchtitan_npu.models.vlm \
+CONFIG=vlm_debugmodel_npu \
+COMM_MODE=fake_backend \
+bash scripts/run_train.sh \
+  --training.local_batch_size 1 \
+  --training.seq_len 256 \
+  --dataloader.max_patches_per_image 64 \
+  --dataloader.max_images_per_batch 4
 </code></pre>
-<h2 id="torchcompile_1">torch.compile 示例</h2>
-<h3 id="1-inductor_npu_ext">1. 安装 inductor_npu_ext</h3>
-<p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
-<pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
-cd torchair/experimental/_inductor_npu_ext/
-pip3 install -e ./python/
-cd -
-</code></pre>
-<h3 id="2-compile">2. 配置 compile</h3>
-<p>方式一：在模型的 <code>config_registry.py</code> 中配置 <code>CompileConfig</code>：</p>
-<pre><code class="language-python">from torchtitan.config import CompileConfig
-
-compile = CompileConfig(
-    enable=True,
-    # 编译完整模型，而不是只编译 loss
-    components=[&quot;model&quot;, &quot;loss&quot;],
-)
-</code></pre>
-<p>方式二：启动训练时通过命令行开启：</p>
-<pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
-bash scripts/run_train.sh --compile.enable
-</code></pre>
-<h2 id="_2">注意事项</h2>
-<h3 id="nameerror-name-_world-is-not-defined"><code>NameError: name '_world' is not defined</code></h3>
-<p>如果编译时报错 <code>NameError: name '_world' is not defined</code>，训练前需要关闭 Inductor 的
-FxGraph / AOTAutograd 缓存：</p>
-<pre><code class="language-bash">export TORCHINDUCTOR_FX_GRAPH_CACHE=0
-export TORCHINDUCTOR_AUTOGRAD_CACHE=0
-</code></pre>
-<p>关闭上述两个缓存后，Inductor 不再走 <code>FxGraphCache.load_with_key</code> 路径，可以规避该问题，代价是每次启动都会重新走
-完整编译流程，一次性 warmup 时间会增加，稳态步长不受影响。</p>
-<h3 id="_3"><code>修改模型结构</code>后清理编译产物</h3>
-<p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致
-编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
-<pre><code class="language-bash">rm -rf /root/.cache
-rm -rf /tmp/*
-</code></pre>
+<h2 id="_4">复用建议</h2>
+<p>新增多模态模型时，优先复用 <code>torchtitan_npu.models.multimodal</code> 中的通用 helper，避免在模型目录内重复实现。</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../swap_optimizer/" class="btn btn-neutral float-left" title="SwapOptimizer 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../virtual_optimizer/" class="btn btn-neutral float-right" title="Virtual Optimizer - 优化器显存虚拟化特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../virtual_optimizer/" class="btn btn-neutral float-left" title="Virtual Optimizer - 优化器显存虚拟化特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../parallelism/custom_cp/" class="btn btn-neutral float-right" title="自定义 Context Parallel 特性">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -240,10 +190,10 @@ rm -rf /tmp/*
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../swap_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../virtual_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../virtual_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../parallelism/custom_cp/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
