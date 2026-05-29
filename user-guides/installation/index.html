@@ -234,6 +234,7 @@ pip install -e .
 </code></pre>
 <blockquote>
 <p>注：如有旧版本Torchtitan-npu，请先<a href="#卸载">卸载</a>，再进行安装</p>
+<p>注：<code>requirements.txt</code> 已为 <code>triton-ascend==3.2.1</code> 配置 <code>--extra-index-url https://triton-ascend.osinfra.cn/pypi/simple</code>；默认 PyPI 源当前不提供该版本，单独安装时请使用 <code>pip install --extra-index-url https://triton-ascend.osinfra.cn/pypi/simple triton-ascend==3.2.1</code>。<code>triton-ascend</code> 是安装包名，实际 Python 模块名为 <code>triton</code>，代码中请使用 <code>import triton</code>，不要使用 <code>import triton_ascend</code>。</p>
 </blockquote>
 <h3 id="4-inductor-npu-exttorchcompile">4. 安装inductor-npu-ext（可选，使能torch.compile时需要）</h3>
 <p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>

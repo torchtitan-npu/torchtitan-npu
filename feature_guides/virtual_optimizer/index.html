@@ -166,7 +166,7 @@
 
 <h2 id="_3">解决方案</h2>
 <h3 id="_4">核心实现原理</h3>
-<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/zh/features/virtual-optimizer.md">MindSpeed框架设计的VirtualOptimizer特性</a>通过修改优化器状态的分配方式，利用虚拟内存特性替代 NPU 内存分配：</p>
+<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/zh/features/virtual-optimizer.md">MindSpeed框架设计的VirtualOptimizer特性</a>通过修改优化器状态的分配方式，利用虚拟内存特性替代 NPU 内存分配(当前NPU驱动支持25.5.2及以上版本)：</p>
 <h4 id="adamw">标准 AdamW 的做法</h4>
 <pre><code class="language-python"># torch.optim.AdamW (标准实现)
 state = self.state[p]

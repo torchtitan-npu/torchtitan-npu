@@ -213,7 +213,7 @@
 </ul>
 <h2 id="what-smoke-means-here">What "Smoke" Means Here</h2>
 <p>In this repository, smoke tests are not import checks. They are integration-style checks over real execution paths.</p>
-<p><code>build.sh -s</code> runs two parts by default:
+<p><code>bash .ci/smoke_test.sh</code> runs two parts by default:
 - Core smoke: minimal end-to-end training path validation
 - Extended smoke: local feature and model-parallel smoke suites</p>
 <p>Upstream smoke is kept as a separate targeted entry. It is heavier, takes longer, and may be affected by low-level hardware issues, so it is not part of the default smoke path.</p>
@@ -238,13 +238,13 @@
 - Decorative section comments with no real meaning</p>
 <h2 id="build-entry-points">Build Entry Points</h2>
 <ul>
-<li><code>build.sh -u</code>: run all unit tests</li>
-<li><code>build.sh -s</code>: run all smoke tests</li>
+<li><code>bash .ci/unit_test.sh</code>: run all unit tests</li>
+<li><code>bash .ci/smoke_test.sh</code>: run all smoke tests</li>
 </ul>
 <p>Useful variants:
-- <code>ONLY_CORE_SMOKE=true build.sh -s</code>
-- <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code>
-- <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></p>
+- <code>ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh</code>
+- <code>ONLY_EXTENDED_SMOKE=true bash .ci/smoke_test.sh</code>
+- <code>ONLY_UPSTREAM_SMOKE=true bash .ci/smoke_test.sh</code></p>
 <h2 id="pre-submission-checklist">Pre-Submission Checklist</h2>
 <ol>
 <li>Is the test in the right directory?</li>

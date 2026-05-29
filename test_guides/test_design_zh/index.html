@@ -213,7 +213,7 @@
 </ul>
 <h2 id="smoke">本仓里的 Smoke 是什么</h2>
 <p>这里的 smoke 不是简单的导入检查，而是对真实执行链路做集成式验证。</p>
-<p><code>build.sh -s</code> 默认会跑两部分：
+<p><code>bash .ci/smoke_test.sh</code> 默认会跑两部分：
 - Core smoke：最小训练主链路验证
 - Extended smoke：本仓本地的特性和模型并行冒烟测试</p>
 <p>Upstream smoke 保持为单独的定向入口。它更重、更耗时，也更容易受到底层硬件问题影响，所以不放在默认 smoke 路径里。</p>
@@ -238,13 +238,13 @@
 - 没有实际意义的分隔线注释</p>
 <h2 id="_7">执行入口</h2>
 <ul>
-<li><code>build.sh -u</code>：运行全部单元测试</li>
-<li><code>build.sh -s</code>：运行全部冒烟测试</li>
+<li><code>bash .ci/unit_test.sh</code>：运行全部单元测试</li>
+<li><code>bash .ci/smoke_test.sh</code>：运行全部冒烟测试</li>
 </ul>
 <p>常用变体：
-- <code>ONLY_CORE_SMOKE=true build.sh -s</code>
-- <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code>
-- <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></p>
+- <code>ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh</code>
+- <code>ONLY_EXTENDED_SMOKE=true bash .ci/smoke_test.sh</code>
+- <code>ONLY_UPSTREAM_SMOKE=true bash .ci/smoke_test.sh</code></p>
 <h2 id="_8">提交前自查</h2>
 <ol>
 <li>测试是不是放在正确目录？</li>
