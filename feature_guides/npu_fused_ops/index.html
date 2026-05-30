@@ -209,6 +209,9 @@ model_converters = ModelConvertersContainer.Config(
 <h2 id="gmmgrouped-matmul">GMM（Grouped MatMul）</h2>
 <p>在 MoE 模块中，每个专家执行前馈网络（FFN）运算：如 Swiglu FFN：输入先经过升维变换 <code>w1</code>，再通过激活函数，最后经过降维变换 <code>w2</code> 得到输出。</p>
 <p>由于各专家执行结构相同的矩阵乘法，为了将同类矩阵运算合并为一次算子调用，提升计算效率，本ModelConverter 引入分组矩阵乘法（GMM）算子 <code>npu_grouped_matmul</code>。该算子接收 <a href="#permute">Permute</a> 模块输出的重排后 token 及对应的专家索引，在一次调用中并行计算所有专家的同一线性层，如所有专家的 <code>w1</code>。</p>
+<blockquote>
+<p>注：使用npu_gmm的同时请开启npu_permute配合使用。</p>
+</blockquote>
 <p><strong>配置示例</strong>：</p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_gmm&quot;)
 </code></pre>
