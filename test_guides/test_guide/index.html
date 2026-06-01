@@ -168,23 +168,23 @@
 <h2 id="core-commands">Core Commands</h2>
 <h3 id="unit-tests">Unit Tests</h3>
 <pre><code class="language-bash"># Run all unit tests and generate reports
-sh build.sh -u --generate-report
+bash .ci/unit_test.sh --generate-report
 
 # Run only local `torchtitan-npu` unit tests
-RUN_TORCHTITAN_UT=false sh build.sh -u --generate-report
+RUN_TORCHTITAN_UT=false bash .ci/unit_test.sh --generate-report
 </code></pre>
 <h3 id="smoke-tests">Smoke Tests</h3>
 <pre><code class="language-bash"># Run the default smoke suite (core + extended)
-sh build.sh -s --generate-report
+bash .ci/smoke_test.sh --generate-report
 
 # Run only core smoke
-ONLY_CORE_SMOKE=true sh build.sh -s --generate-report
+ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh --generate-report
 
 # Run only extended smoke
-ONLY_EXTENDED_SMOKE=true sh build.sh -s --generate-report
+ONLY_EXTENDED_SMOKE=true bash .ci/smoke_test.sh --generate-report
 
 # Run only upstream smoke
-ONLY_UPSTREAM_SMOKE=true sh build.sh -s --generate-report
+ONLY_UPSTREAM_SMOKE=true bash .ci/smoke_test.sh --generate-report
 </code></pre>
 <h3 id="integration-test">Integration Test</h3>
 <p><code>tests/smoke_tests/integration_test.py</code> is the entry point for end-to-end integration tests, used to validate:
@@ -192,8 +192,8 @@ ONLY_UPSTREAM_SMOKE=true sh build.sh -s --generate-report
 - Feature compatibility
 - Parallelism strategy compatibility</p>
 <h4 id="running">Running</h4>
-<pre><code class="language-bash"># Via build.sh (runs core + extended smoke by default)
-ONLY_CORE_SMOKE=true sh build.sh -s --generate-report
+<pre><code class="language-bash"># Via .ci/smoke_test.sh (runs core + extended smoke by default)
+ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh --generate-report
 
 # Run integration_test.py directly
 python tests/smoke_tests/integration_test.py output_dir \
@@ -281,11 +281,11 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
 </thead>
 <tbody>
 <tr>
-<td><code>build.sh -u</code></td>
+<td><code>.ci/unit_test.sh</code></td>
 <td>You changed hardware-independent logic such as converters, config, helpers, or patches</td>
 </tr>
 <tr>
-<td><code>build.sh -s</code></td>
+<td><code>.ci/smoke_test.sh</code></td>
 <td>You changed real NPU execution paths or wrapper behavior and want the default core + extended smoke set</td>
 </tr>
 <tr>
@@ -304,11 +304,11 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
 </table>
 <h2 id="quick-decision-rule">Quick Decision Rule</h2>
 <ul>
-<li>Changed only hardware-independent logic: start with <code>build.sh -u</code></li>
-<li>Changed NPU feature paths or wrappers: run <code>build.sh -s</code></li>
-<li>Changed training-path wiring: at least run <code>ONLY_CORE_SMOKE=true build.sh -s</code></li>
-<li>Changed model-parallel behavior: run <code>ONLY_EXTENDED_SMOKE=true build.sh -s</code></li>
-<li>Upstream integration compatibility needs a separate check: run <code>ONLY_UPSTREAM_SMOKE=true build.sh -s</code></li>
+<li>Changed only hardware-independent logic: start with <code>.ci/unit_test.sh</code></li>
+<li>Changed NPU feature paths or wrappers: run <code>.ci/smoke_test.sh</code></li>
+<li>Changed training-path wiring: at least run <code>ONLY_CORE_SMOKE=true .ci/smoke_test.sh</code></li>
+<li>Changed model-parallel behavior: run <code>ONLY_EXTENDED_SMOKE=true .ci/smoke_test.sh</code></li>
+<li>Upstream integration compatibility needs a separate check: run <code>ONLY_UPSTREAM_SMOKE=true .ci/smoke_test.sh</code></li>
 </ul>
 <h2 id="test-reports">Test Reports</h2>
 <ul>
@@ -322,7 +322,7 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
 <h2 id="quick-tips">Quick Tips</h2>
 <ol>
 <li>Start with the smallest command that matches your change.</li>
-<li>Prefer <code>build.sh -u</code> when NPU is not required.</li>
+<li>Prefer <code>.ci/unit_test.sh</code> when NPU is not required.</li>
 <li>Use targeted smoke variants instead of full smoke when possible.</li>
 <li>Update docs when test layout or execution changes.</li>
 </ol>

@@ -160,7 +160,11 @@ torchtitan-npu。</p>
 <pre><code class="language-bash"># 从huggingface下载 DeepSeek V3.2 tokenizer https://huggingface.co/settings/tokens
 python scripts/download_hf_assets.py --repo_id deepseek-ai/DeepSeek-V3.2 --assets tokenizer
 </code></pre>
-<p>将 <code>torchtitan_npu/models/deepseek_v32/config_registry.py</code> 中的 <code>hf_assets_path</code> 指向下载的路径。</p>
+<p><code>torchtitan_npu/models/deepseek_v32/config_registry.py</code> 中的 <code>hf_assets_path</code> 默认指向
+<code>./assets/hf/DeepSeek-V3.2</code>，使用上面的下载命令时无需修改。如果手动下载到 <code>deepseekv3.2-tokenizer</code>，
+则将实际使用的配置函数中的路径改为：</p>
+<pre><code class="language-python">hf_assets_path=&quot;./deepseekv3.2-tokenizer&quot;,
+</code></pre>
 <ol>
 <li>下载数据集。以 <a href="https://huggingface.co/datasets/lsb/enwiki20230101">enwiki 数据集</a>
    为例：</li>
