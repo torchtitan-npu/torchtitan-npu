@@ -151,7 +151,7 @@
 1. 优化器状态在整个前向和反向传播过程中静态驻留在设备显存中，但实际上仅在最后的参数更新阶段才会被使用，造成了计算过程中的显存严重浪费。
 2. 传统的单纯卸载（Offload）方案通常会引入巨大的 CPU 与加速卡之间的传输延迟，阻塞主计算流，导致训练吞吐量大幅下降。</p>
 <h2 id="_1">实现原理</h2>
-<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/features/swap-optimizer.md">MindSpeed框架设计的SwapOptimizer特性</a>，我们在 <code>torchtitan</code> 框架的优化器构建逻辑中引入了自定义的 <code>SwapOptimizersContainer</code>，对原生的 <code>Adam</code> 和 <code>AdamW</code> 优化器的 <code>step</code> 方法进行了无缝拦截与替换，从而使能了优化器状态的动态显存管理。相关代码定义在 <code>torchtitan_npu/patches/optimizer/swap_optimizer.py</code>。</p>
+<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/zh/features/swap-optimizer.md">MindSpeed框架设计的SwapOptimizer特性</a>，我们在 <code>torchtitan</code> 框架的优化器构建逻辑中引入了自定义的 <code>SwapOptimizersContainer</code>，对原生的 <code>Adam</code> 和 <code>AdamW</code> 优化器的 <code>step</code> 方法进行了无缝拦截与替换，从而使能了优化器状态的动态显存管理。相关代码定义在 <code>torchtitan_npu/patches/optimizer/swap_optimizer.py</code>。</p>
 <p>当前配置路由统一到 NPU <code>OptimizerConfig</code>：</p>
 <ul>
 <li>模型的 <code>config_registry.py</code> 只使用 <code>torchtitan_npu.config.configs.OptimizerConfig</code> 描述优化器参数。</li>
