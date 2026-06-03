@@ -174,6 +174,11 @@
 SDPA 实现 Ulysses 风格的 CP。通过自定义 Context Parallel Context，我们在
 基于 <code>torch_npu</code> 提供的融合算子的 Attention 计算前后插入 All-to-All 通信算子，
 将数据从“序列并行分布”转换为“多头维度分布”，使单计算节点获得完整上下文。</p>
+<blockquote>
+<p>注意：<code>torchtitan_npu</code> 使用注册机制自动匹配 CP 策略。
+当 <code>context_parallel_degree &gt; 1</code> 时，模块导入即触发 CP 策略注册，
+无需额外配置开关。</p>
+</blockquote>
 <h3 id="dsa-cp">DSA CP</h3>
 <p>定义在 <code>torchtitan_npu/distributed/context_parallel/dsa_cp.py</code>，为
 DeepSeek Sparse Attention 提供 AllGatherKV 风格的 CP。本项目在遵循
@@ -197,7 +202,7 @@ CP 场景下的正确性。</p>
 <tr>
 <td>DeepSeek-V3</td>
 <td>Ulysses CP</td>
-<td><code>context_parallel_degree &gt; 1</code> 且 <code>enable_custom_context_parallel=True</code></td>
+<td><code>context_parallel_degree &gt; 1</code></td>
 <td>SDPA 路径使用 All-to-All 变换</td>
 </tr>
 <tr>
@@ -227,12 +232,6 @@ CP 场景下的正确性。</p>
 <td>1</td>
 <td>Context 并行度；大于 1 时启用 CP mesh</td>
 </tr>
-<tr>
-<td><code>enable_custom_context_parallel</code></td>
-<td>bool</td>
-<td>False</td>
-<td>启用 NPU 自定义 CP 路径；DeepSeek-V3.2 长序列配置中已显式开启</td>
-</tr>
 </tbody>
 </table>
 <blockquote>
@@ -242,7 +241,7 @@ CP 场景下的正确性。</p>
 </blockquote>
 <p>CP类型由框架根据模型及转换器配置<strong>自动选择</strong>，无需手动指定：</p>
 <ul>
-<li><strong>DeepSeek-V3</strong>：启用自定义 CP 后自动使用 Ulysses CP。</li>
+<li><strong>DeepSeek-V3</strong>：<code>context_parallel_degree &gt; 1</code> 时自动使用 Ulysses CP。</li>
 <li><strong>DeepSeek-V3.2</strong>：当 converters 中包含 <code>npu_dsa</code> 且 CP 开启时，自动使用 DSA CP。</li>
 </ul>
 <h3 id="sdpa-ulysses-cpdeepseek-v3">配置示例一：SDPA Ulysses CP（DeepSeek-V3）</h3>
@@ -251,13 +250,11 @@ CP 场景下的正确性。</p>
 
 parallelism = ParallelismConfig(
     context_parallel_degree=2,
-    enable_custom_context_parallel=True,
 )
 </code></pre>
 <p>启动时也可以直接覆盖：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh \
-  --parallelism.context_parallel_degree 2 \
-  --parallelism.enable_custom_context_parallel
+  --parallelism.context_parallel_degree 2
 </code></pre>
 <h3 id="dsa-context-paralleldeepseek-v32">配置示例二：DSA Context Parallel（DeepSeek-V3.2）</h3>
 <p>DeepSeek-V3.2 <code>config_registry.py</code> 中的
@@ -278,7 +275,6 @@ model_converters = ModelConvertersContainer.Config(
 )
 parallelism = ParallelismConfig(
     context_parallel_degree=8,
-    enable_custom_context_parallel=True,
 )
 </code></pre>
 <p>多机长序列训练推荐在 <code>scripts/run_train_multinodes.sh</code> 中配置节点 IP、
@@ -292,8 +288,7 @@ bash scripts/run_train_multinodes.sh
 MODULE=torchtitan_npu.models.deepseek_v32 \
 CONFIG=deepseek_v32_671b_4layers_debug \
 bash scripts/run_train.sh \
-  --parallelism.context_parallel_degree 2 \
-  --parallelism.enable_custom_context_parallel
+  --parallelism.context_parallel_degree 2
 </code></pre>
 <p>上述覆盖方式仍要求 DeepSeek-V3.2 配置中保留 <code>npu_dsa</code> converter。</p>
 <h2 id="_4">约束与注意事项</h2>

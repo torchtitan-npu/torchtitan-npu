@@ -206,7 +206,8 @@ Hugging Face 权重加载方式。</p>
 通常用于从预训练权重启动训练，或在训练结束后导出模型权重。</p>
 <h2 id="_1">常用配置项</h2>
 <p>checkpoint 配置由 <code>torchtitan.components.checkpoint.CheckpointManager.Config</code>
-提供，在模型的 <code>config_registry.py</code> 中设置，也可以通过 CLI 覆盖。</p>
+提供，torchtitan-npu 通过 <code>CheckpointConfig</code> 补充 NPU 写盘和缓存控制项。
+这些配置在模型的 <code>config_registry.py</code> 中设置，也可以通过 CLI 覆盖。</p>
 <table>
 <thead>
 <tr>
@@ -272,6 +273,18 @@ Hugging Face 权重加载方式。</p>
 <td>DCP 异步保存方式，常用值为 <code>disabled</code>、<code>async</code>。</td>
 </tr>
 <tr>
+<td><code>sync_files</code></td>
+<td>是否在写入 checkpoint 后同步文件，默认 <code>True</code>。设为 <code>False</code> 可降低保存耗时，但异常退出时落盘可靠性更弱。</td>
+</tr>
+<tr>
+<td><code>drop_page_cache_after_save</code></td>
+<td>保存后尝试释放 checkpoint 文件占用的 Linux page cache，默认 <code>False</code>。不删除文件，只影响主机页缓存。</td>
+</tr>
+<tr>
+<td><code>empty_cache_after_save</code></td>
+<td>保存后清理 NPU allocator cache，默认 <code>True</code>，用于减少 checkpoint 临时缓存占用。</td>
+</tr>
+<tr>
 <td><code>create_seed_checkpoint</code></td>
 <td>创建 seed checkpoint 模式，详见下文「创建 seed checkpoint」。</td>
 </tr>
@@ -316,7 +329,7 @@ bash scripts/run_train.sh \
   --dump_folder ./outputs/dsv32_4layers \
   --checkpoint.enable \
   --checkpoint.folder checkpoint \
-  --checkpoint.interval 100 \
+  --checkpoint.interval 100
 </code></pre>
 <p>训练过程中会在 <code>./outputs/dsv32_4layers/checkpoint/step-100</code>、
 <code>step-200</code> 等目录保存 DCP checkpoint。中间 checkpoint 包含完整训练状态，
@@ -481,25 +494,10 @@ bash scripts/run_train.sh \
 <p><strong>DCP 和 HF 权重应该怎么选？</strong></p>
 <p>断点续训、故障恢复和分布式重分片优先用 DCP；从开源模型初始化或导出给推理生态时用
 HF safetensors。</p>
-<p><strong>SwapOptimizer 下中间 DCP 保存或续训会报 <code>NotImplementedError</code>？</strong></p>
-<p><code>deepseek_v32</code>、<code>deepseek_v4</code> 等模型默认启用 <code>optimizer.swap_optimizer=True</code>，其 state 中含
-<code>None</code> 项，目前不能被 <code>torch.distributed.checkpoint</code> 的优化器扁平化逻辑序列化，典型报错：</p>
-<pre><code>NotImplementedError: Flattening optimizer state_dict only supports tensor, int, float, dict states now. Type is &lt;class 'NoneType'&gt;.
-</code></pre>
-<p>触发位置有两处：</p>
-<ul>
-<li><code>interval</code> 触发的中间 step 保存（含完整优化器状态）。</li>
-<li>任何 <code>dcp.load</code>：因为 plan 阶段也会调用优化器的 <code>state_dict()</code>。</li>
-</ul>
-<p>短期 workaround：</p>
-<ul>
-<li>只用 <code>last_save_model_only=True</code>（默认就是 True）做模型权重落盘，保存时不要触发中间
-  step（拉大 <code>interval</code> 或减少 <code>training.steps</code>）。</li>
-<li>Resume / <code>initial_load_path</code> 加载时显式排除优化器和训练状态：
-  <code>--checkpoint.exclude_from_loading optimizer,lr_scheduler,dataloader,train_state</code>。</li>
-</ul>
-<p>这是当前框架与 SwapOptimizer 的兼容性限制，待 SwapOptimizer 把 None state 改成空张量
-或上游 DCP 支持 NoneType 后可恢复完整状态保存。</p>
+<p><strong>SwapOptimizer 下中间 DCP 保存和续训是否支持完整优化器状态？</strong></p>
+<p>已支持。启用 SwapOptimizer 时，中间 DCP checkpoint 会保存 CPU 侧真实
+optimizer state；resume 时会恢复 CPU cache 并重建 device 侧 zero-storage
+placeholder，可用于完整训练状态断点续训。</p>
               
             </div>
           </div><footer>

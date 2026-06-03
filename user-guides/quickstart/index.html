@@ -153,7 +153,7 @@
 torchtitan-npu。</p>
 <h2 id="_2">数据准备</h2>
 <ol>
-<li>下载 Tokenizer <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main">（以 DeepSeekV3.2 网络为例）</a>。</li>
+<li>准备 Tokenizer <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main">（以 DeepSeekV3.2 网络为例）</a>。</li>
 </ol>
 <p>新建 "deepseekv3.2-tokenizer" 目录，将 <code>tokenizer.json</code> 和 <code>tokenizer_config.json</code> 文件下载至该目录。</p>
 <p>也可以通过以下方式下载 tokenizer：</p>
@@ -164,6 +164,9 @@ python scripts/download_hf_assets.py --repo_id deepseek-ai/DeepSeek-V3.2 --asset
 <code>./assets/hf/DeepSeek-V3.2</code>，使用上面的下载命令时无需修改。如果手动下载到 <code>deepseekv3.2-tokenizer</code>，
 则将实际使用的配置函数中的路径改为：</p>
 <pre><code class="language-python">hf_assets_path=&quot;./deepseekv3.2-tokenizer&quot;,
+</code></pre>
+<p>测试场景可直接使用项目预置在 <code>tests/assets/tokenizer/deepseekv3_tokenizer/</code> 的 tokenizer，无需重复下载：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh --hf_assets_path ./tests/assets/tokenizer/deepseekv3_tokenizer
 </code></pre>
 <ol>
 <li>下载数据集。以 <a href="https://huggingface.co/datasets/lsb/enwiki20230101">enwiki 数据集</a>

@@ -84,6 +84,8 @@
     </li>
         </ul>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#swap-optimizer-checkpoint">Swap Optimizer 与 Checkpoint</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
@@ -175,7 +177,7 @@
 </ol>
 <h2 id="_4">配置选项</h2>
 <p>Swap Optimizer 配置在模型的 <code>config_registry.py</code> 中，统一使用
-<code>torchtitan_npu.config.configs.OptimizerConfig</code>。</p>
+<code>torchtitan_npu.config.configs.OptimizerConfig</code>，也可在启动训练时通过 CLI 覆盖。</p>
 <table>
 <thead>
 <tr>
@@ -189,19 +191,19 @@
 <tr>
 <td><code>name</code></td>
 <td>str</td>
-<td>"AdamW"</td>
+<td><code>"AdamW"</code></td>
 <td>使用的优化器类型。当前 Swap 特性拦截并支持 <code>Adam</code> 和 <code>AdamW</code>。</td>
 </tr>
 <tr>
 <td><code>swap_optimizer</code></td>
 <td>bool</td>
-<td>false</td>
-<td>是否启用 Swap Optimizer 特性以进行显存流水线卸载。为 false 时使用上游基础 optimizer container。</td>
+<td><code>false</code></td>
+<td>是否启用 Swap Optimizer 特性以进行显存流水线卸载。为 <code>false</code> 时使用上游基础 optimizer container。</td>
 </tr>
 <tr>
 <td><code>swap_optimizer_times</code></td>
 <td>int</td>
-<td>16</td>
+<td><code>16</code></td>
 <td>切片划分次数。用于决定优化器参数卸载与加载时的分块大小。值越大，单次峰值显存占用越小，但可能增加系统的流调度开销。</td>
 </tr>
 </tbody>
@@ -209,7 +211,6 @@
 <h3 id="_5">配置示例</h3>
 <p>在 <code>torchtitan_npu/models/&lt;model&gt;/config_registry.py</code> 的配置函数中设置：</p>
 <pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
-
 optimizer = OptimizerConfig(
     name=&quot;AdamW&quot;,
     lr=3e-4,
@@ -230,9 +231,16 @@ optimizer = OptimizerConfig(
 </code></pre>
 <p>启动时也可以通过命令行覆盖同名字段：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh \
-  --optimizer.swap_optimizer \
-  --optimizer.swap_optimizer_times 16
+  --optimizer.swap-optimizer \
+  --optimizer.swap-optimizer-times 16
 </code></pre>
+<h2 id="swap-optimizer-checkpoint">Swap Optimizer 与 Checkpoint</h2>
+<p>Swap Optimizer 已支持与 TorchTitan DCP checkpoint 组合使用。保存时会等待
+pending swap/offload 完成，并从 CPU cache 保存真实 Adam/AdamW optimizer
+state；加载时会恢复 CPU cache 并重建 device 侧 zero-storage placeholder，
+用于继续训练。</p>
+<p>DTensor 参数会保留 device mesh、placements 和全局 shape/stride metadata，
+保存 checkpoint 时不会把 CPU cache tensor 回搬到 NPU。</p>
               
             </div>
           </div><footer>
