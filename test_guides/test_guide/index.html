@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Test Guide - torchtitan-npu</title>
+    <title>测试使用指南 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Test Guide";
+        var mkdocs_page_name = "\u6d4b\u8bd5\u4f7f\u7528\u6307\u5357";
         var mkdocs_page_input_path = "test_guides/test_guide.md";
         var mkdocs_page_url = null;
       </script>
@@ -90,47 +90,43 @@
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../test_design/">Test Design</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_design/">测试设计</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_design_zh/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Test Guide</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">测试使用指南</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#core-commands">Core Commands</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">常用命令</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#unit-tests">Unit Tests</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">单元测试</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#smoke-tests">Smoke Tests</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">冒烟测试</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#integration-test">Integration Test</a>
+    <li class="toctree-l3"><a class="reference internal" href="#integration-test">集成测试 (Integration Test)</a>
         <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#running">Running</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_5">运行方式</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#command-line-arguments">Command-line Arguments</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_6">命令行参数</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#overridedefinitions-usage">OverrideDefinitions Usage</a>
+    <li class="toctree-l4"><a class="reference internal" href="#overridedefinitions">OverrideDefinitions 使用说明</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#steps-to-add-a-new-test-case">Steps to Add a New Test Case</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_7">新增测试用例步骤</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#config-registry-configuration">Config Registry Configuration</a>
+    <li class="toctree-l4"><a class="reference internal" href="#config-registry">Config Registry 配置</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#model-parallel-commands">Model Parallel Commands</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">模型并行专项命令</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#when-to-use-which-command">When to Use Which Command</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_9">什么时候用哪个命令</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#quick-decision-rule">Quick Decision Rule</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_10">快速判断</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#test-reports">Test Reports</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_11">测试报告</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#quick-tips">Quick Tips</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_12">使用建议</a>
     </li>
     </ul>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_guide_zh/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -155,7 +151,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Test guides</li>
-      <li class="breadcrumb-item active">Test Guide</li>
+      <li class="breadcrumb-item active">测试使用指南</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -164,83 +160,78 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="test-guide">Test Guide</h1>
-<h2 id="core-commands">Core Commands</h2>
-<h3 id="unit-tests">Unit Tests</h3>
-<pre><code class="language-bash"># Run all unit tests and generate reports
-bash .ci/unit_test.sh --generate-report
+                <h1 id="_1">测试使用指南</h1>
+<h2 id="_2">常用命令</h2>
+<h3 id="_3">单元测试</h3>
+<pre><code class="language-bash"># 运行全部单元测试（带 NPU patch 的 torchtitan 上游 UT + 本仓 torchtitan-npu UT）
+bash .ci/unit_test.sh
 
-# Run only local `torchtitan-npu` unit tests
-RUN_TORCHTITAN_UT=false bash .ci/unit_test.sh --generate-report
+# 只运行本仓 `torchtitan-npu` 的单元测试（直接用 pytest）
+python3 -m pytest -v --tb=short tests/unit_tests
 </code></pre>
-<h3 id="smoke-tests">Smoke Tests</h3>
-<pre><code class="language-bash"># Run the default smoke suite (core + extended)
-bash .ci/smoke_test.sh --generate-report
-
-# Run only core smoke
-ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh --generate-report
-
-# Run only extended smoke
-ONLY_EXTENDED_SMOKE=true bash .ci/smoke_test.sh --generate-report
-
-# Run only upstream smoke
-ONLY_UPSTREAM_SMOKE=true bash .ci/smoke_test.sh --generate-report
+<h3 id="_4">冒烟测试</h3>
+<pre><code class="language-bash"># 运行 smoke 套件（torchtitan-npu 集成 smoke + tests/smoke_tests）
+bash .ci/smoke_test.sh
 </code></pre>
-<h3 id="integration-test">Integration Test</h3>
-<p><code>tests/smoke_tests/integration_test.py</code> is the entry point for end-to-end integration tests, used to validate:
-- New model functionality support
-- Feature compatibility
-- Parallelism strategy compatibility</p>
-<h4 id="running">Running</h4>
-<pre><code class="language-bash"># Via .ci/smoke_test.sh (runs core + extended smoke by default)
-ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh --generate-report
+<blockquote>
+<p>注意：<code>.ci/smoke_test.sh</code> 中 <code>run_torchtitan_smoke</code>（上游集成 smoke 路径）当前被注释掉，
+因此默认运行只执行 torchtitan-npu 集成 smoke 和 <code>pytest tests/smoke_tests</code>。</p>
+</blockquote>
+<h3 id="integration-test">集成测试 (Integration Test)</h3>
+<p><code>tests/smoke_tests/integration_test.py</code> 是端到端集成测试入口，用于验证：
+- 新增模型功能支持情况
+- 特性兼容性
+- 并行策略兼容性</p>
+<h4 id="_5">运行方式</h4>
+<pre><code class="language-bash"># 通过 .ci/smoke_test.sh 运行（集成 smoke 是套件的一部分）
+bash .ci/smoke_test.sh
 
-# Run integration_test.py directly
+# 独立运行 integration_test.py
 python tests/smoke_tests/integration_test.py output_dir \
     --test_name all \
     --ngpu 2
 </code></pre>
-<h4 id="command-line-arguments">Command-line Arguments</h4>
+<h4 id="_6">命令行参数</h4>
 <table>
 <thead>
 <tr>
-<th>Argument</th>
-<th>Default</th>
-<th>Description</th>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>output_dir</code></td>
-<td>None (required)</td>
-<td>Output directory for test results</td>
+<td>无（必填）</td>
+<td>测试输出目录</td>
 </tr>
 <tr>
 <td><code>--test_name</code></td>
 <td><code>all</code></td>
-<td>Specific test case name</td>
+<td>指定测试用例名称</td>
 </tr>
 <tr>
 <td><code>--ngpu</code></td>
 <td><code>2</code></td>
-<td>Maximum GPU count</td>
+<td>最大 GPU 数</td>
 </tr>
 </tbody>
 </table>
-<h4 id="overridedefinitions-usage">OverrideDefinitions Usage</h4>
-<p><code>OverrideDefinitions</code> is the configuration class for defining integration test cases:</p>
+<h4 id="overridedefinitions">OverrideDefinitions 使用说明</h4>
+<p><code>OverrideDefinitions</code> 是定义集成测试用例的配置类：</p>
 <pre><code class="language-python">OverrideDefinitions(
-    override_args=[[...]],  # Required: command-line argument list
-    test_descr=&quot;...&quot;,        # Required: test description
-    test_name=&quot;...&quot;,         # Required: test name
-    ngpu=2,                  # Optional: required GPU count
-    disabled=False,          # Optional: whether disabled
+    override_args=[[...]],  # 必填：命令行参数列表
+    test_descr=&quot;...&quot;,        # 必填：测试描述
+    test_name=&quot;...&quot;,         # 必填：测试名称
+    ngpu=2,                  # 可选：所需 GPU 数
+    disabled=False,          # 可选：是否禁用
 )
 </code></pre>
-<h4 id="steps-to-add-a-new-test-case">Steps to Add a New Test Case</h4>
+<h4 id="_7">新增测试用例步骤</h4>
 <ol>
-<li>Open <code>tests/smoke_tests/integration_test.py</code></li>
-<li>Add a new configuration to the <code>smoke_cases</code> list in <code>generate_smoke_tests()</code>:</li>
+<li>打开 <code>tests/smoke_tests/integration_test.py</code></li>
+<li>在 <code>generate_smoke_tests()</code> 函数的 <code>smoke_cases</code> 列表中添加新配置：</li>
 </ol>
 <pre><code class="language-python">OverrideDefinitions(
     [
@@ -256,82 +247,74 @@ python tests/smoke_tests/integration_test.py output_dir \
 )
 </code></pre>
 <ol>
-<li>Run tests to verify:</li>
+<li>运行测试验证：</li>
 </ol>
 <pre><code class="language-bash">python tests/smoke_tests/integration_test.py ./outputs --test_name your_model_tp
 </code></pre>
-<h4 id="config-registry-configuration">Config Registry Configuration</h4>
-<p>Integration tests no longer use <code>tests/smoke_tests/base_test.toml</code>. Each test passes
-<code>--module</code> and <code>--config</code> to <code>scripts/run_train.sh</code>, then appends nested tyro overrides
-such as <code>--training.steps 2</code> or <code>--parallelism.tensor_parallel_degree 2</code>.</p>
-<h3 id="model-parallel-commands">Model Parallel Commands</h3>
-<pre><code class="language-bash"># Basic model-parallel smoke
+<h4 id="config-registry">Config Registry 配置</h4>
+<p>集成测试每个测试用例会向<code>scripts/run_train.sh</code> 传入 <code>--module</code> 和 <code>--config</code>，再追加 <code>tyro</code> 嵌套覆盖参数，例如
+<code>--training.steps 2</code> 或 <code>--parallelism.tensor_parallel_degree 2</code>。</p>
+<h3 id="_8">模型并行专项命令</h3>
+<pre><code class="language-bash"># 基础模型并行冒烟测试
 python3 -m pytest -v tests/smoke_tests/model_parallel/
 
-# Multi-rank model-parallel smoke
+# 多进程模型并行冒烟测试
 RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v tests/smoke_tests/model_parallel/
 </code></pre>
-<h2 id="when-to-use-which-command">When to Use Which Command</h2>
+<h2 id="_9">什么时候用哪个命令</h2>
 <table>
 <thead>
 <tr>
-<th>Command</th>
-<th>Use It When</th>
+<th>命令</th>
+<th>适用场景</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>.ci/unit_test.sh</code></td>
-<td>You changed hardware-independent logic such as converters, config, helpers, or patches</td>
+<td>修改的是硬件无关逻辑，比如 converter、config、helper、patch</td>
 </tr>
 <tr>
 <td><code>.ci/smoke_test.sh</code></td>
-<td>You changed real NPU execution paths or wrapper behavior and want the default core + extended smoke set</td>
+<td>修改的是真实 NPU 执行链路或 wrapper 行为，需要跑集成 smoke</td>
 </tr>
 <tr>
-<td><code>ONLY_CORE_SMOKE=true</code></td>
-<td>You changed the minimal training path (i.e., end-to-end integration tests defined in integration_test)</td>
+<td><code>python tests/smoke_tests/integration_test.py ... --test_name &lt;name&gt;</code></td>
+<td>需要单独跑某个端到端集成测试用例</td>
 </tr>
 <tr>
-<td><code>ONLY_EXTENDED_SMOKE=true</code></td>
-<td>You changed local feature or model-parallel behavior</td>
-</tr>
-<tr>
-<td><code>ONLY_UPSTREAM_SMOKE=true</code></td>
-<td>You changed logic that depends on reused torchtitan upstream integration, or want to run the heavier upstream smoke path separately</td>
+<td><code>python3 -m pytest tests/smoke_tests/model_parallel/</code></td>
+<td>修改了模型并行行为</td>
 </tr>
 </tbody>
 </table>
-<h2 id="quick-decision-rule">Quick Decision Rule</h2>
+<h2 id="_10">快速判断</h2>
 <ul>
-<li>Changed only hardware-independent logic: start with <code>.ci/unit_test.sh</code></li>
-<li>Changed NPU feature paths or wrappers: run <code>.ci/smoke_test.sh</code></li>
-<li>Changed training-path wiring: at least run <code>ONLY_CORE_SMOKE=true .ci/smoke_test.sh</code></li>
-<li>Changed model-parallel behavior: run <code>ONLY_EXTENDED_SMOKE=true .ci/smoke_test.sh</code></li>
-<li>Upstream integration compatibility needs a separate check: run <code>ONLY_UPSTREAM_SMOKE=true .ci/smoke_test.sh</code></li>
+<li>只改了硬件无关逻辑：先跑 <code>.ci/unit_test.sh</code></li>
+<li>改了 NPU 特性链路或 wrapper：跑 <code>.ci/smoke_test.sh</code></li>
+<li>改了训练主链路接线：用 <code>integration_test.py --test_name &lt;name&gt;</code> 定向跑对应用例</li>
+<li>改了模型并行行为：跑 <code>pytest tests/smoke_tests/model_parallel/</code></li>
 </ul>
-<h2 id="test-reports">Test Reports</h2>
+<h2 id="_11">测试报告</h2>
 <ul>
-<li>Output directory: <code>test_reports/</code></li>
-<li>Common artifacts:</li>
-<li><code>*.xml</code>: JUnit results</li>
-<li><code>*.html</code>: HTML reports when <code>--generate-report</code> is enabled</li>
-<li><code>coverage/</code>: UT coverage reports</li>
-<li><code>README.md</code>: generated index of report artifacts</li>
+<li>输出目录：<code>test_reports/</code></li>
+<li>常见产物：</li>
+<li><code>smoke_test.log</code>：torchtitan-npu 集成 smoke 日志</li>
+<li><code>integration_tests/</code>：集成测试结果目录</li>
 </ul>
-<h2 id="quick-tips">Quick Tips</h2>
+<h2 id="_12">使用建议</h2>
 <ol>
-<li>Start with the smallest command that matches your change.</li>
-<li>Prefer <code>.ci/unit_test.sh</code> when NPU is not required.</li>
-<li>Use targeted smoke variants instead of full smoke when possible.</li>
-<li>Update docs when test layout or execution changes.</li>
+<li>先跑和改动最匹配的最小命令。</li>
+<li>不依赖 NPU 的改动，优先跑 <code>.ci/unit_test.sh</code>。</li>
+<li>能用 <code>integration_test.py --test_name &lt;name&gt;</code> 定向跑单个用例时，就不要默认全量跑 smoke。</li>
+<li>如果测试布局或执行方式变了，记得同步更新文档。</li>
 </ol>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../test_design_zh/" class="btn btn-neutral float-left" title="测试设计"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../test_guide_zh/" class="btn btn-neutral float-right" title="测试使用指南">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../test_design/" class="btn btn-neutral float-left" title="测试设计"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../user-guides/installation/" class="btn btn-neutral float-right" title="软件安装">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -354,10 +337,10 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../test_design_zh/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../test_design/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../test_guide_zh/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../user-guides/installation/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

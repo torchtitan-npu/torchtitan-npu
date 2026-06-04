@@ -112,13 +112,9 @@
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design/">Test Design</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design/">测试设计</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_design_zh/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide/">Test Guide</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide_zh/">测试使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -165,10 +161,10 @@
 </ol>
 <h2 id="_1">实现原理</h2>
 <p><code>torchtitan_npu</code> 在
-<code>torchtitan_npu/patches/distributed/custom_context_parallel.py</code> 中扩展
-<code>torchtitan.distributed.context_parallel.apply_cp_to_attention_module</code>，
-通过 <code>attention_type</code> 将 CP 路由到 NPU 自定义实现，同时保留上游 CP 的默认路径。
-目前已提供如下两个自定义 CP context：</p>
+<code>torchtitan_npu/distributed/context_parallel/registry.py</code> 中维护一个 NPU 自有的
+CP 策略注册表，并提供入口函数 <code>apply_cp_to_attention_module</code>，在 CP 开启时自动为
+attention 模块匹配并应用合适的 CP 策略。目前已提供两个自定义 CP ，分别是
+SDPA Ulysses CP 和 DSA CP：</p>
 <h3 id="sdpa-ulysses-cp">SDPA Ulysses CP</h3>
 <p>定义在 <code>torchtitan_npu/distributed/context_parallel/ulysses_cp.py</code>，为常用的
 SDPA 实现 Ulysses 风格的 CP。通过自定义 Context Parallel Context，我们在
@@ -180,7 +176,7 @@ SDPA 实现 Ulysses 风格的 CP。通过自定义 Context Parallel Context，�
 无需额外配置开关。</p>
 </blockquote>
 <h3 id="dsa-cp">DSA CP</h3>
-<p>定义在 <code>torchtitan_npu/distributed/context_parallel/dsa_cp.py</code>，为
+<p>定义在 <code>torchtitan_npu/distributed/context_parallel/sparse_attention_cp.py</code>，为
 DeepSeek Sparse Attention 提供 AllGatherKV 风格的 CP。本项目在遵循
 torch 原生 CP 设计逻辑的基础上，通过自定义 Context Parallel Context，
 将注意力部分的 forward 函数替换为 CP 感知实现，对 KV 相关激活做 CP 域的
@@ -237,7 +233,8 @@ CP 场景下的正确性。</p>
 <blockquote>
 <p><strong>注意</strong>：DeepSeek-V3.2 的 DSA CP 依赖 <code>npu_dsa</code> converter。
 若 <code>context_parallel_degree &gt; 1</code> 但 converters 中没有 <code>npu_dsa</code>，
-并行化阶段会报错，提示 <code>CP on deepseek_v32 requires 'npu_dsa' converter</code>。</p>
+attention 模块无法命中任何已注册的 CP 策略 detector，并行化阶段会抛出
+<code>NotImplementedError</code>，提示 <code>No custom CP strategy found for module ...</code>。</p>
 </blockquote>
 <p>CP类型由框架根据模型及转换器配置<strong>自动选择</strong>，无需手动指定：</p>
 <ul>

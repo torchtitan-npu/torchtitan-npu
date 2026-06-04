@@ -86,10 +86,6 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#seed-checkpoint">创建 seed checkpoint</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_3">格式转换</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_4">常见问题</a>
-    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
@@ -126,13 +122,9 @@
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -471,33 +463,6 @@ bash scripts/run_train.sh \
   --parallelism.expert_parallel_degree 1
 </code></pre>
 <p>生成的 <code>step-0</code> checkpoint 后续可作为 <code>checkpoint.initial_load_path</code> 使用。</p>
-<h2 id="_3">格式转换</h2>
-<p>将 DCP checkpoint 合并为单个 PyTorch <code>.pt</code> 文件：</p>
-<pre><code class="language-bash">python -m torch.distributed.checkpoint.format_utils dcp_to_torch \
-  ./outputs/dsv32_4layers/checkpoint/step-1000 \
-  checkpoint.pt
-</code></pre>
-<p>HF safetensors 到 DCP 的离线转换依赖模型的 state dict adapter 和对应模型入口。
-当前仓库中的 <code>scripts/checkpoint_conversion/convert_from_hf.py</code> 仍保留旧版
-<code>TrainSpec</code> 调用方式，对已经迁移到 <code>config_registry.py</code> 的模型不一定可直接使用。
-对于 DeepSeek-V3.2、DeepSeek-V4、Qwen3 等当前模型，优先使用
-<code>checkpoint.initial_load_in_hf=True</code> 在训练启动时直接读取 HF 权重。</p>
-<h2 id="_4">常见问题</h2>
-<p><strong>为什么配置了 <code>initial_load_path</code> 但没有加载？</strong></p>
-<p>通常有两个原因：一是没有设置 <code>checkpoint.enable=True</code>；二是当前
-<code>{dump_folder}/{checkpoint.folder}</code> 已经存在可用 checkpoint，框架优先从当前
-输出目录续训。</p>
-<p><strong>为什么最后一步 checkpoint 不能完整续训？</strong></p>
-<p><code>last_save_model_only=True</code> 时，最后一步只保存模型权重，不包含优化器、
-学习率调度器和训练状态。需要完整续训时，请使用中间 DCP checkpoint，或在配置中将
-<code>last_save_model_only=False</code>。</p>
-<p><strong>DCP 和 HF 权重应该怎么选？</strong></p>
-<p>断点续训、故障恢复和分布式重分片优先用 DCP；从开源模型初始化或导出给推理生态时用
-HF safetensors。</p>
-<p><strong>SwapOptimizer 下中间 DCP 保存和续训是否支持完整优化器状态？</strong></p>
-<p>已支持。启用 SwapOptimizer 时，中间 DCP checkpoint 会保存 CPU 侧真实
-optimizer state；resume 时会恢复 CPU cache 并重建 device 侧 zero-storage
-placeholder，可用于完整训练状态断点续训。</p>
               
             </div>
           </div><footer>

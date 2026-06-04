@@ -120,13 +120,9 @@
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">Test Design</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design_zh/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">Test Guide</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide_zh/">测试使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -219,7 +215,7 @@
 <p>torchtitan-npu 为 Qwen3 提供了 Ulysses 风格的 CP 实现。在配置中设置 <code>context_parallel_degree &gt; 1</code> 即可启用：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh --parallelism.context_parallel_degree 4
 </code></pre>
-<p>关于 Ulysses CP 的实现原理和约束条件，详见<a href="parallelism/custom_cp.md">自定义 Context Parallel 特性文档</a>。</p>
+<p>关于 Ulysses CP 的实现原理和约束条件，详见<a href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性文档</a>。</p>
 <h2 id="_5">权重加载与保存</h2>
 <h3 id="_6">加载预训练权重</h3>
 <p>SFT 配置默认从 HuggingFace 格式加载预训练权重：</p>
@@ -232,7 +228,7 @@
 <h3 id="_7">切换为自己的预训练权重</h3>
 <p>修改 <code>checkpoint.initial_load_path</code> 和 <code>hf_assets_path</code> 指向新的权重目录：</p>
 <pre><code class="language-bash">--checkpoint.initial_load_path /path/to/your/model \
---model.hf_assets_path /path/to/your/model
+--hf_assets_path /path/to/your/model
 </code></pre>
 <h3 id="_8">保存训练后的权重</h3>
 <p>训练完成后，权重会自动保存到 <code>checkpoint.folder</code> 指定的路径。可通过 <code>checkpoint.interval</code> 设置保存间隔：</p>
@@ -253,7 +249,7 @@
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../../feature_guides/parallelism/custom_cp/" class="btn btn-neutral float-left" title="自定义 Context Parallel 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../../test_guides/test_design/" class="btn btn-neutral float-right" title="Test Design">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../test_guides/test_design/" class="btn btn-neutral float-right" title="测试设计">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>

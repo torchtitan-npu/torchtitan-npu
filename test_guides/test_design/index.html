@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Test Design - torchtitan-npu</title>
+    <title>测试设计 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Test Design";
+        var mkdocs_page_name = "\u6d4b\u8bd5\u8bbe\u8ba1";
         var mkdocs_page_input_path = "test_guides/test_design.md";
         var mkdocs_page_url = null;
       </script>
@@ -90,31 +90,27 @@
               </ul>
               <p class="caption"><span class="caption-text">Test guides</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Test Design</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">测试设计</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#purpose">Purpose</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">文档目的</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#test-layers">Test Layers</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">测试分层</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#how-to-choose-a-layer">How to Choose a Layer</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">怎么判断放哪层</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#what-smoke-means-here">What "Smoke" Means Here</a>
+    <li class="toctree-l2"><a class="reference internal" href="#smoke">本仓里的 Smoke 是什么</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#rules-for-adding-tests">Rules for Adding Tests</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">新增测试的基本规则</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#readability-guidelines">Readability Guidelines</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">可读性要求</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#build-entry-points">Build Entry Points</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">执行入口</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#pre-submission-checklist">Pre-Submission Checklist</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">提交前自查</a>
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_design_zh/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_guide/">Test Guide</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../test_guide_zh/">测试使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -139,7 +135,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Test guides</li>
-      <li class="breadcrumb-item active">Test Design</li>
+      <li class="breadcrumb-item active">测试设计</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -148,116 +144,113 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="test-design">Test Design</h1>
-<h2 id="purpose">Purpose</h2>
-<p>This document explains the current test layering in <code>torchtitan-npu</code> and helps contributors decide where a new test should live.</p>
-<p>The goals are simple:
-- Keep unit tests fast and hardware-independent
-- Keep smoke tests focused on real execution paths
-- Make test placement easy to understand for new contributors</p>
-<h2 id="test-layers">Test Layers</h2>
+                <h1 id="_1">测试设计</h1>
+<h2 id="_2">文档目的</h2>
+<p>这份文档说明 <code>torchtitan-npu</code> 当前的测试分层，帮助开发者判断测试新用例应该放在哪一层。</p>
+<p>测试目标：
+- 单元测试保持快速、硬件无关
+- 冒烟测试聚焦真实执行链路
+- 让开发者更容易判断测试该写在哪里</p>
+<h2 id="_3">测试分层</h2>
 <table>
 <thead>
 <tr>
-<th>Layer</th>
-<th>Directory</th>
-<th>NPU Required</th>
-<th>Use Cases</th>
+<th>分层</th>
+<th>目录</th>
+<th>是否需要 NPU</th>
+<th>适用场景</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Function UT</td>
+<td>函数级单元测试</td>
 <td><code>tests/unit_tests/functions/</code></td>
-<td>No</td>
-<td>Pure functions, config parsing, helpers, validation logic</td>
+<td>否</td>
+<td>纯函数、配置解析、小工具、参数校验</td>
 </tr>
 <tr>
-<td>Module UT</td>
+<td>模块级单元测试</td>
 <td><code>tests/unit_tests/modules/</code></td>
-<td>No</td>
-<td>Wrappers, checkpoint logic, distributed initialization logic</td>
+<td>否</td>
+<td>wrapper、checkpoint、分布式初始化等模块逻辑</td>
 </tr>
 <tr>
-<td>Converter UT</td>
+<td>转换器单元测试</td>
 <td><code>tests/unit_tests/converters/</code></td>
-<td>No</td>
-<td>Converter registration, replacement, and mapping logic</td>
+<td>否</td>
+<td>converter 注册、替换、映射逻辑</td>
 </tr>
 <tr>
-<td>Patch UT</td>
+<td>补丁单元测试</td>
 <td><code>tests/unit_tests/patches/</code></td>
-<td>No</td>
-<td>Patch activation, wiring, and small patch behavior</td>
+<td>否</td>
+<td>patch 激活、接线和小范围行为验证</td>
 </tr>
 <tr>
-<td>Feature Smoke</td>
+<td>特性冒烟测试</td>
 <td><code>tests/smoke_tests/features/</code></td>
-<td>Yes</td>
-<td>Real NPU feature paths, fused ops, wrapper execution chains</td>
+<td>是</td>
+<td>真实 NPU 特性链路、融合算子、wrapper 执行链</td>
 </tr>
 <tr>
-<td>Model Parallel Smoke</td>
+<td>模型并行冒烟测试</td>
 <td><code>tests/smoke_tests/model_parallel/</code></td>
-<td>Yes</td>
-<td>CP/TP/EP behavior, mesh setup, DTensor, model-parallel scenarios</td>
+<td>是</td>
+<td>CP/TP/EP、mesh、DTensor、模型并行场景</td>
 </tr>
 </tbody>
 </table>
-<h2 id="how-to-choose-a-layer">How to Choose a Layer</h2>
+<h2 id="_4">怎么判断放哪层</h2>
 <ul>
-<li>If the test can run without NPU, prefer UT</li>
-<li>If the value of the test depends on real NPU execution, use smoke</li>
-<li>If the change is about mesh, shard, placement, or DTensor behavior, use model-parallel smoke</li>
-<li>If the change is about a small helper or pure transformation, keep it in UT</li>
+<li>不需要 NPU 就能验证的，优先放单元测试</li>
+<li>必须依赖真实 NPU 才有意义的，放冒烟测试</li>
+<li>涉及 mesh、shard、placement、DTensor 的，放模型并行冒烟测试</li>
+<li>只是小工具或纯转换逻辑的，放单元测试</li>
 </ul>
-<h2 id="what-smoke-means-here">What "Smoke" Means Here</h2>
-<p>In this repository, smoke tests are not import checks. They are integration-style checks over real execution paths.</p>
-<p><code>bash .ci/smoke_test.sh</code> runs two parts by default:
-- Core smoke: minimal end-to-end training path validation
-- Extended smoke: local feature and model-parallel smoke suites</p>
-<p>Upstream smoke is kept as a separate targeted entry. It is heavier, takes longer, and may be affected by low-level hardware issues, so it is not part of the default smoke path.</p>
-<h2 id="rules-for-adding-tests">Rules for Adding Tests</h2>
+<h2 id="smoke">本仓里的 Smoke 是什么</h2>
+<p>这里的 smoke 不是简单的导入检查，而是对真实执行链路做集成式验证。</p>
+<p><code>bash .ci/smoke_test.sh</code> 会先跑 torchtitan-npu 集成 smoke（<code>run_torchtitan_npu_smoke</code>，
+内部驱动 <code>integration_test.py</code>），再跑 <code>pytest tests/smoke_tests</code>。</p>
+<h2 id="_5">新增测试的基本规则</h2>
 <ol>
-<li>Prefer real behavior validation over import-only checks.</li>
-<li>Do not add placeholder tests that only make the suite look larger.</li>
-<li>Keep UT fully hardware-independent.</li>
-<li>Use smoke only when the behavior matters on real NPU.</li>
-<li>If a test depends on external artifacts or a special runtime setup, state that clearly.</li>
+<li>优先验证真实行为，不要只做导入检查。</li>
+<li>不要用 placeholder 测试充数。</li>
+<li>单元测试必须保持硬件无关。</li>
+<li>只有在真实 NPU 上才有意义的行为，才放到 smoke。</li>
+<li>如果测试依赖外部产物或特殊运行环境，要写清楚。</li>
 </ol>
-<h2 id="readability-guidelines">Readability Guidelines</h2>
+<h2 id="_6">可读性要求</h2>
 <ul>
-<li>Use test names that describe behavior and expected outcome directly</li>
-<li>Keep setup short and easy to scan</li>
-<li>Use blank lines to separate Arrange, Act, and Assert when it helps readability</li>
-<li>Let assertions show the exact behavior being protected</li>
+<li>测试名直接表达“行为 + 预期结果”</li>
+<li>setup 尽量简短</li>
+<li>必要时用空行区分 Arrange、Act、Assert</li>
+<li>断言要直接体现这个测试在保护什么</li>
 </ul>
-<p>Avoid:
-- Long per-test docstrings
-- Comments that just restate the test name
-- Decorative section comments with no real meaning</p>
-<h2 id="build-entry-points">Build Entry Points</h2>
+<p>避免：
+- 很长的测试函数 docstring
+- 只是重复测试名的注释
+- 没有实际意义的分隔线注释</p>
+<h2 id="_7">执行入口</h2>
 <ul>
-<li><code>bash .ci/unit_test.sh</code>: run all unit tests</li>
-<li><code>bash .ci/smoke_test.sh</code>: run all smoke tests</li>
+<li><code>bash .ci/unit_test.sh</code>：运行全部单元测试</li>
+<li><code>bash .ci/smoke_test.sh</code>：运行全部冒烟测试</li>
 </ul>
-<p>Useful variants:
-- <code>ONLY_CORE_SMOKE=true bash .ci/smoke_test.sh</code>
-- <code>ONLY_EXTENDED_SMOKE=true bash .ci/smoke_test.sh</code>
-- <code>ONLY_UPSTREAM_SMOKE=true bash .ci/smoke_test.sh</code></p>
-<h2 id="pre-submission-checklist">Pre-Submission Checklist</h2>
+<p>常用定向命令：
+- <code>python tests/smoke_tests/integration_test.py &lt;输出目录&gt; --test_name &lt;name&gt;</code>：单独跑某个集成用例
+- <code>python3 -m pytest tests/smoke_tests/model_parallel/</code>：直接跑模型并行 smoke</p>
+<h2 id="_8">提交前自查</h2>
 <ol>
-<li>Is the test in the right directory?</li>
-<li>Does it validate real behavior instead of a placeholder path?</li>
-<li>Can a new contributor understand the test quickly?</li>
-<li>If the change affects test execution or test usage, did you update the docs?</li>
+<li>测试是不是放在正确目录？</li>
+<li>验证的是不是实际行为，而不是占位路径？</li>
+<li>其他开发者能不能很快看懂这条测试？</li>
+<li>如果改动影响了测试入口或使用方式，文档有没有同步更新？</li>
 </ol>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../../recipe/sft/" class="btn btn-neutral float-left" title="SFT 指令微调"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../test_design_zh/" class="btn btn-neutral float-right" title="测试设计">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../test_guide/" class="btn btn-neutral float-right" title="测试使用指南">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -283,7 +276,7 @@
       <span><a href="../../recipe/sft/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../test_design_zh/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../test_guide/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
