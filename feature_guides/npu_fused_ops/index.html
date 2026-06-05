@@ -72,6 +72,12 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#smla-sparse-flash-mla">SMLA (Sparse Flash MLA)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#mhcpre">MHCPre</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#mhcpost">MHCPost</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#permute">Permute</a>
@@ -160,11 +166,16 @@ model_converters = ModelConvertersContainer.Config(
 </code></pre>
 <p>旧 TOML 样例中的 <code>converters = ["..."]</code> 仅适用于尚未迁移的旧入口。</p>
 <p>当前版本支持以下 ModelConverters ，前往对应章节查看功能介绍及启用方式：
-  - <a href="#dsa-deepseek-sparse-attention">DSA</a>
-  - <a href="#gmmgrouped-matmul">GMM</a>
+- <a href="#npu-融合算子适配">NPU 融合算子适配</a>
+  - <a href="#如何配置">如何配置</a>
+  - <a href="#dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</a>
+  - <a href="#smla-sparse-flash-mla">SMLA (Sparse Flash MLA)</a>
+  - <a href="#mhcpre">MHCPre</a>
+  - <a href="#mhcpost">MHCPost</a>
+  - <a href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
   - <a href="#permute">Permute</a>
   - <a href="#rmsnorm">RMSNorm</a>
-  - <a href="#rope">Rope</a></p>
+  - <a href="#rope">RoPE</a></p>
 <p>关于本仓库适配的各融合算子的详细说明，请查看对应的 NPU 融合算子开发者文档。</p>
 <hr />
 <h2 id="dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</h2>
@@ -201,6 +212,39 @@ model_converters = ModelConvertersContainer.Config(
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/dsa.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_lightning_indexer.md"><code>npu_lightning_indexer</code></a> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_lightning_indexer_grad_kl_loss.md"><code>npu_sparse_lightning_indexer_grad_kl_loss</code></a>   <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_sparse_flash_attention.md"><code>npu_sparse_flash_attention</code></a></p>
+<hr />
+<h2 id="smla-sparse-flash-mla">SMLA (Sparse Flash MLA)</h2>
+<p><code>npu_smla</code> 面向 DeepSeek-V4 的稀疏 MLA 注意力路径。该 ModelConverter 会根据硬件类型选择实现：
+在 A5 上替换为 <code>torch_npu</code> 提供的 SMLA 融合算子路径，并将 SMLA 所需的 attention masks 接入 torchtitan 原生 <code>post_dataloading_process</code>；在非 A5 场景下继续使用兼容原有 DeepSeek-V4 sparse attention / LI / LI loss 的 NPU 实现。</p>
+<p><strong>配置示例：</strong></p>
+<pre><code class="language-python">get_model_converter_config(&quot;npu_smla&quot;)
+</code></pre>
+<p>DeepSeek-V4 使用 <code>npu_smla</code> 时，由于LI loss的计算和对应的反向梯度计算整合在了npu_sparse_lightning_indexer_klloss_grad算子中，因此并不会显式计算LI Loss，导致LI loss 的日志记录行为与 DeepSeek-V3.2 默认路径不同。默认日志级别下，SMLA 路径不会额外计算和打印 LI loss，也不会通过 <code>DSAIndexerLossLoggingHelper.save_loss_to_tracker</code>记录该值。这样可以避免在 SMLA 融合反向算子之外，为了日志再额外计算一次 loss 带来的性能开销。</p>
+<p>如需在调试阶段查看 LI loss，可将 <code>torchtitan_npu.converters.kernels.npu_smla</code> logger 打开到 <code>DEBUG</code> 级别，例如在调试入口中加入：</p>
+<pre><code class="language-python">import logging
+
+logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLevel(
+    logging.DEBUG
+)
+</code></pre>
+<p>开启后，SMLA 反向路径会额外计算 LI loss，并将其写入 <code>DSAIndexerLossLoggingHelper</code> tracker，后续可继续按现有 indexer loss 日志链路汇总打印。
+该模式仅建议用于问题定位或与 DeepSeek-V3.2 行为对齐验证；正式性能测试和生产训练建议保持默认关闭，否则会引入额外计算、同步和日志记录开销。</p>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/npu_smla.py</code></p>
+<hr />
+<h2 id="mhcpre">MHCPre</h2>
+<p><code>npu_mhc_pre</code> 面向 DeepSeek-V4 的 MHC pre-processing 路径，将模型中的 <code>HcPre</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>torch_npu.npu_hc_pre</code> 及其反向融合算子；在非 A5 场景下使用已有 Triton 实现。DeepSeek-V4 默认配置中已启用该 converter。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-python">get_model_converter_config(&quot;npu_mhc_pre&quot;)
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/mhc_prepost.py</code></p>
+<hr />
+<h2 id="mhcpost">MHCPost</h2>
+<p><code>npu_mhc_post</code> 面向 DeepSeek-V4 的 MHC post-processing 路径，将模型中的 <code>HcPost</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>torch_npu.npu_hc_post</code> 及其反向融合算子；在非 A5 场景下会走已有 Triton 实现并替换 <code>HcHead</code>。</p>
+<p>该 converter 当前未在 DeepSeek-V4 默认 <code>config_registry.py</code> 中打开，主要是出于性能考虑：A5 上建议按需打开以使用 MHC post 融合算子；A3 上建议保持关闭，继续使用默认模型路径，避免 converter 替换带来的额外开销或性能退化。</p>
+<p><strong>配置示例</strong>：</p>
+<pre><code class="language-python">get_model_converter_config(&quot;npu_mhc_post&quot;)
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/mhc_prepost.py</code></p>
 <hr />
 <h2 id="gmmgrouped-matmul">GMM（Grouped MatMul）</h2>
 <p>在 MoE 模块中，每个专家执行前馈网络（FFN）运算：如 Swiglu FFN：输入先经过升维变换 <code>w1</code>，再通过激活函数，最后经过降维变换 <code>w2</code> 得到输出。</p>

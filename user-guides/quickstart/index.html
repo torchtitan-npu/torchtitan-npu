@@ -173,9 +173,17 @@ hf download lsb/enwiki20230101 --repo-type=dataset --local-dir .
 cd ../..
 </code></pre>
 <h2 id="cann">配置 CANN 环境变量</h2>
-<pre><code class="language-bash">source /usr/local/Ascend/cann/set_env.sh
+<p>启动训练前，需要先在当前 shell 中加载 CANN 相关环境变量。启动脚本（<code>run_train.sh</code> /
+<code>run_train_deepseekv4.sh</code> / <code>run_train_multinodes.sh</code>）本身不再内置这些 <code>source</code> 命令，请按需自行执行：</p>
+<pre><code class="language-bash"># CANN 基础环境（必需）
+source /usr/local/Ascend/cann/set_env.sh
+
+# ATB 加速库环境（使用 ATB 融合算子时必需）
+source /usr/local/Ascend/nnal/atb/set_env.sh
+
+# 自定义算子环境（仅在启用 custom operators 时需要）
+source /usr/local/Ascend/vendors/custom_transformer/bin/set_env.bash
 </code></pre>
-<p>如果环境中使用的是其他 CANN 安装路径，请按实际路径调整。</p>
 <h2 id="_3">启动训练任务</h2>
 <p>启动 torchtitan-npu 训练任务时，推荐使用以下脚本：单机环境使用 <code>scripts/run_train.sh</code>，多机环境使用
 <code>scripts/run_train_multinodes.sh</code>。以下展示了一些常见任务的启动方式。</p>
