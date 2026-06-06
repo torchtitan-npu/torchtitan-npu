@@ -175,8 +175,9 @@
 <h3 id="1-inductor_npu_ext">1. 安装 inductor_npu_ext</h3>
 <p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
 <pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
-cd torchair/experimental/_inductor_npu_ext/
-pip3 install -e ./python/
+cd torchair
+git checkout 3c9418c2
+pip3 install -e experimental/_inductor_npu_ext/python/
 cd -
 </code></pre>
 <h3 id="2-compile">2. 配置 compile</h3>
@@ -206,7 +207,7 @@ export TORCHINDUCTOR_AUTOGRAD_CACHE=0
 <p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致
 编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
 <pre><code class="language-bash">rm -rf /root/.cache
-rm -rf /tmp/*
+rm -rf /tmp/* /tmp/.[!.]*
 </code></pre>
               
             </div>
