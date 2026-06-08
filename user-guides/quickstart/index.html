@@ -174,7 +174,7 @@ cd ../..
 </code></pre>
 <h2 id="cann">配置 CANN 环境变量</h2>
 <p>启动训练前，需要先在当前 shell 中加载 CANN 相关环境变量。启动脚本（<code>run_train.sh</code> /
-<code>run_train_deepseekv4.sh</code> / <code>run_train_multinodes.sh</code>）本身不再内置这些 <code>source</code> 命令，请按需自行执行：</p>
+<code>run_train_multinodes.sh</code>）本身不再内置这些 <code>source</code> 命令，请按需自行执行：</p>
 <pre><code class="language-bash"># CANN 基础环境（必需）
 source /usr/local/Ascend/cann/set_env.sh
 
@@ -182,7 +182,7 @@ source /usr/local/Ascend/cann/set_env.sh
 source /usr/local/Ascend/nnal/atb/set_env.sh
 
 # 自定义算子环境（仅在启用 custom operators 时需要）
-source /usr/local/Ascend/vendors/custom_transformer/bin/set_env.bash
+source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 </code></pre>
 <h2 id="_3">启动训练任务</h2>
 <p>启动 torchtitan-npu 训练任务时，推荐使用以下脚本：单机环境使用 <code>scripts/run_train.sh</code>，多机环境使用
@@ -198,8 +198,8 @@ source /usr/local/Ascend/vendors/custom_transformer/bin/set_env.bash
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-* <code>MODULE</code>: 指定模型 Python 模块，例如 <code>torchtitan_npu.models.deepseek_v32</code>。
-* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，例如 <code>deepseek_v32_671b_4layers_debug</code>。
+* <code>MODULE</code>: 指定模型 Python 模块，默认 <code>torchtitan_npu.models.deepseek_v32</code>。切换模型时改为对应模块，例如 DeepSeek-V4 改为 <code>torchtitan_npu.models.deepseek_v4</code>。
+* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>deepseek_v4_285b_debug_4_layers</code>。
 * <code>NGPU</code>: 指定单节点参与训练的 NPU 数量，<code>scripts/run_train.sh</code> 默认值为 16。
 * <code>--training.steps</code> 与 <code>--training.global_batch_size</code>: 动态覆盖 registry 配置中的字段。</p>
 </blockquote>
@@ -219,7 +219,8 @@ LOCAL_HOST=`ifconfig|grep &quot;inet 192.168&quot;| awk '{print $2}'` # 将 &quo
 <blockquote>
 <p>[!NOTE]
 * 脚本会自动通过 <code>LOCAL_HOST</code> 匹配 <code>IPs</code> 数组以推导当前机器的 <code>NODE_RANK</code>。若提取规则错误导致未匹配成功，脚本将报错退出。
-* 多机通信依赖相应的端口开放，请确保 <code>MASTER_PORT</code> (默认 6300) 以及 HCCL 通信基础端口 (默认 30000) 不被防火墙拦截。</p>
+* 多机通信依赖相应的端口开放，请确保 <code>MASTER_PORT</code> (默认 6300) 以及 HCCL 通信基础端口 (默认 30000) 不被防火墙拦截。
+* 脚本中设置的 <code>HCCL_CONNECT_TIMEOUT</code>、<code>HCCL_EXEC_TIMEOUT</code>、<code>ACL_DEVICE_SYNC_TIMEOUT</code> 等通信与超时相关环境变量，可按集群规模和网络状况调整，各变量含义详见<a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/maintenref/envvar/envref_07_0001.html">《CANN 环境变量参考》</a>。</p>
 </blockquote>
 <h3 id="rank">排查启动报错:查看更多 rank 日志</h3>
 <blockquote>
