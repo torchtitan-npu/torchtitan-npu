@@ -183,8 +183,8 @@ model_converters = ModelConvertersContainer.Config(
 <img src="../../assets/DSA_overview.png" style="width:80%; max-width: 1200px" >
 </p>
 
-<p>DSA 是DeepSeek-V3.2中引入的一种特殊注意力机制，主要由图中的两个模块构成：<strong>Lightning Indexer</strong> 筛选出少量高价值token的索引；这些索引被用于高效的 <strong>稀疏 Attention 计算</strong> (图中 Multi-Query Attention部分)。</p>
-<p>针对 DeepSeek V3.2 模型的 Attention 模块，将以上两种核心组件替换为对应的 NPU 融合算子。具体对应关系如下：</p>
+<p>DSA 是 DeepSeek-V3.2 中引入的一种特殊注意力机制，主要由图中的两个模块构成：<strong>Lightning Indexer</strong> 筛选出少量高价值token的索引；这些索引被用于高效的 <strong>稀疏 Attention 计算</strong> (图中 Multi-Query Attention部分)。</p>
+<p>针对 DeepSeek-V3.2 模型的 Attention 模块，将以上两种核心组件替换为对应的 NPU 融合算子。具体对应关系如下：</p>
 <table>
 <thead>
 <tr>
@@ -274,7 +274,7 @@ logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLev
 <pre><code class="language-python">get_model_converter_config(&quot;npu_rms_norm&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rms_norm.py</code> \
-<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/（beta）torch_npu-npu_rms_norm.md"><code>npu_grouped_matmul</code></a></p>
+<strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/（beta）torch_npu-npu_rms_norm.md"><code>npu_rms_norm</code></a></p>
 <hr />
 <h2 id="rope">RoPE</h2>
 <p>RoPE 将 token 位置相关的旋转矩阵应用于自注意力机制中的 Query 和 Key 向量，使每对 token 之间的相对位置信息在 Attention 计算中自然包含 Query 和 Key 的乘积。</p>

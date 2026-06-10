@@ -200,7 +200,7 @@
 <li>当 $A \le B$（宽矩阵，如 FFN 中的中间层）时，系数为 1，不做额外调整</li>
 <li>当 $A &gt; B$（高矩阵，如输出层）时，按 $\sqrt{A/B}$ 缩放</li>
 </ul>
-<p>这种设计使得 Muon 可以在不同形状的矩阵上保持相似的收敛行为。由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将Adamw的学习率放大10倍来作为Muon的学习率。这就是为什么该模式需要配合 <code>MuonLRSchedulersContainer</code> 使用。</p>
+<p>这种设计使得 Muon 可以在不同形状的矩阵上保持相似的收敛行为。由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将AdamW的学习率放大10倍来作为Muon的学习率。这就是为什么该模式需要配合 <code>MuonLRSchedulersContainer</code> 使用。</p>
 <h4 id="match_rms_adamw">match_rms_adamw 模式详解</h4>
 <p>该模式来自 Moonshot 团队的论文 <a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a>。调整公式为：</p>
 <p>$$\gamma_{\text{adjusted}} = 0.2 \times \gamma \times \sqrt{\max(A, B)}$$</p>

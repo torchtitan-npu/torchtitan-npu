@@ -140,8 +140,8 @@
 <p>在大规模语言模型的训练与推理优化中，MTP 通过单次前向传播同时预测多个连续目标 Token，大幅提升模型训练效率与数据利用率。传统单 Token 预测仅能学习逐词依赖关系，MTP 则通过扩展预测长度、引入辅助损失函数，显著加速模型收敛速度，尤其在长文本、代码、多轮对话等任务上效果显著。
 torchtitan_npu在deepseek_v32模型的基础上进一步适配了MTP训练特性，实现了可配置长度的MTP训练，同时支持FSDP2/EP/TP等分布式训练。</p>
 <h2 id="_1">实现原理</h2>
-<p>参考<a href="https://arxiv.org/pdf/2412.19437">Deepseek-V3的技术报告</a>,我们在Deepseek_V32模型代码中引入了<code>MTPModule</code>类的定义，其继承于原有的<code>TransformerBlockV32</code>类，并在此基础上新增了MTP模块所需的额外结构与参数。此外，为最大化复用原有 Transformer 层成熟的分布式训练实现，我们在模型顶层定义中，将标准 Transformer Layer 与 MTP Layer 统一封装至<code>model.layers</code>列表中，实现与原有FSDP2、EP、TP等分布式并行逻辑的无缝兼容。相关代码见<code>torchtitan_npu/models/deepseek_v32/model.py</code></p>
-<p>为了实现 MTP 模块的有效训练，我们新增了适配 MTP 模块的训练损失函数。具体而言，每个MTPModule都会独立计算对应的交叉熵损失；在此基础上，模型总训练损失被定义为主损失与 MTP 损失的加权和。相关代码实现见<code>torchtitan-npu/patches/torchtitan/loss.py</code></p>
+<p>参考<a href="https://arxiv.org/pdf/2412.19437">Deepseek-V3的技术报告</a>，我们在Deepseek_V32模型代码中引入了<code>MTPModule</code>类的定义，其继承于原有的<code>TransformerBlockV32</code>类，并在此基础上新增了MTP模块所需的额外结构与参数。此外，为最大化复用原有 Transformer 层成熟的分布式训练实现，我们在模型顶层定义中，将标准 Transformer Layer 与 MTP Layer 统一封装至<code>model.layers</code>列表中，实现与原有FSDP2、EP、TP等分布式并行逻辑的无缝兼容。相关代码见<code>torchtitan_npu/models/deepseek_v32/model.py</code></p>
+<p>为了实现 MTP 模块的有效训练，我们新增了适配 MTP 模块的训练损失函数。具体而言，每个MTPModule都会独立计算对应的交叉熵损失；在此基础上，模型总训练损失被定义为主损失与 MTP 损失的加权和。相关代码实现见<code>torchtitan_npu/patches/torchtitan/loss.py</code></p>
 <h2 id="_2">配置选项</h2>
 <p><code>num_mtp_modules</code> 和 <code>mtp_loss_weight</code> 已作为 NPU 扩展字段定义在
 <code>torchtitan_npu.config.configs.TrainingConfig</code> 中，在模型

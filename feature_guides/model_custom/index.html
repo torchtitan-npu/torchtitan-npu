@@ -174,7 +174,7 @@
               
                 <h1 id="model-custom">Model Custom框架介绍</h1>
 <h2 id="1">1. 重构目的</h2>
-<p><strong>基于TorchTitan的ModelConverter机制，为TorchTitan_npu提供了一套声明式、可组合的模型自定义框架，取代了原先monkey-patch方式</strong></p>
+<p><strong>基于 torchtitan 的 ModelConverter 机制，为 torchtitan_npu 提供了一套声明式、可组合的模型自定义框架，取代了原先 monkey-patch 方式</strong></p>
 <h2 id="2">2. 使用方法</h2>
 <h3 id="21">2.1 模型定制化入口</h3>
 <pre><code class="language-python">@dataclass
@@ -527,7 +527,7 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
     participant dyn as type() 动态创建
     participant tt as torchtitan 框架
 
-    converters-&gt;&gt;converters: _auto_search_conveter()
+    converters-&gt;&gt;converters: _auto_search_converter()
     converters-&gt;&gt;converters: importlib.import_module(&quot;kernels.my_kernel&quot;)
 
     Note over converters: 模块加载时，装饰器 @register_model_converter 执行
