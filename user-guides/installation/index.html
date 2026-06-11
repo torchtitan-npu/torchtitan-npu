@@ -233,7 +233,7 @@ pip install -r requirements.txt
 pip install -e .
 </code></pre>
 <blockquote>
-<p>注：如有旧版本Torchtitan-npu，请先<a href="#卸载">卸载</a>，再进行安装</p>
+<p>注：如有旧版本torchtitan-npu，请先<a href="#卸载">卸载</a>，再进行安装</p>
 <p>注：<code>requirements.txt</code> 已为 <code>triton-ascend==3.2.1</code> 配置 <code>--extra-index-url https://triton-ascend.osinfra.cn/pypi/simple</code>；默认 PyPI 源当前不提供该版本，单独安装时请使用 <code>pip install --extra-index-url https://triton-ascend.osinfra.cn/pypi/simple triton-ascend==3.2.1</code>。<code>triton-ascend</code> 是安装包名，实际 Python 模块名为 <code>triton</code>，代码中请使用 <code>import triton</code>，不要使用 <code>import triton_ascend</code>。</p>
 </blockquote>
 <h3 id="4-inductor-npu-exttorchcompile">4. 安装inductor-npu-ext（可选，使能torch.compile时需要）</h3>

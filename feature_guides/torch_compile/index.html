@@ -88,7 +88,7 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#nameerror-name-_world-is-not-defined">NameError: name '_world' is not defined</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_3">修改模型结构后清理编译产物</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">清理修改模型结构后的编译产物</a>
     </li>
         </ul>
     </li>
@@ -203,9 +203,8 @@ export TORCHINDUCTOR_AUTOGRAD_CACHE=0
 </code></pre>
 <p>关闭上述两个缓存后，Inductor 不再走 <code>FxGraphCache.load_with_key</code> 路径，可以规避该问题，代价是每次启动都会重新走
 完整编译流程，一次性 warmup 时间会增加，稳态步长不受影响。</p>
-<h3 id="_3"><code>修改模型结构</code>后清理编译产物</h3>
-<p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致
-编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
+<h3 id="_3">清理修改模型结构后的编译产物</h3>
+<p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
 <pre><code class="language-bash">rm -rf /root/.cache
 rm -rf /tmp/* /tmp/.[!.]*
 </code></pre>

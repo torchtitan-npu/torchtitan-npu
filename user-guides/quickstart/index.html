@@ -111,7 +111,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#_5">多机训练任务</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#rank">排查启动报错:查看更多 rank 日志</a>
+    <li class="toctree-l3"><a class="reference internal" href="#rank">排查启动报错：查看更多 rank 日志</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#torchtitan">torchtitan 仓库内置训练任务</a>
     </li>
@@ -205,7 +205,7 @@ source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 </blockquote>
 <h3 id="_5">多机训练任务</h3>
 <p>在执行启动命令前，按照集群的实际情况编辑 <code>scripts/run_train_multinodes.sh</code> 文件中的网络与节点配置：</p>
-<pre><code class="language-toml"># TODO change to your network interface
+<pre><code class="language-bash"># TODO change to your network interface
 Network_Interface=enp23s0f3 # 填入 ifconfig 的驱动名
 ...
 # TODO change to your device ips
@@ -222,7 +222,7 @@ LOCAL_HOST=`ifconfig|grep &quot;inet 192.168&quot;| awk '{print $2}'` # 将 &quo
 * 多机通信依赖相应的端口开放，请确保 <code>MASTER_PORT</code> (默认 6300) 以及 HCCL 通信基础端口 (默认 30000) 不被防火墙拦截。
 * 脚本中设置的 <code>HCCL_CONNECT_TIMEOUT</code>、<code>HCCL_EXEC_TIMEOUT</code>、<code>ACL_DEVICE_SYNC_TIMEOUT</code> 等通信与超时相关环境变量，可按集群规模和网络状况调整，各变量含义详见<a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900/maintenref/envvar/envref_07_0001.html">《CANN 环境变量参考》</a>。</p>
 </blockquote>
-<h3 id="rank">排查启动报错:查看更多 rank 日志</h3>
+<h3 id="rank">排查启动报错：查看更多 rank 日志</h3>
 <blockquote>
 <p>[!TIP]
 默认启动脚本只在控制台打印 <code>LOG_RANK=0</code>(即 rank 0)的日志。若任务异常退出、但控制台没有具体的Python报错,真正报错可能记录在其他rank。此时可临时通过 <code>LOG_RANK</code> 指定需要打印日志的rank(用逗号分隔)后重新运行,以定位报错。例如同时查看本机 8 个 rank:</p>
@@ -246,7 +246,7 @@ git checkout ac13e536c84e7f6647b14fa9375c3c8a8a2b8578
 <pre><code class="language-bash">cp ./torchtitan/torchtitan ./torchtitan-npu/ -r
 </code></pre>
 <ol>
-<li>在 torchtitan-npu 项目中，使用 torchtitan 原生 toml 配置文件，启动训练。以 llama3 的 debug_model 配置为例:</li>
+<li>在 torchtitan-npu 项目中，使用 torchtitan 原生 <code>config_registry.py</code> 配置函数启动训练。以 llama3 的 debug_model 配置为例:</li>
 </ol>
 <pre><code class="language-bash">NGPU=8 \
 TRAIN_FILE=torchtitan_npu.entry \
