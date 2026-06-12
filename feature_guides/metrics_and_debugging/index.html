@@ -258,7 +258,7 @@ comm = CommConfig(
   --comm.trace_buf_size 2000 \
   --comm.save_traces_folder hccl_traces
 </code></pre>
-<p>当训练过程中出现 HCCL 通信超时或错误时，系统会自动将追踪信息转储到 <code>hccl_traces/rank_*</code> 文件中，开发者可以使用这些文件进行问题诊断和分析，相关指导可以参考Pytorch社区关于Flight Recorder功能的相关<a href="https://docs.pytorch.org/tutorials/unstable/flight_recorder_tutorial.html">说明文档</a>。</p>
+<p>当训练过程中出现 HCCL 通信超时或错误时，系统会自动将追踪信息转储到 <code>hccl_traces/rank_*</code> 文件中，开发者可以使用这些文件进行问题诊断和分析，相关指导可以参考 PyTorch 社区关于 Flight Recorder 功能的相关<a href="https://docs.pytorch.org/tutorials/unstable/flight_recorder_tutorial.html">说明文档</a>。</p>
 <hr />
 <h2 id="memory-snapshot">Memory Snapshot</h2>
 <p>内存快照功能用于捕获和记录训练过程中的内存使用情况，包括内存分配、显存占用、张量生命周期等信息。通过 torchtitan 配置项进行定时内存快照收集，本功能生成的<code>.pickle</code>格式内存快照文件可通过<a href="https://docs.pytorch.org/memory_viz">memory_viz</a>工具进行解析和可视化查看。</p>
