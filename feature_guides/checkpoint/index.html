@@ -86,6 +86,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#seed-checkpoint">创建 seed checkpoint</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dcp-hugging-face">离线转换 DCP 为 Hugging Face 权重</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
@@ -463,6 +465,31 @@ bash scripts/run_train.sh \
   --parallelism.expert_parallel_degree 1
 </code></pre>
 <p>生成的 <code>step-0</code> checkpoint 后续可作为 <code>checkpoint.initial_load_path</code> 使用。</p>
+<h2 id="dcp-hugging-face">离线转换 DCP 为 Hugging Face 权重</h2>
+<p>训练过程中保存的 DCP checkpoint 可以通过独立脚本
+<code>scripts/checkpoint_conversion/convert_to_hf.py</code> 离线转换为 Hugging Face
+safetensors 格式。适用于训练结束后需要将权重用于推理、评测或发布的场景，
+无需重新启动训练流程。</p>
+<p>与训练配置中 <code>--checkpoint.last_save_in_hf</code> 的区别在于，该脚本可以对
+<strong>已有的任意 step 的 DCP checkpoint</strong> 进行转换，而不依赖训练最后一步的自动导出。</p>
+<p><strong>基本用法</strong></p>
+<pre><code class="language-bash">python scripts/checkpoint_conversion/convert_to_hf.py \
+  ./outputs/dsv32_4layers/checkpoint/step-1000 \
+  ./outputs/dsv32_4layers/hf_output \
+  --model_name deepseek_v32 \
+  --model_flavor deepseek_v32_671b_4layers_debug \
+  --hf_assets_path ./assets/hf/DeepSeek-V3.2 \
+  --export_dtype bfloat16
+</code></pre>
+<p>转换完成后，输出目录结构如下：</p>
+<pre><code class="language-text">./outputs/dsv32_4layers/hf_output/
+├── model-00001-of-00001.safetensors
+└── model.safetensors.index.json
+</code></pre>
+<blockquote>
+<p>注意：<code>input_dir</code> 必须是完整的 DCP step 目录（包含 <code>.metadata</code> 文件）
+<code>--export_dtype</code> 可选 <code>float16</code>、<code>bfloat16</code>、<code>float32</code></p>
+</blockquote>
               
             </div>
           </div><footer>
