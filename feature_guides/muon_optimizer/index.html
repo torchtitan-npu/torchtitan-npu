@@ -301,14 +301,8 @@ lr_scheduler = MuonLRSchedulersContainer.Config(
            "Muon optimizer currently only support single device"
        )</code></p>
 <ol>
-<li><strong>与 Swap Optimizer 互斥</strong>：Muon 优化器不支持与 Swap Optimizer 特性同时启用：</li>
+<li><strong>与 Swap Optimizer 互斥</strong>：Muon 优化器不支持与 Swap Optimizer 特性同时启用。</li>
 </ol>
-<p><code>python
-   if getattr(optimizer_config, "swap_optimizer", False):
-       raise ValueError(
-           "Muon optimizer does not support swap_optimizer. "
-           "Please set swap_optimizer=false in your config."
-       )</code></p>
 <h2 id="_8">参考文献</h2>
 <ul>
 <li><a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Muon.html">PyTorch Muon 官方文档</a></li>

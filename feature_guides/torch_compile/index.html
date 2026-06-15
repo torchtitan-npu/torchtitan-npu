@@ -149,7 +149,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="torchcompile">torch.compile 支持</h1>
-<p>torch.compile 是 PyTorch 2.0 的核心特性。通过 JIT （即时编译），将 PyTorch 代码转化为高度优化的融合算子，在几乎不改动原有代码的前提下显著提升性能。作为 PyTorch 原生的分布式训练框架，torchtitan 的一大优势便是可以便捷、充分地发挥 torch.compile 的性能收益。在此基础上，torchtitan_npu 结合 CANN 生态的编译能力，在 NPU 平台上的分布式训练任务中为 torch.compile 提供支持。</p>
+<p>torch.compile 是 PyTorch 2.0 的核心特性。通过 JIT （即时编译），将 PyTorch 代码转化为高度优化的融合算子，在几乎不改动原有代码的前提下显著提升性能。作为 PyTorch 原生的分布式训练框架，torchtitan 的一大优势便是可以便捷、充分地发挥 torch.compile 的性能收益。在此基础上，torchtitan-npu 结合 CANN 生态的编译能力，在 NPU 平台上的分布式训练任务中为 torch.compile 提供支持。</p>
 <h2 id="npu-torchcompile">NPU 上的 torch.compile</h2>
 <p>在 torch.compile 的工作流程中，PyTorch 代码依次经过 Dynamo 成图， Inductor 图编译优化、Codegen，生成在硬件 runtime 上执行的优化 DSL 代码。</p>
 <p align="center">
@@ -158,7 +158,7 @@
 
 <p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
 <h2 id="_1">支持范围</h2>
-<p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V4</code> 模型的全流程编译。</p>
+<p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V3.2、DeepSeek-V4</code> 模型的全流程编译。</p>
 <p>其他模型的 Codegen 仍处于待调试状态。启用 <code>torch.compile</code> 时，需要在模型配置中启用
 <code>npu_bypass_triton_codegen</code>，跳过 Inductor Codegen 流程，仅保留 Dynamo / AOTAutograd
 / Inductor 图优化等前置流程。请在模型 <code>config_registry.py</code> 中确保 <code>ModelConvertersContainer.Config</code> 的

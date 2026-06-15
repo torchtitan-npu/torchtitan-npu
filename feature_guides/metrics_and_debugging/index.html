@@ -92,7 +92,7 @@
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#torchtitan">torchtitan 原生配置选项</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#torchtitan_npu">torchtitan_npu 扩展配置选项</a>
+    <li class="toctree-l4"><a class="reference internal" href="#torchtitan-npu">torchtitan-npu 扩展配置选项</a>
     </li>
         </ul>
     </li>
@@ -199,7 +199,7 @@
 <li>需要排查 HCCL 通信算子的调用顺序和参数</li>
 </ul>
 <h3 id="_3">实现原理</h3>
-<p>由于启用 HCCL Flight Recorder 功能所需的环境变量配置与 NCCL 存在差异，因而 torchtitan_npu 在 <code>torchtitan_npu/tools/flight_recorder.py</code> 中对 <code>torchtitan.distributed.utils.init_distributed</code> 函数进行了拦截，自动配置 HCCL Flight Recorder 相关的环境变量，使能了通信超时的自动检测和轨迹转储功能。在分布式初始化阶段，系统会根据配置自动设置以下环境变量：</p>
+<p>由于启用 HCCL Flight Recorder 功能所需的环境变量配置与 NCCL 存在差异，因而 torchtitan-npu 在 <code>torchtitan_npu/tools/flight_recorder.py</code> 中对 <code>torchtitan.distributed.utils.init_distributed</code> 函数进行了拦截，自动配置 HCCL Flight Recorder 相关的环境变量，使能了通信超时的自动检测和轨迹转储功能。在分布式初始化阶段，系统会根据配置自动设置以下环境变量：</p>
 <ol>
 <li><strong><code>TORCH_HCCL_TRACE_BUFFER_SIZE</code></strong>：设置 HCCL 追踪缓冲区大小，控制记录的通信轨迹数据量。</li>
 <li><strong><code>HCCL_ASYNC_ERROR_HANDLING</code></strong>：启用 HCCL 异步错误处理机制，创建检测通信问题的 HCCL Watchdog 线程。</li>
@@ -313,7 +313,7 @@ profiling = ProfilingConfig(
 </code></pre>
 <hr />
 <h2 id="profiling">Profiling</h2>
-<p>性能分析是优化训练性能的关键工具。torchtitan_npu 对性能分析功能进行了 NPU 适配，支持详细的性能数据收集和分析。系统使用 <code>torch_npu.profiler</code> 提供的原生性能分析器，能够追踪 CPU 和 NPU 的活动，记录内存使用情况、调用栈信息、张量形状等详细数据，并提供 AI 算力利用率指标。</p>
+<p>性能分析是优化训练性能的关键工具。torchtitan-npu 对性能分析功能进行了 NPU 适配，支持详细的性能数据收集和分析。系统使用 <code>torch_npu.profiler</code> 提供的原生性能分析器，能够追踪 CPU 和 NPU 的活动，记录内存使用情况、调用栈信息、张量形状等详细数据，并提供 AI 算力利用率指标。</p>
 <h3 id="_9">使用场景</h3>
 <ul>
 <li>需要分析训练过程中的性能瓶颈</li>
@@ -365,7 +365,7 @@ profiling = ProfilingConfig(
 </tr>
 </tbody>
 </table>
-<h4 id="torchtitan_npu">torchtitan_npu 扩展配置选项</h4>
+<h4 id="torchtitan-npu">torchtitan-npu 扩展配置选项</h4>
 <table>
 <thead>
 <tr>
@@ -433,7 +433,7 @@ profiling = ProfilingConfig(
     profiler_active=3,
 )
 </code></pre>
-<p>使用 torchtitan_npu 扩展的基于步数的分析模式：</p>
+<p>使用 torchtitan-npu 扩展的基于步数的分析模式：</p>
 <pre><code class="language-python">from torchtitan_npu.config.configs import ProfilingConfig
 
 profiling = ProfilingConfig(

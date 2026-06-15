@@ -147,7 +147,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="npu">NPU 融合算子适配</h1>
-<p>torchtitan_npu 在 <code>torchtitan_npu/converters/kernels</code> 下定义了多个 torchtitan ModelConverter 。在启动模型训练任务时，它们会根据用户配置，自动将模型中的原始模块替换为基于 NPU 融合算子的实现，从而实现模型在 NPU 平台上的亲和适配。</p>
+<p>torchtitan-npu 在 <code>torchtitan_npu/converters/kernels</code> 下定义了多个 torchtitan ModelConverter 。在启动模型训练任务时，它们会根据用户配置，自动将模型中的原始模块替换为基于 NPU 融合算子的实现，从而实现模型在 NPU 平台上的亲和适配。</p>
 <h2 id="_1">如何配置</h2>
 <p>NPU融合算子通过 <code>ModelConvertersContainer.Config</code> 的 <code>converters</code> 列表启用。
 每个 NPU converter 需要通过 <code>get_model_converter_config()</code> 转成 Config 对象：</p>
