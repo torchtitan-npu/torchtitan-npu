@@ -162,11 +162,11 @@ LICENSE file in the root directory of this source tree.
 <h1 id="_3">最新消息</h1>
 <hr />
 <ul>
-<li>[May. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Pro 模型续训练支持</a></strong>:基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图。</li>
-<li>[May. 2026]: ⚠️ <strong>配置系统重构</strong>: master 分支对齐 torchtitan main 的 <code>config_registry.py</code> / <code>ConfigManager</code> 机制，模型训练使用 <code>--module</code> 和 <code>--config</code> 启动，不再通过 <code>--job.config_file</code> 加载 TOML。</li>
-<li>[Apr. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Flash 续训练 0day 支持</a></strong>:基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图，开箱即优。</li>
-<li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>:基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
-<li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>:在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
+<li>[May. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Pro 模型续训练支持</a></strong>：基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图。</li>
+<li>[May. 2026]: ⚠️ <strong>配置系统重构</strong>：master 分支对齐 torchtitan main 的 <code>config_registry.py</code> / <code>ConfigManager</code> 机制，模型训练使用 <code>--module</code> 和 <code>--config</code> 启动，不再通过 <code>--job.config_file</code> 加载 TOML。</li>
+<li>[Apr. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Flash 续训练 0day 支持</a></strong>：基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图，开箱即优。</li>
+<li>[Apr. 2026]: 🚀 <strong>【重要特性支持】算子自动融合</strong>：基于AscendC AutoFuse的能力，支持torch.compile + Inductor后端的算子自动融合。</li>
+<li>[Apr. 2026]: 🚀 <strong>torchtitan‑npu 正式开源</strong>：在 NPU 上支持 4D 并行等 torchtitan 原生特性，并引入 Swap Optimizer 等 NPU 亲和优化。</li>
 </ul>
 <hr />
 <ul>
@@ -297,7 +297,7 @@ pip install -e .
 | <a href="https://gitcode.com/cann/torchtitan-npu/blob/8343a6efac598ce86c2cec5a974f187310fd2728/torchtitan_npu/models/deepseek_v3/config_registry.py#L156">DeepSeek-V3-671B</a>   | 64             | BF16      | 1024 | 1       | 4096            | 32   | 4   | 1   | 1   | 128  | 546          | / |
 | <a href="https://gitcode.com/cann/torchtitan-npu/blob/8343a6efac598ce86c2cec5a974f187310fd2728/torchtitan_npu/models/deepseek_v3/config_registry.py#L156">DeepSeek-V3-671B + compile(AutoFuse)</a>   | 64             | BF16      | 1024 | 1       | 4096            | 32   | 4   | 1   | 1   | 128  |     576      | / |</p>
 <blockquote>
-<p>注：以上MoE模型的性能数据均开启负载均衡配置moe_force_load_balance=true。</p>
+<p>注：以上MoE模型的性能数据均开启负载均衡配置<code>moe_force_load_balance=true</code>。</p>
 </blockquote>
 <h1 id="_9">免责声明</h1>
 <hr />
@@ -370,5 +370,5 @@ pip install -e .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-06-15 18:25:47.851024+00:00
+Build Date UTC : 2026-06-16 18:26:41.429969+00:00
 -->

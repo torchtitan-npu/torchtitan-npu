@@ -199,7 +199,7 @@ source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 <blockquote>
 <p>[!NOTE]
 * <code>MODULE</code>: 指定模型 Python 模块，默认 <code>torchtitan_npu.models.deepseek_v32</code>。切换模型时改为对应模块，例如 DeepSeek-V4 改为 <code>torchtitan_npu.models.deepseek_v4</code>。
-* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>deepseek_v4_285b_debug_4_layers</code>。
+* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>deepseek_v4_flash_single_server_16_experts_43_layers_bf16</code>。
 * <code>NGPU</code>: 指定单节点参与训练的 NPU 数量，<code>scripts/run_train.sh</code> 默认值为 16。
 * <code>--training.steps</code> 与 <code>--training.global_batch_size</code>: 动态覆盖 registry 配置中的字段。</p>
 </blockquote>
@@ -225,7 +225,7 @@ LOCAL_HOST=`ifconfig|grep &quot;inet 192.168&quot;| awk '{print $2}'` # 将 &quo
 <h3 id="rank">排查启动报错：查看更多 rank 日志</h3>
 <blockquote>
 <p>[!TIP]
-默认启动脚本只在控制台打印 <code>LOG_RANK=0</code>(即 rank 0)的日志。若任务异常退出、但控制台没有具体的Python报错,真正报错可能记录在其他rank。此时可临时通过 <code>LOG_RANK</code> 指定需要打印日志的rank(用逗号分隔)后重新运行,以定位报错。例如同时查看本机 8 个 rank:</p>
+默认启动脚本只在控制台打印 <code>LOG_RANK=0</code>(即 rank 0)的日志。若任务异常退出、但控制台没有具体的 Python 报错，真正报错可能记录在其他 rank。此时可临时通过 <code>LOG_RANK</code> 指定需要打印日志的 rank (用逗号分隔)后重新运行，以定位报错。例如同时查看本机 8 个 rank:</p>
 <p><code>bash
 LOG_RANK=0,1,2,3,4,5,6,7 bash scripts/run_train.sh</code></p>
 <blockquote>
