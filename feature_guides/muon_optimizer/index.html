@@ -70,23 +70,43 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_2">参数分配策略</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#newton-schulz">Newton-Schulz 正交化</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#newton-schulzhybrid_ns">混合 Newton-Schulz（hybrid_ns）</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#_3">学习率调整模式</a>
         <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#original">original 模式详解</a>
+    <li class="toctree-l4"><a class="reference internal" href="#original">original 模式</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#match_rms_adamw">match_rms_adamw 模式详解</a>
+    <li class="toctree-l4"><a class="reference internal" href="#match_rms_adamw">match_rms_adamw 模式</a>
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#_4">模式选择建议</a>
     </li>
         </ul>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">分布式通信机制</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#swap-optimizer">Swap Optimizer（推荐）</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#swap_merge_buckets">swap_merge_buckets 配置</a>
+    </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_5">配置选项</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_6">配置示例</a>
+        </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_7">注意事项</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">配置选项</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">配置示例</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#1match_rms_adamw">示例 1：match_rms_adamw 模式</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#2original">示例 2：original 模式</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#3-swap-optimizer">示例 3：启用 Swap Optimizer</a>
+    </li>
+        </ul>
     </li>
         </ul>
     </li>
@@ -155,20 +175,29 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="muon">Muon 优化器特性</h1>
-<p>在大规模语言模型的训练中，优化器的选择对收敛速度和最终性能有着重要影响。传统的 Adam/AdamW 优化器虽然通用性强，但对于大规模矩阵参数（Linear 层的权重）的更新策略并非最优。Muon 优化器通过引入动量正交化（Momentum Orthogonalization）技术，针对 2D 矩阵参数实现了更高效的梯度下降策略。</p>
+<p>在大规模语言模型的训练中，优化器的选择对收敛速度和最终性能有着重要影响。传统的 Adam/AdamW 优化器虽然通用性强，但将参数视为独立的一维向量进行更新，忽略了矩阵参数的结构信息。Muon 优化器通过引入动量正交化（Momentum Orthogonalization）技术，针对 2D/3D 矩阵参数实现了更高效的梯度下降策略，在大模型训练中展现出更快的收敛速度。</p>
 <h2 id="_1">实现原理</h2>
-<p>Muon 优化器的核心创新在于对 2D 参数（矩阵）采用不同于传统优化器的更新机制。其理论基础源于以下观察：</p>
-<ol>
-<li><strong>传统优化器的局限</strong>：Adam/AdamW 等优化器将参数视为独立的一维向量进行更新，忽略了矩阵参数的结构信息</li>
-<li><strong>动量正交化思想</strong>：在每一步更新时，将动量分解为与当前梯度方向平行和垂直的两个分量，仅保留正交分量以实现更稳定的收敛</li>
-</ol>
+<p>torchtitan-npu 采用了 <strong>Muon + AdamW 混合优化器</strong>策略，核心代码定义在 <code>torchtitan_npu/patches/optimizer/muon_optimizer.py</code> 。</p>
 <h3 id="_2">参数分配策略</h3>
-<p>torchtitan-npu 目前采用了 <strong>Muon + AdamW 混合优化器</strong> 策略：</p>
+<p>模型参数根据维度和语义自动路由到不同的优化器：</p>
 <ul>
 <li><strong>2D 参数</strong>（如 Linear 层的权重矩阵）→ 使用 Muon 优化器</li>
-<li><strong>非 2D 参数</strong>（如偏置、LayerNorm、Embedding）→ 使用 AdamW 优化器</li>
+<li>例外：名称中包含 <code>embed</code>、<code>lm_head</code>、<code>output</code> 的 2D 参数 → 使用 AdamW（此类层不适合正交化更新）</li>
+<li><strong>3D 参数</strong>（如 MoE 专家权重）→ 使用 Muon 优化器</li>
+<li><strong>1D 及其他参数</strong>（如偏置、LayerNorm 参数）→ 使用 AdamW 优化器</li>
 </ul>
-<p>这种混合策略既能发挥 Muon 在矩阵参数上的收敛优势，又能保证非矩阵参数的稳定训练。</p>
+<p>两种优化器被统一封装在 <code>MuonHybridOptimizersContainer</code> 中，对外提供与标准优化器一致的 <code>step()</code>、<code>zero_grad()</code>、<code>state_dict()</code> / <code>load_state_dict()</code> 接口。</p>
+<h3 id="newton-schulz">Newton-Schulz 正交化</h3>
+<p>Muon 的核心操作是对动量梯度进行正交化（LMO，Low-orthogonal Matrix Operation），通过 Newton-Schulz 迭代算法实现矩阵的零次幂近似（即投影到正交矩阵流形上）：</p>
+<p>$$X_{k+1} = a \cdot X_k + b \cdot X_k X_k^T X_k + c \cdot (X_k X_k^T)^2 X_k$$</p>
+<p>其中主系数为 $(a, b, c) = (3.4445, -4.7750, 2.0315)$，在零点处具有最大斜率，确保快速收敛。</p>
+<h4 id="newton-schulzhybrid_ns">混合 Newton-Schulz（hybrid_ns）</h4>
+<p>当启用 <code>muon_hybrid_ns = true</code> 时，采用 DeepSeek-V4 提出的混合迭代策略：</p>
+<ul>
+<li><strong>前 8 步</strong>：使用主系数 $(3.4445, -4.7750, 2.0315)$</li>
+<li><strong>后 2 步</strong>：切换到次系数 $(2.0, -1.5, 0.5)$</li>
+</ul>
+<p>此策略在保持收敛速度的同时，提升了正交化结果的数值稳定性。</p>
 <h3 id="_3">学习率调整模式</h3>
 <p>Muon 优化器支持两种学习率调整模式（通过 <code>muon_adjust_lr_fn</code> 配置），其核心区别在于如何根据矩阵形状调整学习率，以及是否需要独立的超参数调优。</p>
 <table>
@@ -187,12 +216,12 @@
 </tr>
 <tr>
 <td><code>match_rms_adamw</code></td>
-<td>$\gamma \leftarrow 0.2 \cdot \gamma \cdot \sqrt{\max(A, B)}$</td>
+<td>$\gamma \leftarrow 0.18 \cdot \gamma \cdot \sqrt{\max(A, B)}$</td>
 <td>Moonshot 实现，直接复用 AdamW 的 lr 和 weight_decay</td>
 </tr>
 </tbody>
 </table>
-<h4 id="original">original 模式详解</h4>
+<h4 id="original">original 模式</h4>
 <p>该模式源自 Muon 创始人 Keller Jordan 的原始实现。调整公式为：</p>
 <p>$$\gamma_{\text{adjusted}} = \gamma \times \sqrt{\max\left(1, \frac{A}{B}\right)}$$</p>
 <p>其中 $A$ 和 $B$ 是矩阵的两个维度。这个调整的目的是：<strong>让正交化后的梯度更新在不同形状的矩形矩阵上具有一致的 RMS（Root Mean Square）</strong>。</p>
@@ -200,20 +229,57 @@
 <li>当 $A \le B$（宽矩阵，如 FFN 中的中间层）时，系数为 1，不做额外调整</li>
 <li>当 $A &gt; B$（高矩阵，如输出层）时，按 $\sqrt{A/B}$ 缩放</li>
 </ul>
-<p>这种设计使得 Muon 可以在不同形状的矩阵上保持相似的收敛行为。由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将AdamW的学习率放大10倍来作为Muon的学习率。这就是为什么该模式需要配合 <code>MuonLRSchedulersContainer</code> 使用。</p>
-<h4 id="match_rms_adamw">match_rms_adamw 模式详解</h4>
+<p>由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将 AdamW 的学习率放大 10 倍来作为 Muon 的学习率。</p>
+<h4 id="match_rms_adamw">match_rms_adamw 模式</h4>
 <p>该模式来自 Moonshot 团队的论文 <a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a>。调整公式为：</p>
-<p>$$\gamma_{\text{adjusted}} = 0.2 \times \gamma \times \sqrt{\max(A, B)}$$</p>
+<p>$$\gamma_{\text{adjusted}} = 0.18 \times \gamma \times \sqrt{\max(A, B)}$$</p>
+<blockquote>
+<p>注：当前实现使用系数 0.18（与 DeepSeek-V4 一致），Moonshot 原始论文使用 0.2。</p>
+</blockquote>
 <p>这个模式的设计目标是：<strong>让 Muon 可以直接复用已经为 AdamW 调优好的学习率和权重衰减超参数</strong>，无需额外的超参数搜索。</p>
-<p>论文实验表明，使用此调整后，Muon 在大模型训练任务上可以达到与 AdamW 相近的收敛效果，同时利用动量正交化获得更快的收敛速度。由于调整后的学习率与 AdamW 处于同一量级，Muon 和 AdamW 可以共享相同的基础学习率，使用标准的 <code>LRSchedulersContainer</code> 即可。</p>
 <h4 id="_4">模式选择建议</h4>
 <ul>
-<li><strong>使用 <code>match_rms_adamw</code></strong>：如果你已经为 AdamW 调优好了超参数，希望直接尝试 Muon 而不想重新调参</li>
+<li><strong>使用 <code>match_rms_adamw</code></strong>（默认）：如果你已经为 AdamW 调优好了超参数，希望直接尝试 Muon 而不想重新调参</li>
 <li><strong>使用 <code>original</code></strong>：如果你愿意投入时间单独调优 Muon 的学习率，追求可能的更好收敛效果</li>
 </ul>
-<h2 id="_5">配置选项</h2>
-<p>Muon 配置写在模型的 <code>config_registry.py</code> 中，推荐使用
-<code>torchtitan_npu.patches.optimizer.muon_optimizer.MuonHybridOptimizersContainer.Config</code>。</p>
+<h3 id="_5">分布式通信机制</h3>
+<p><code>DistributedMuon</code> 优化器针对不同的并行策略实现了三种参数更新路径：</p>
+<table>
+<thead>
+<tr>
+<th>并行策略</th>
+<th>通信方式</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FSDP</td>
+<td>all_to_all 双向通信</td>
+<td>FSDP 分片的 2D 参数</td>
+</tr>
+<tr>
+<td>DDP</td>
+<td>all_gather 通信</td>
+<td>DDP 复制的 2D 参数</td>
+</tr>
+<tr>
+<td>Expert/MoE</td>
+<td>本地 LMO（无跨卡通信）</td>
+<td>3D 专家权重（已通过 EP 切分）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>FSDP 路径</strong>（<code>step_fsdp</code>）：采用 owner-per-bucket 方案，每个 rank 负责一组参数的完整 LMO 计算。通过两轮 all_to_all 通信：第一轮将各 rank 的梯度分片汇聚到参数 owner，owner 完成正交化后，第二轮将更新分片发回各 rank。</p>
+<p><strong>DDP 路径</strong>（<code>step_ddp</code>）：每个 rank 先对本地负责的参数计算 LMO 更新，然后通过 all_gather 将更新广播给所有 rank。支持与 TP 的联合使用，在 LMO 计算前先通过 all_gather 收集 TP 分片。</p>
+<p><strong>Expert 路径</strong>（<code>step_experts</code>）：专家权重已通过 Expert Parallel 切分到各 rank，每个 rank 独立对本地专家参数执行 LMO，无需跨卡通信。</p>
+<h3 id="swap-optimizer">Swap Optimizer（推荐）</h3>
+<p>对于显存受限的场景，Muon 优化器支持通过 <code>swap_optimizer = true</code> 启用优化器状态 CPU 卸载，将 Muon 的 <code>momentum_buffer</code> 和 AdamW 的 <code>exp_avg</code>、<code>exp_avg_sq</code> 卸载到 CPU，仅在优化器 step 期间按需换入 NPU。</p>
+<p><code>virtual_optimizer</code> 当前不支持与 Muon 联用。若 <code>optimizer.name = "Muon"</code> 且同时设置 <code>virtual_optimizer = true</code>，框架会在 optimizer 构建阶段直接报错。</p>
+<h4 id="swap_merge_buckets">swap_merge_buckets 配置</h4>
+<p><code>swap_merge_buckets</code> 控制 Muon momentum_buffer H2D/D2H 操作的合并粒度。Muon 参数被分成多个 bucket（由 FSDP all_to_all 通信决定），每个 bucket 独立执行一次 H2D（step 前）和 D2H（step 后）。<code>swap_merge_buckets</code> 决定将多少个连续 bucket 的 H2D/D2H 合并为一次 stream 操作。</p>
+<h2 id="_6">配置选项</h2>
+<p>Muon 优化器在模型的 <code>config_registry.py</code> 中配置，由 <code>torchtitan_npu.config.configs.OptimizerConfig</code> 相关字段进行配置：</p>
 <table>
 <thead>
 <tr>
@@ -228,31 +294,37 @@
 <td><code>name</code></td>
 <td>str</td>
 <td>"AdamW"</td>
-<td>优化器类型，设置为 "Muon" 启用本特性</td>
+<td>优化器类型，设置为 <code>"Muon"</code> 启用本特性</td>
+</tr>
+<tr>
+<td><code>lr</code></td>
+<td>float</td>
+<td>—</td>
+<td>基础学习率，AdamW 部分直接使用；Muon 部分取决于 <code>muon_adjust_lr_fn</code></td>
 </tr>
 <tr>
 <td><code>muon_lr</code></td>
 <td>float</td>
 <td>None</td>
-<td>Muon 专用学习率，若不设置则使用 base lr</td>
+<td>Muon 专用学习率。仅当 <code>muon_adjust_lr_fn = "original"</code> 时生效；若不设置则回退到 <code>lr</code>；当 <code>muon_adjust_lr_fn = "match_rms_adamw"</code> 时此值被忽略</td>
 </tr>
 <tr>
 <td><code>muon_momentum</code></td>
 <td>float</td>
-<td>0.9</td>
+<td>0.95</td>
 <td>Muon 的动量因子</td>
 </tr>
 <tr>
 <td><code>muon_enable_nesterov</code></td>
 <td>bool</td>
-<td>false</td>
+<td>True</td>
 <td>是否启用 Nesterov 动量</td>
 </tr>
 <tr>
 <td><code>muon_ns_steps</code></td>
 <td>int</td>
 <td>5</td>
-<td>步数参数，影响正交化计算的迭代次数</td>
+<td>Newton-Schulz 正交化迭代步数，影响正交化精度与计算开销。值越大正交化越精确，但计算量也越大</td>
 </tr>
 <tr>
 <td><code>muon_adjust_lr_fn</code></td>
@@ -260,52 +332,87 @@
 <td>"match_rms_adamw"</td>
 <td>学习率调整模式：<code>"original"</code> 或 <code>"match_rms_adamw"</code></td>
 </tr>
+<tr>
+<td><code>muon_hybrid_ns</code></td>
+<td>bool</td>
+<td>False</td>
+<td>是否启用混合 Newton-Schulz 迭代（前 8 步用主系数，后续步用次系数）</td>
+</tr>
+<tr>
+<td><code>swap_optimizer</code></td>
+<td>bool</td>
+<td>False</td>
+<td>是否启用 Swap Optimizer，将优化器状态卸载到 CPU 并异步换入换出以节省显存</td>
+</tr>
+<tr>
+<td><code>swap_merge_buckets</code></td>
+<td>int</td>
+<td>1</td>
+<td>Swap H2D/D2H 合并桶数。值越大 stream 同步开销越低但峰值显存略增。推荐 4~16</td>
+</tr>
 </tbody>
 </table>
-<h3 id="_6">配置示例</h3>
-<pre><code class="language-python">from torchtitan_npu.patches.optimizer.muon_optimizer import (
-    MuonHybridOptimizersContainer,
-    MuonLRSchedulersContainer,
-)
+<h3 id="_7">配置示例</h3>
+<h4 id="1match_rms_adamw">示例 1：match_rms_adamw 模式</h4>
+<p>最简配置，直接复用 AdamW 超参，无需额外调参即可使用 Muon：</p>
+<p>在 <code>torchtitan_npu/models/&lt;model&gt;/config_registry.py</code> 的配置函数中设置：</p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
 
-optimizer = MuonHybridOptimizersContainer.Config(
-    name=&quot;Muon&quot;,
-    lr=3e-4,
-    muon_lr=1e-3,
-    weight_decay=0.01,
-    muon_momentum=0.9,
-    muon_enable_nesterov=False,
-    muon_ns_steps=5,
-    muon_adjust_lr_fn=&quot;original&quot;,
-)
-lr_scheduler = MuonLRSchedulersContainer.Config(
-    warmup_steps=2000,
-    decay_ratio=0.8,
-    decay_type=&quot;cosine&quot;,
+optimizer = OptimizerConfig(
+    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
+    lr=2.2e-4,                            # 基础学习率（Muon 和 AdamW 共用）
+    weight_decay=0.1,
+    muon_momentum=0.95,                   # Muon 动量因子
+    muon_enable_nesterov=True,            # 启用 Nesterov 动量
+    muon_ns_steps=10,                     # 正交化步数
+    muon_adjust_lr_fn=&quot;match_rms_adamw&quot;,  # 复用 AdamW 超参（默认值，可省略）
+    muon_hybrid_ns=True,                  # 启用混合 NS
 )
 </code></pre>
 <p>启动时也可以通过命令行覆盖同名字段：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh \
   --optimizer.name Muon \
-  --optimizer.muon_adjust_lr_fn original
+  --optimizer.lr 2.2e-4 \
+  --optimizer.muon_momentum 0.95 \
+  --optimizer.muon_ns_steps 10
 </code></pre>
-<h3 id="_7">注意事项</h3>
-<ol>
-<li><strong>单设备限制</strong>：Muon 优化器目前仅支持单设备训练，不支持多设备分布式场景。若在多设备环境下启用，将抛出 <code>NotImplementedError</code>：</li>
-</ol>
-<p><code>python
-   is_distributed = torch.distributed.is_initialized()
-   world_size = torch.distributed.get_world_size() if is_distributed else 1
-   if world_size &gt; 1:
-       raise NotImplementedError(
-           "Muon optimizer currently only support single device"
-       )</code></p>
-<ol>
-<li><strong>与 Swap Optimizer 互斥</strong>：Muon 优化器不支持与 Swap Optimizer 特性同时启用。</li>
-</ol>
+<h4 id="2original">示例 2：original 模式</h4>
+<p>需要为 Muon 单独设置学习率，适合愿意投入调参资源的场景：</p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
+
+optimizer = OptimizerConfig(
+    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
+    lr=3e-4,                              # AdamW 部分的学习率
+    muon_lr=3e-3,                         # Muon 专用学习率（通常为 AdamW lr 的 10 倍）
+    weight_decay=0.01,
+    muon_momentum=0.95,                   # Muon 动量因子
+    muon_enable_nesterov=True,            # 启用 Nesterov 动量
+    muon_ns_steps=5,                      # 正交化步数
+    muon_adjust_lr_fn=&quot;original&quot;,         # 使用独立的 lr 调度器
+)
+</code></pre>
+<h4 id="3-swap-optimizer">示例 3：启用 Swap Optimizer</h4>
+<p>在显存受限的场景下，将优化器状态卸载到 CPU，通过异步 H2D/D2H 流水线减少性能损失：</p>
+<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
+
+optimizer = OptimizerConfig(
+    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
+    lr=2.2e-4,
+    weight_decay=0.1,
+    muon_momentum=0.95,
+    muon_enable_nesterov=True,
+    muon_ns_steps=10,
+    muon_adjust_lr_fn=&quot;match_rms_adamw&quot;,
+    muon_hybrid_ns=True,
+    swap_optimizer=True,                  # 启用 Swap Optimizer，优化器状态卸载到 CPU
+    swap_merge_buckets=4,                 # 每 4 个 bucket 合并一次 H2D/D2H，平衡性能与显存
+)
+</code></pre>
+<p>如果同时开启 <code>virtual_optimizer=True</code>，当前实现会直接拒绝构建，因为 Muon 尚未适配 Virtual Optimizer 的状态分片和 step 路径。</p>
 <h2 id="_8">参考文献</h2>
 <ul>
-<li><a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Muon.html">PyTorch Muon 官方文档</a></li>
+<li><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/DeepSeek_V4.pdf">DeepSeek-V4 Technical Report</a></li>
+<li><a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a></li>
 <li><a href="https://kexue.fm/archives/11416">Muon 优化器指南：快速上手与关键细节</a></li>
 <li><a href="https://www.spaces.ac.cn/archives/10592">Muon 优化器赏析：从向量到矩阵的本质跨越</a></li>
 </ul>

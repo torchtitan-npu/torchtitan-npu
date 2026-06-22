@@ -86,6 +86,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#swap-optimizer-checkpoint">Swap Optimizer 与 Checkpoint</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#muon">Muon 联用说明</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
@@ -237,6 +239,9 @@ state；加载时会恢复 CPU cache 并重建 device 侧 zero-storage placehold
 用于继续训练。</p>
 <p>DTensor 参数会保留 device mesh、placements 和全局 shape/stride metadata，
 保存 checkpoint 时不会把 CPU cache tensor 回搬到 NPU。</p>
+<h2 id="muon">Muon 联用说明</h2>
+<p>当 <code>optimizer.name = "Muon"</code> 且 <code>swap_optimizer = true</code> 时，会走 Muon + Swap 的混合优化器分支。此时 Swap 仍然负责优化器状态的 CPU 卸载与按需换入，Muon 侧的 <code>momentum_buffer</code> 也会按同样的流水线处理。</p>
+<p><code>swap_merge_buckets</code> 只影响 Muon momentum_buffer 的 H2D/D2H 合并粒度，不影响普通 AdamW Swap 的配置语义。</p>
               
             </div>
           </div><footer>
