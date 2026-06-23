@@ -443,11 +443,6 @@ bash scripts/run_train.sh \
 </code></pre>
 <p>该目录用于模型权重导出，不适合作为完整训练断点恢复。保存 HF 权重时需要经过
 state_dict 转换和 safetensors 合并，耗时通常高于 DCP 保存。</p>
-<p>DeepSeek-V3.2 和 DeepSeek-V4 的 state dict adapter 还包含模型侧保存 patch，
-可用于专家权重格式转换等高级场景。日常保存和加载优先使用
-<code>CheckpointManager.Config</code> 的 DCP/HF 配置；只有模型配置明确需要时，再在
-<code>model.Config</code> 中设置 <code>save_patch_enabled</code>、<code>save_format</code>、<code>hf_save_dir</code> 和
-<code>save_expert_format</code>。</p>
 <h2 id="seed-checkpoint">创建 seed checkpoint</h2>
 <p>seed checkpoint 用于先在单卡 CPU 初始化模型，再让多卡任务通过 DCP 重分片加载。
 创建时需要关闭并行切分，并使用 <code>NGPU=1</code>：</p>
