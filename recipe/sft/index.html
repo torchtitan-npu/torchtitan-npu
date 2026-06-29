@@ -87,63 +87,93 @@
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">SFT 指令微调</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#qwen3-30b-a3b-sft">快速开始：Qwen3-30B-A3B SFT</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_1">前置条件</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">支持矩阵</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_2">一键启动</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">架构概述</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#vs">单轮 vs 多轮</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_3">数据预处理</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">快速开始</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_4">消息格式</a>
+    <li class="toctree-l3"><a class="reference internal" href="#qwen3-30b-a3b-sftgsm8k">Qwen3-30B-A3B SFT（GSM8K 单轮）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#qwen3-17b-sftwordle">Qwen3-1.7B SFT（Wordle 多轮）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-sfttau-bench-tool-call">DeepSeek-V4 SFT（tau-bench 多轮 + Tool Call）</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-sftgsm8k">DeepSeek-V4 SFT（GSM8K 单轮）</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#ulysses-context-parallel">Ulysses Context Parallel</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_5">权重加载与保存</a>
+    <li class="toctree-l2"><a class="reference internal" href="#chatencoder">自定义编码器（ChatEncoder）</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_6">加载预训练权重</a>
+    <li class="toctree-l3"><a class="reference internal" href="#dsv4chatencoder">DSV4ChatEncoder</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_7">切换为自己的预训练权重</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_8">保存训练后的权重</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">为新模型添加编码器</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_9">常见问题</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">数据预处理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#sample_processor">sample_processor</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#qwen3-gsm8k">单轮示例（Qwen3 + GSM8K）</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#tool-call-deepseek-v4-tau-bench">多轮 + Tool Call 示例（DeepSeek-V4 + tau-bench）</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">消息格式</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">框架自动处理</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#context-parallel">Context Parallel</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">权重加载与保存</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_9">加载预训练权重</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_10">切换为自己的预训练权重</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_11">保存训练后的权重</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_12">常见问题</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#awordle-sft">附录 A：Wordle SFT 样例</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_10">环境准备</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_13">环境准备</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_11">模型与数据</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_14">模型与数据</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_12">下载模型权重</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_15">下载模型权重</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_13">数据集</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_16">数据集</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_14">模型选择</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_17">模型选择</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#sft_1">可用的 SFT 配置</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_15">多轮对话支持</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_18">多轮对话支持</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_16">运行训练任务</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_19">运行训练任务</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_17">训练结果参考</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_20">训练结果参考</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#vf-eval">vf-eval 评测环境</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_18">启动推理服务器</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_21">启动推理服务器</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#vf-eval_1">运行 vf-eval</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_19">评测指标说明</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_22">评测指标说明</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_20">评测结果对比</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_23">评测结果对比</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#qwen3-17b">基础模型（Qwen3-1.7B）</a>
     </li>
@@ -197,88 +227,241 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="sft">SFT 指令微调</h1>
-<p>torchtitan-npu 支持基于对话数据的指令微调（Supervised Fine-Tuning, SFT）。当前已提供 Qwen3-30B-A3B 模型在 NPU 上的开箱即用 SFT 配置，支持 Ulysses Context Parallel 长序列训练。</p>
-<h2 id="qwen3-30b-a3b-sft">快速开始：Qwen3-30B-A3B SFT</h2>
-<h3 id="_1">前置条件</h3>
+<p>torchtitan-npu 支持基于对话数据的指令微调（Supervised Fine-Tuning, SFT）。当前已提供 Qwen3 和 DeepSeek-V4 两个模型系列在 NPU 上的 SFT 配置，支持单轮/多轮对话、tool call、自定义编码器、Ulysses Context Parallel 长序列训练。</p>
+<h2 id="_1">支持矩阵</h2>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>任务 / 数据集</th>
+<th>编码方式</th>
+<th>单轮</th>
+<th>多轮</th>
+<th>Tool Call</th>
+<th>配置名</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen3-30B-A3B</td>
+<td>GSM8K</td>
+<td>Jinja chat template</td>
+<td>✅</td>
+<td>—</td>
+<td>—</td>
+<td><code>sft_qwen3_30ba3b_gsm8k</code></td>
+</tr>
+<tr>
+<td>Qwen3-1.7B</td>
+<td>Wordle</td>
+<td>Jinja chat template</td>
+<td>—</td>
+<td>✅</td>
+<td>—</td>
+<td><code>sft_qwen3_1_7b_wordle</code></td>
+</tr>
+<tr>
+<td>DeepSeek-V4</td>
+<td>tau-bench</td>
+<td>自定义编码器 (encoding_dsv4.py)</td>
+<td>—</td>
+<td>✅</td>
+<td>✅</td>
+<td><code>sft_deepseek_v4_flash_debug_256_experts_43_layers_tau</code></td>
+</tr>
+<tr>
+<td>DeepSeek-V4</td>
+<td>GSM8K</td>
+<td>自定义编码器 (encoding_dsv4.py)</td>
+<td>✅</td>
+<td>—</td>
+<td>—</td>
+<td><code>sft_deepseek_v4_flash_debug_256_experts_43_layers_gsm8k</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">架构概述</h2>
+<p>torchtitan-npu 的 SFT 能力由两层正交配置驱动：</p>
 <ul>
-<li>准备 Qwen3-30B-A3B 的 HuggingFace 预训练权重（如 <code>./assets/hf/Qwen3-30B-A3B</code>）</li>
-<li>准备训练数据集（详见<a href="#数据预处理">数据预处理</a>）</li>
+<li><strong>chat_encoder</strong>（模型级）：决定消息如何渲染为文本。支持 Jinja chat template（默认）和自定义编码器（通过 <code>BaseChatEncoder</code> 子类）。</li>
+<li><strong>sample_processor</strong>（数据集级）：决定原始数据样本如何转为 OpenAI 格式消息列表。不同数据集写不同的 <code>process_sample</code> 函数。</li>
 </ul>
-<h3 id="_2">一键启动</h3>
-<pre><code class="language-bash">MODULE=torchtitan_npu.models.qwen3 CONFIG=sft_qwen3_30ba3b_math bash scripts/run_train.sh
+<pre><code class="language-text">原始样本 → sample_processor → 消息列表 → chat template / chat_encoder → token ids
+                                                                      ↓
+                                                           label masking
 </code></pre>
-<h2 id="_3">数据预处理</h2>
-<p>SFT 的数据预处理在 <code>torchtitan_npu/models/qwen3/config_registry.py</code> 的配置函数中完成。以 <code>sft_qwen3_30ba3b_math</code> 为例，它使用 GSM8K 数据集，<code>process_sample</code> 将原始样本转为 <code>[user, assistant]</code> 消息列表：</p>
-<pre><code class="language-python">def sft_qwen3_30ba3b_math() -&gt; Trainer.Config:
-
-    def process_sample(sample):
-        answer = sample[&quot;answer&quot;]
-        reasoning, final_answer = answer.rsplit(&quot;####&quot;, 1)
-        return [
-            {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: sample[&quot;question&quot;]},
-            {
-                &quot;role&quot;: &quot;assistant&quot;,
-                &quot;reasoning_content&quot;: reasoning.strip(),
-                &quot;content&quot;: final_answer.strip(),
-            },
-        ]
-
-    # ... 其余配置 ...
-    dataloader=ChatDataLoader.Config(
-        dataset_path=&quot;openai/gsm8k&quot;,
-        load_dataset_kwargs={&quot;name&quot;: &quot;main&quot;, &quot;split&quot;: &quot;train&quot;},
-        sample_processor=process_sample,
-    )
+<h3 id="vs">单轮 vs 多轮</h3>
+<p>框架统一支持单轮和多轮消息，无需手动指定：</p>
+<ul>
+<li>Qwen3 / ChatML 模板：通过 <code>&lt;|im_start|&gt;assistant\n</code> 和 <code>&lt;|im_end|&gt;</code> 定位每轮 assistant 回复</li>
+<li>DeepSeek-V4：通过 <code>DSV4ChatEncoder.encode_messages_with_assistant_ranges()</code> 返回的分段区间定位 assistant 回复</li>
+<li>其它无法定位 assistant 区间的模板或编码器会直接报错</li>
+</ul>
+<hr />
+<h2 id="_3">快速开始</h2>
+<h3 id="qwen3-30b-a3b-sftgsm8k">Qwen3-30B-A3B SFT（GSM8K 单轮）</h3>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.qwen3 CONFIG=sft_qwen3_30ba3b_gsm8k bash scripts/run_train.sh
 </code></pre>
-<p>框架拿到 <code>process_sample</code> 返回的消息列表后，自动完成以下处理：</p>
+<h3 id="qwen3-17b-sftwordle">Qwen3-1.7B SFT（Wordle 多轮）</h3>
+<pre><code class="language-bash">NGPU=1 MODULE=torchtitan_npu.models.qwen3 CONFIG=sft_qwen3_1_7b_wordle bash scripts/run_train.sh --checkpoint.last_save_in_hf
+</code></pre>
+<p>详细数据准备、训练和评测流程见文末 <a href="#附录-awordle-sft-样例">Wordle SFT 样例</a>。</p>
+<h3 id="deepseek-v4-sfttau-bench-tool-call">DeepSeek-V4 SFT（tau-bench 多轮 + Tool Call）</h3>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v4 CONFIG=sft_deepseek_v4_flash_debug_256_experts_43_layers_tau bash scripts/run_train.sh
+</code></pre>
+<h3 id="deepseek-v4-sftgsm8k">DeepSeek-V4 SFT（GSM8K 单轮）</h3>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v4 CONFIG=sft_deepseek_v4_flash_debug_256_experts_43_layers_gsm8k bash scripts/run_train.sh
+</code></pre>
+<hr />
+<h2 id="chatencoder">自定义编码器（ChatEncoder）</h2>
+<p>当 tokenizer 的 <code>apply_chat_template()</code> 不足以表达模型格式或定位监督区间时（如 DeepSeek-V4 的 DSML tool calling、thinking/chat 模式切换、tool 消息合并），需要通过自定义编码器替代 tokenizer 模板路径。</p>
+<p>自定义编码器继承 <code>BaseChatEncoder</code>。用于训练时，如果模型的分段边界不能由
+ChatML header 扫描得到，编码器需要实现 <code>encode_messages_with_assistant_ranges()</code>，
+一次性返回完整文本、token 序列，以及需要计算 loss 的 assistant token 区间。</p>
+<p>不设 <code>chat_encoder</code> 时，回退到 tokenizer 的 Jinja2 chat template。当前只支持
+ChatML 模板（通过 <code>&lt;|im_start|&gt;assistant\n</code> 定位 assistant 区间）；无法定位到
+ChatML assistant header 的模板会直接报错，避免静默监督到错误 token。</p>
+<h3 id="dsv4chatencoder">DSV4ChatEncoder</h3>
+<p>DeepSeek-V4 的编码器，薄封装 <code>encoding_dsv4.py</code>，并在渲染时按 message 片段
+计算 assistant token 区间。这样可以复用 DeepSeek 官方模板逻辑，同时避免把
+<code>&lt;｜Assistant｜&gt;</code>、<code>&lt;think&gt;</code> 等 prompt marker 误纳入监督。</p>
+<ul>
+<li><code>thinking_mode</code>：<code>"thinking"</code>（默认，含思考过程）或 <code>"chat"</code>（纯对话）</li>
+<li><code>drop_thinking</code>：是否在训练时丢弃思考内容（默认 <code>True</code>，节省 token）</li>
+<li><code>reasoning_effort</code>：推理力度，<code>"max"</code> / <code>"high"</code> / <code>None</code></li>
+</ul>
+<p>配置示例：</p>
+<pre><code class="language-python">from torchtitan_npu.patches.encoders import DSV4EncoderConfig
+
+dataloader=ChatDataLoaderConfig(
+    ...,
+    chat_encoder=DSV4EncoderConfig(
+        encoding_module_path=&quot;/path/to/encoding_dsv4.py&quot;,
+        thinking_mode=&quot;thinking&quot;,    # &quot;chat&quot; | &quot;thinking&quot;
+        drop_thinking=True,
+        reasoning_effort=None,       # &quot;max&quot; | &quot;high&quot; | None
+    ),
+)
+</code></pre>
+<h3 id="_4">为新模型添加编码器</h3>
 <ol>
-<li>调用 tokenizer 的 chat template 将消息渲染为完整文本</li>
-<li>通过增量前缀重 tokenize 定位 prompt/response 边界，对 prompt 部分做 label mask（仅对 assistant 回复计算 loss）</li>
-<li>对多个样本做 greedy packing（将短样本打包到同一 seq_len 窗口，EOS 分隔，per-document position 重置）</li>
-<li>超过 seq_len 的样本自动丢弃（而非截断）</li>
+<li>在 <code>torchtitan_npu/patches/encoders/</code> 下新建模块（如 <code>my_model.py</code>）</li>
+<li>继承 <code>BaseChatEncoder</code>，实现 <code>encode_messages_with_assistant_ranges()</code></li>
+<li>继承 <code>ChatEncoderConfig</code>，实现 <code>build()</code></li>
+<li>在 <code>encoders/__init__.py</code> 中导出</li>
+<li>在 <code>config_registry.py</code> 的 SFT 配置中通过 <code>chat_encoder=MyEncoderConfig(...)</code> 引用</li>
 </ol>
-<h3 id="_4">消息格式</h3>
-<p><code>process_sample</code> 需返回如下格式的消息列表：</p>
-<pre><code class="language-python">[
-    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;用户输入&quot;},
-    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;助手回复&quot;},
+<p>示例：</p>
+<pre><code class="language-python">from torchtitan_npu.patches.encoders import BaseChatEncoder, ChatEncoderConfig
+
+class MyChatEncoder(BaseChatEncoder):
+    def encode_messages_with_assistant_ranges(self, messages, tokenizer, eos_id):
+        full_text = render_messages(messages)
+        full_tokens = tokenizer.encode(full_text, add_bos=True, add_eos=False)
+        if full_tokens[-1] != eos_id:
+            full_tokens.append(eos_id)
+
+        # 返回需要计算 loss 的 assistant token 区间，范围基于 full_tokens。
+        assistant_ranges = locate_assistant_token_ranges(messages, tokenizer)
+        return full_text, full_tokens, assistant_ranges
+
+@dataclass(kw_only=True, slots=True)
+class MyEncoderConfig(ChatEncoderConfig):
+    my_param: str = &quot;default&quot;
+
+    def build(self) -&gt; MyChatEncoder:
+        return MyChatEncoder(my_param=self.my_param)
+</code></pre>
+<hr />
+<h2 id="_5">数据预处理</h2>
+<h3 id="sample_processor">sample_processor</h3>
+<p>SFT 的数据预处理在 <code>config_registry.py</code> 的配置函数中完成。<code>process_sample</code> 接收 HuggingFace 数据集的原始样本，返回 OpenAI 格式消息列表。</p>
+<h4 id="qwen3-gsm8k">单轮示例（Qwen3 + GSM8K）</h4>
+<pre><code class="language-python">def process_sample(sample):
+    answer = sample[&quot;answer&quot;]
+    reasoning, final_answer = answer.rsplit(&quot;####&quot;, 1)
+    return [
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: sample[&quot;question&quot;]},
+        {
+            &quot;role&quot;: &quot;assistant&quot;,
+            &quot;reasoning_content&quot;: reasoning.strip(),
+            &quot;content&quot;: final_answer.strip(),
+        },
+    ]
+</code></pre>
+<h4 id="tool-call-deepseek-v4-tau-bench">多轮 + Tool Call 示例（DeepSeek-V4 + tau-bench）</h4>
+<pre><code class="language-python">def process_tau_sample(sample):
+    import json
+
+    raw_messages = sample[&quot;messages&quot;]
+    messages = json.loads(raw_messages) if isinstance(raw_messages, str) else raw_messages
+    messages = [dict(m) for m in messages]
+
+    raw_tools = sample.get(&quot;tools&quot;, [])
+    tools = json.loads(raw_tools) if isinstance(raw_tools, str) else raw_tools
+
+    # 将 tools 注入 system 消息（DSV4 编码器要求）
+    if tools:
+        if messages and messages[0].get(&quot;role&quot;) == &quot;system&quot;:
+            messages[0] = dict(messages[0])
+            messages[0][&quot;tools&quot;] = tools
+        else:
+            messages.insert(0, {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;&quot;, &quot;tools&quot;: tools})
+
+    return messages
+</code></pre>
+<h3 id="_6">消息格式</h3>
+<p><code>process_sample</code> 返回 OpenAI 格式消息列表：</p>
+<pre><code class="language-python"># 单轮
+[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}, {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;...&quot;}]
+
+# 带 thinking
+[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}, {&quot;role&quot;: &quot;assistant&quot;, &quot;reasoning_content&quot;: &quot;...&quot;, &quot;content&quot;: &quot;...&quot;}]
+
+# 多轮 + tool call
+[
+    {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;...&quot;, &quot;tools&quot;: [...]},
+    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;},
+    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;...&quot;, &quot;tool_calls&quot;: [...]},
+    {&quot;role&quot;: &quot;tool&quot;, &quot;content&quot;: &quot;...&quot;, &quot;tool_call_id&quot;: &quot;...&quot;},
+    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;...&quot;},
 ]
 </code></pre>
-<p>Qwen3 支持 thinking mode，可在 assistant 消息中添加 <code>reasoning_content</code> 字段：</p>
-<pre><code class="language-python">[
-    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;用户输入&quot;},
-    {&quot;role&quot;: &quot;assistant&quot;, &quot;reasoning_content&quot;: &quot;思考过程&quot;, &quot;content&quot;: &quot;最终回答&quot;},
-]
-</code></pre>
-<blockquote>
-<p><strong>限制</strong>：当前仅支持单轮对话（一条 user + 一条 assistant），暂不支持多轮。</p>
-</blockquote>
-<h2 id="ulysses-context-parallel">Ulysses Context Parallel</h2>
-<p>torchtitan-npu 为 Qwen3 提供了 Ulysses 风格的 CP 实现。在配置中设置 <code>context_parallel_degree &gt; 1</code> 即可启用：</p>
+<h3 id="_7">框架自动处理</h3>
+<p>框架拿到消息列表后自动完成：</p>
+<ol>
+<li><strong>编码</strong>：通过 Jinja2 chat template 或 <code>chat_encoder</code> 渲染为完整 token 序列</li>
+<li><strong>Label masking</strong>：通过 ChatML header 扫描或编码器返回的 assistant 区间，仅对 assistant 回复计算 loss</li>
+<li><strong>Packing</strong>：对多个样本做 greedy packing（短样本打包到同一 seq_len 窗口，EOS 分隔，per-document position 重置）</li>
+<li><strong>截断/丢弃</strong>：超过 seq_len 的样本自动丢弃（而非截断）</li>
+</ol>
+<hr />
+<h2 id="context-parallel">Context Parallel</h2>
+<p>torchtitan-npu 为 Qwen3 和 DeepSeek-V4 提供了自定义 CP 实现。在配置中设置 <code>context_parallel_degree &gt; 1</code> 即可启用：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh --parallelism.context_parallel_degree 4
 </code></pre>
 <p>关于 Ulysses CP 的实现原理和约束条件，详见<a href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性文档</a>。</p>
-<h2 id="_5">权重加载与保存</h2>
-<h3 id="_6">加载预训练权重</h3>
+<h2 id="_8">权重加载与保存</h2>
+<h3 id="_9">加载预训练权重</h3>
 <p>SFT 配置默认从 HuggingFace 格式加载预训练权重：</p>
 <pre><code class="language-bash">--checkpoint.initial_load_in_hf \
---checkpoint.initial_load_path /path/to/Qwen3-30B-A3B
+--checkpoint.initial_load_path /path/to/model
 </code></pre>
 <blockquote>
 <p><strong>注意</strong>：<code>checkpoint.folder</code> 不能与 <code>checkpoint.initial_load_path</code> 相同，否则框架会跳过 HuggingFace 权重加载。</p>
 </blockquote>
-<h3 id="_7">切换为自己的预训练权重</h3>
+<h3 id="_10">切换为自己的预训练权重</h3>
 <p>修改 <code>checkpoint.initial_load_path</code> 和 <code>hf_assets_path</code> 指向新的权重目录：</p>
 <pre><code class="language-bash">--checkpoint.initial_load_path /path/to/your/model \
 --hf_assets_path /path/to/your/model
 </code></pre>
-<h3 id="_8">保存训练后的权重</h3>
+<h3 id="_11">保存训练后的权重</h3>
 <p>训练完成后，权重会自动保存到 <code>checkpoint.folder</code> 指定的路径。可通过 <code>checkpoint.interval</code> 设置保存间隔：</p>
 <pre><code class="language-bash">--checkpoint.folder /path/to/save \
 --checkpoint.interval 100
 </code></pre>
 <p>如仅需加载权重而不保存（如调试时），设置 <code>--checkpoint.load_only</code>。</p>
-<h2 id="_9">常见问题</h2>
+<h2 id="_12">常见问题</h2>
 <p><strong>Q: 数据集跑完一轮就停了？</strong></p>
 <p>默认 <code>dataloader.infinite=true</code>，数据集会无限循环。如果设为 false，数据遍历完一轮后训练会停止。tyro 的 bool 参数通过 flag 设置，显式开启或关闭可使用：</p>
 <pre><code class="language-bash">--dataloader.infinite
@@ -288,7 +471,7 @@
 <p><code>ChatDataset</code> 会自动丢弃 token 数超过 <code>seq_len</code> 的样本（而非截断），日志中会打印 <code>Dropping sample</code> 提示。可增大 <code>seq_len</code> 或开启 Ulysses CP 来容纳更长样本。</p>
 <h2 id="awordle-sft">附录 A：Wordle SFT 样例</h2>
 <p>基于 torchtitan_npu，在 Ascend NPU 上对 Qwen3-1.7B 进行 Wordle 猜词游戏的 SFT 微调。参考 prime-rl 的 <a href="https://github.com/PrimeIntellect-ai/prime-rl/blob/main/examples/wordle/README.md">Wordle 示例</a>。</p>
-<h3 id="_10">环境准备</h3>
+<h3 id="_13">环境准备</h3>
 <p>安装评测工具：</p>
 <pre><code class="language-bash">pip install prime                                          # verifiers 框架（含 vf-eval CLI）
 git clone https://github.com/PrimeIntellect-ai/prime-rl.git
@@ -298,7 +481,7 @@ git submodule sync
 git submodule update --init deps/verifiers
 pip install deps/verifiers/environments/wordle              # wordle 游戏环境
 </code></pre>
-<h3 id="_11">模型与数据</h3>
+<h3 id="_14">模型与数据</h3>
 <table>
 <thead>
 <tr>
@@ -320,7 +503,7 @@ pip install deps/verifiers/environments/wordle              # wordle 游戏环�
 </tr>
 </tbody>
 </table>
-<h3 id="_12">下载模型权重</h3>
+<h3 id="_15">下载模型权重</h3>
 <pre><code class="language-bash"># modelscope
 pip install modelscope
 python3 -c &quot;
@@ -332,7 +515,7 @@ snapshot_download('Qwen/Qwen3-1.7B', local_dir='./assets/hf/Qwen3-1.7B')
 pip install huggingface_hub
 HF_ENDPOINT=https://hf-mirror.com huggingface-cli download Qwen/Qwen3-1.7B --local-dir ./assets/hf/Qwen3-1.7B
 </code></pre>
-<h3 id="_13">数据集</h3>
+<h3 id="_16">数据集</h3>
 <p>每个样本包含 <code>prompt</code> 和 <code>completion</code> 两个字段。训练时通过 HF 在线加载，首次下载后自动缓存。</p>
 <p>若网络不通，可在有网的机器上下载原始文件，拷贝到训练环境后转为 parquet：</p>
 <pre><code class="language-bash"># 1. 在有网的机器上下载
@@ -354,7 +537,7 @@ pprint.pprint(next(iter(ds)), width=100, depth=3)
 &quot;
 </code></pre>
 <p><code>torchtitan_npu.models.qwen3.config_registry</code> 的 <code>_process_wordle_sample</code> 函数将 <code>prompt</code> 和 <code>completion</code> 拼接为完整的 <code>[system, user, assistant, user, assistant, ...]</code> 消息列表。</p>
-<h3 id="_14">模型选择</h3>
+<h3 id="_17">模型选择</h3>
 <p>使用 <code>Qwen/Qwen3-1.7B</code>（instruct 版本，已内置多轮对话模板）。</p>
 <h3 id="sft_1">可用的 SFT 配置</h3>
 <table>
@@ -371,11 +554,11 @@ pprint.pprint(next(iter(ds)), width=100, depth=3)
 </tr>
 </tbody>
 </table>
-<h3 id="_15">多轮对话支持</h3>
+<h3 id="_18">多轮对话支持</h3>
 <p>上游 torchtitan 的 <code>ChatDataset</code>（<a href="https://github.com/pytorch/torchtitan/blob/ac13e536/torchtitan/hf_datasets/text_datasets.py#L302-L315">源码</a>）硬编码了 <code>len(messages) != 2</code>（仅接受 <code>[user, assistant]</code> 单轮格式）。Wordle 的 <code>willcb/V3-wordle</code> 数据集每条样本包含 6-10 条消息（多轮游戏轨迹），直接报错。</p>
 <p>同时，还需要对对话的 assistant 部分进行 mask，效果等价于 prime-rl 的 <code>role_to_mask: msg["role"] != "assistant"</code>——仅对 assistant 消息计算 loss，user（环境反馈）不参与训练。</p>
-<p>本 recipe 通过 <code>torchtitan_npu/patches/torchtitan/multiturn_chat.py</code> 解决以上问题（<code>torchtitan_npu/__init__.py</code> 自动加载，无需手动配置）。</p>
-<h3 id="_16">运行训练任务</h3>
+<p>本 recipe 通过统一的 <code>torchtitan_npu/patches/torchtitan/chat_dataset.py</code> 解决以上问题（<code>torchtitan_npu/__init__.py</code> 自动加载，无需手动配置）。该 patch 同时服务 Qwen3 多轮 SFT 和 DeepSeek-V4 tool-call SFT，模型格式差异由 Jinja chat template 或 <code>chat_encoder</code> 处理。</p>
+<h3 id="_19">运行训练任务</h3>
 <p>在线环境：</p>
 <pre><code class="language-bash">export HF_ENDPOINT=https://hf-mirror.com  # 国内需要镜像
 NGPU=1 MODULE=torchtitan_npu.models.qwen3 \
@@ -391,7 +574,7 @@ NGPU=1 MODULE=torchtitan_npu.models.qwen3 \
 <blockquote>
 <p><code>--checkpoint.last_save_in_hf</code> 在最后一步自动导出 HF 格式。</p>
 </blockquote>
-<h3 id="_17">训练结果参考</h3>
+<h3 id="_20">训练结果参考</h3>
 <p><img alt="training curves" src="../training_curves.png" /></p>
 <details>
 <summary>详细日志</summary>
@@ -423,7 +606,7 @@ nltk.download('words')
 nltk.download('averaged_perceptron_tagger')
 &quot;
 </code></pre>
-<h3 id="_18">启动推理服务器</h3>
+<h3 id="_21">启动推理服务器</h3>
 <p><code>scripts/infer_server.py</code> 是一个极简的 OpenAI 兼容推理服务器，用 <code>transformers</code> + <code>torch_npu</code> 直接加载 SFT 权重，监听 8000 端口。</p>
 <p><strong>它做了什么：</strong></p>
 <ol>
@@ -504,7 +687,7 @@ curl http://localhost:8000/health
 </tr>
 </tbody>
 </table>
-<h3 id="_19">评测指标说明</h3>
+<h3 id="_22">评测指标说明</h3>
 <p>Wordle 环境每局最多 6 轮猜测，每轮模型输出 <code>&lt;guess&gt;[word]&lt;/guess&gt;</code>，环境返回 G/Y/X 反馈。Reward 由 verifiers 子模块中的 <a href="https://github.com/PrimeIntellect-ai/verifiers/blob/main/environments/wordle/wordle.py"><code>wordle.py</code></a> 定义：</p>
 <table>
 <thead>
@@ -542,7 +725,7 @@ curl http://localhost:8000/health
 </tr>
 </tbody>
 </table>
-<h3 id="_20">评测结果对比</h3>
+<h3 id="_23">评测结果对比</h3>
 <h4 id="qwen3-17b">基础模型（Qwen3-1.7B）</h4>
 <table>
 <thead>
