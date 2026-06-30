@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>低精度训练特性（MXFP8 / HiFloat8） - torchtitan-npu</title>
+    <title>低精度训练特性（MXFP8） - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3\u7279\u6027\uff08MXFP8 / HiFloat8\uff09";
+        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3\u7279\u6027\uff08MXFP8\uff09";
         var mkdocs_page_input_path = "feature_guides/low_precision_training.md";
         var mkdocs_page_url = null;
       </script>
@@ -58,7 +58,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8 / HiFloat8）</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8）</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">硬件要求</a>
     </li>
@@ -66,23 +66,21 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_3">整体架构</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#quantizelinearmx">线性层低精度（quantize.linear.mx）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">线性层低精度</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#moe-quantizegrouped_mmmx">MoE 专家层低精度（quantize.grouped_mm.mx）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#moe">MoE 专家层低精度</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_4">配置选项</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">配置选项</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#quantizelinearmx_1">线性层低精度配置（quantize.linear.mx）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#mxfp8converter">MXFP8Converter 配置</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#moe-quantizegrouped_mmmx_1">MoE 专家层低精度配置（quantize.grouped_mm.mx）</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_5">配置示例</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">配置示例</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_6">验证清单</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">验证清单</a>
     </li>
     </ul>
                   </li>
@@ -143,7 +141,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">低精度训练特性（MXFP8 / HiFloat8）</li>
+      <li class="breadcrumb-item active">低精度训练特性（MXFP8）</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -152,14 +150,14 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="mxfp8-hifloat8">低精度训练特性（MXFP8 / HiFloat8）</h1>
+                <h1 id="mxfp8">低精度训练特性（MXFP8）</h1>
 <p>在大规模语言模型的分布式训练中，矩阵乘法运算（GEMM）占据了绝大部分计算开销。传统的 BF16/FP16 混合精度训练虽然已大幅降低了显存占用，但在超大规模模型（如 DeepSeek-V3 671B）上仍面临计算效率瓶颈。低精度训练通过将线性层和 MoE 专家层的矩阵乘法降至 8-bit 浮点精度执行，在保持训练收敛性的前提下，显著提升计算吞吐并降低显存消耗。</p>
-<p>本特性在 <code>torchtitan</code> 框架中引入了对 <strong>MXFP8</strong> 和 <strong>HiFloat8</strong> 两种 8-bit 浮点格式的支持，覆盖普通线性层（nn.Linear）和 MoE 专家层（Grouped MM）两大场景。</p>
+<p>本特性基于 <a href="https://github.com/pytorch/ao">torchao</a> 的 MXFP8 训练框架，通过 NPU 侧的 monkey-patch 将 torchao 的 MXFP8 计算路径重定向至 <code>torch_npu</code> 原生算子，覆盖普通线性层（nn.Linear）和 MoE 专家层（Grouped MM）两大场景。</p>
 <h2 id="_1">硬件要求</h2>
 <p>低精度训练特性仅支持 <strong>Ascend 950 及更高架构</strong>的 NPU 设备。系统在初始化时会通过 <code>torch_npu.npu.get_device_name()</code> 进行硬件检测，不满足要求时将抛出异常。</p>
 <h2 id="_2">实现原理</h2>
 <h3 id="_3">整体架构</h3>
-<p>本特性通过 <code>torchtitan</code> 的 converter 机制实现，在模型构建完成后对目标模块进行无缝替换。相关代码主要分布在以下文件中：</p>
+<p>本特性采用 <strong>torchao 原生 MXFP8 框架 + NPU 算子替换</strong> 的架构。torchtitan 上游提供 <code>MXFP8Converter</code> 作为模型转换入口，torchao 负责量化配置与权重包装，torchtitan-npu 通过 monkey-patch 将 torchao 内部的矩阵乘法调度函数替换为 NPU 实现。相关代码主要分布在以下文件中：</p>
 <table>
 <thead>
 <tr>
@@ -169,48 +167,39 @@
 </thead>
 <tbody>
 <tr>
-<td><code>torchtitan_npu/converters/quant_converter.py</code></td>
-<td>对上游 <code>MXFP8Converter</code> 的初始化与转换逻辑进行 NPU 适配替换</td>
+<td><code>torchtitan_npu/patches/torchao_npu/mx_capability_check.py</code></td>
+<td>替换 <code>has_cuda_capability</code> 函数，使 MXFP8Converter 在 NPU 上进行硬件校验</td>
 </tr>
 <tr>
-<td><code>torchtitan_npu/converters/kernels/quant_linear.py</code></td>
-<td>实现低精度线性层 <code>MXLinear</code>，包含 MXFP8 和 HiFloat8 的前向/反向自定义算子</td>
+<td><code>torchtitan_npu/patches/torchao_npu/mx_linear.py</code></td>
+<td>替换 torchao 的 <code>_to_mxfp8_then_scaled_mm</code>，将线性层 MXFP8 计算重定向至 NPU 算子</td>
 </tr>
 <tr>
-<td><code>torchtitan_npu/converters/kernels/quant_gmm.py</code></td>
-<td>实现低精度分组矩阵乘法，包含 MXFP8 和 HiFloat8 的前向/反向自定义算子</td>
-</tr>
-<tr>
-<td><code>torchtitan_npu/patches/quantization/quant_config.py</code></td>
-<td>定义量化配置数据类 <code>MXLinearConfig</code>、<code>MoETrainingConfig</code> 及对应的 recipe 枚举</td>
-</tr>
-<tr>
-<td><code>torchtitan_npu/patches/quantization/quantize.py</code></td>
-<td>提供 <code>linear_quantize_</code> 和 <code>grouped_quantize_</code> 函数，实现模型模块的递归遍历与替换</td>
+<td><code>torchtitan_npu/patches/torchao_npu/mxfp8_grouped_mm.py</code></td>
+<td>替换 torchao 的 <code>_to_mxfp8_then_scaled_grouped_mm</code>，将 MoE 分组矩阵乘法重定向至 NPU 算子</td>
 </tr>
 </tbody>
 </table>
-<h3 id="quantizelinearmx">线性层低精度（<code>quantize.linear.mx</code>）</h3>
-<p>通过 converter 机制，系统将模型中符合条件的 <code>nn.Linear</code> 模块替换为自定义的 <code>MXLinear</code> 模块。<code>MXLinear</code> 继承自 <code>nn.Linear</code>，在 <code>forward</code> 方法中根据配置的 <code>recipe_name</code> 调用对应的低精度自定义算子：</p>
+<h3 id="_4">线性层低精度</h3>
+<p><code>MXFP8Converter</code> 在转换阶段，通过 torchao 的 <code>quantize_</code> API 对模型中指定 FQN 的 <code>nn.Linear</code> 模块的权重进行包装（<code>MXFP8TrainingWeightWrapperTensor</code>）。在前向传播时，权重包装器的 <code>__torch_function__</code> 拦截矩阵乘法调用，进入 <code>_to_mxfp8_then_scaled_mm</code> 函数。</p>
+<p>NPU 侧通过 patch <code>torchao.prototype.mx_formats.mx_linear._to_mxfp8_then_scaled_mm</code>，将其替换为调用 NPU 原生算子的 <code>NpuMXFP8MM</code>：</p>
 <ul>
-<li><strong>MXFP8 模式</strong>：使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对激活和权重进行 per-block 量化（block size=32），每 32 个元素共享一个scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行低精度矩阵乘法。前向传播的线性变换及反向传播的输入梯度、权重梯度计算以 FP8 精度执行，最终输出恢复为原始精度。</li>
-<li><strong>HiFloat8 模式</strong>：使用 <code>torch_npu.npu_dynamic_quant</code> 对激活和权重进行 per-tensor 动态量化，整个张量共享一个 scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行低精度矩阵乘法。</li>
+<li><strong>前向传播</strong>：使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对激活和权重分别进行 per-block 量化（block size=32，沿 axis=-1 方向），每 32 个元素共享一个 e8m0 scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行 FP8 矩阵乘法，输出恢复为原始精度（BF16）。</li>
+<li><strong>反向传播</strong>：输入梯度（dx）和权重梯度（dw）的计算同样在 FP8 精度下完成，其中权重梯度使用 <code>npu_dynamic_mx_quant</code> 对权重沿 axis=-2 方向进行 per-block 量化。</li>
 </ul>
-<p>用户可通过 <code>filter_fqns</code> 配置项，指定不进行低精度替换的线性层（如 <code>output</code> 层和 <code>router.gate</code> 层），以避免对精度敏感的模块产生影响。</p>
-<h3 id="moe-quantizegrouped_mmmx">MoE 专家层低精度（<code>quantize.grouped_mm.mx</code>）</h3>
-<p>对于 MoE（Mixture of Experts）架构中的专家层，系统通过替换 <code>npu_grouped_mm</code> 函数为低精度版本来实现量化加速：</p>
+<h3 id="moe">MoE 专家层低精度</h3>
+<p>对于 MoE（Mixture of Experts）架构中的专家层，torchao 通过 <code>_to_mxfp8_then_scaled_grouped_mm</code> 函数调度分组矩阵乘法。</p>
+<p>NPU 侧通过 patch <code>torchao.prototype.moe_training.mxfp8_grouped_mm._to_mxfp8_then_scaled_grouped_mm</code>，将其替换为调用 NPU 原生算子的 <code>NpuMXFP8GroupedMM</code>：</p>
 <ul>
-<li><strong>MXFP8 模式</strong>：在前向传播中，使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对输入和权重分别进行 per-block 量化（block size=32），再调用 <code>torch_npu.npu_grouped_matmul</code> 执行低精度分组矩阵乘法。反向传播中，梯度计算同样在 FP8 精度下完成，其中权重梯度的计算使用 <code>torch_npu.npu_grouped_dynamic_mx_quant</code> 进行 per-block 量化。</li>
-<li><strong>HiFloat8 模式</strong>：先根据专家数和 EP 并行度计算分组大小 <code>g_size</code>，再通过 <code>reshape(g_size, -1)</code> 将张量重塑为 <code>g_size</code> 行，利用 <code>torch_npu.npu_dynamic_quant</code> 的默认 per-token 量化模式对每一行（实际对应每个专家分组）独立量化，每个专家分组共享一个scale。量化后调用 <code>torch_npu.npu_grouped_matmul</code> 执行低精度分组矩阵乘法。</li>
+<li><strong>前向传播</strong>：使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对输入和权重分别进行 per-block 量化（block size=32），再调用 <code>torch_npu.npu_grouped_matmul</code> 执行 FP8 分组矩阵乘法。</li>
+<li><strong>反向传播</strong>：输入梯度使用 <code>npu_dynamic_mx_quant</code> + <code>npu_grouped_matmul</code> 计算；权重梯度使用 <code>torch_npu.npu_grouped_dynamic_mx_quant</code> 对输入和梯度分别进行 per-group 量化后，再调用 <code>npu_grouped_matmul</code> 计算。</li>
 </ul>
 <blockquote>
-<p><strong>注意</strong>：MoE 低精度功能依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 <code>converters</code> 配置中 <code>"npu_gmm"</code> 必须位于 <code>"quantize.grouped_mm.mx"</code> 之前。</p>
+<p><strong>注意</strong>：MoE 低精度功能依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 converters 配置中 <code>npu_gmm</code> 必须位于 <code>MXFP8Converter</code> 之前。</p>
 </blockquote>
-<h2 id="_4">配置选项</h2>
-<p>低精度训练通过 <code>ModelConvertersContainer.Config</code> 的
-<code>converters</code> 列表启用，在模型的 <code>config_registry.py</code> 中设置。NPU 侧会 patch 上游 <code>MXFP8Converter.Config</code>，使其支持
-<code>recipe_name</code>、<code>filter_fqns</code> 和 <code>fqns</code> 字段。</p>
-<h3 id="quantizelinearmx_1">线性层低精度配置（<code>quantize.linear.mx</code>）</h3>
+<h2 id="_5">配置选项</h2>
+<p>低精度训练通过 <code>ModelConvertersContainer.Config</code> 的 <code>converters</code> 列表启用，使用上游 <code>MXFP8Converter.Config</code> 进行配置。</p>
+<h3 id="mxfp8converter">MXFP8Converter 配置</h3>
 <table>
 <thead>
 <tr>
@@ -224,58 +213,20 @@
 <tr>
 <td><code>recipe_name</code></td>
 <td>str</td>
-<td>"mxfp8"</td>
-<td>量化方式。可选值：<code>"mxfp8"</code>、<code>"hif8"</code>。</td>
-</tr>
-<tr>
-<td><code>filter_fqns</code></td>
-<td>list[str]</td>
-<td>[]</td>
-<td>不进行低精度替换的模块名称列表。匹配规则为子字符串包含，如 <code>"output"</code> 将过滤所有全限定名（Fully Qualified Name, FQN）中包含 "output" 的线性层。</td>
-</tr>
-</tbody>
-</table>
-<h3 id="moe-quantizegrouped_mmmx_1">MoE 专家层低精度配置（<code>quantize.grouped_mm.mx</code>）</h3>
-<table>
-<thead>
-<tr>
-<th>配置项</th>
-<th>类型</th>
-<th>默认值</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>recipe_name</code></td>
-<td>str</td>
-<td>"mxfp8"</td>
-<td>量化方式。可选值：<code>"mxfp8"</code>、<code>"hif8"</code>。</td>
+<td><code>"mxfp8_rceil"</code></td>
+<td>量化 recipe 名称。当前唯一可选值：<code>"mxfp8_rceil"</code>（MXFP8 动态量化，scale 计算采用 RCEIL 舍入模式）。</td>
 </tr>
 <tr>
 <td><code>fqns</code></td>
 <td>list[str]</td>
 <td>[]</td>
-<td>需要进行低精度替换的 MoE 模块名称列表。保留字段，暂不生效；目前对所有 MoE 专家层的GMM执行全量低精度替换。</td>
+<td>需要启用 MXFP8 量化的模块全限定名（FQN）列表。匹配规则为子字符串包含，例如 <code>"moe.experts"</code> 将匹配所有 FQN 中包含该字符串的模块。留空表示不对任何模块启用 MXFP8。</td>
 </tr>
 </tbody>
 </table>
-<h3 id="_5">配置示例</h3>
-<p>在模型的 <code>config_registry.py</code> 中配置 <code>model_converters</code> 并添加对应的量化参数：</p>
-<p><strong>示例一：仅对线性层启用低精度训练</strong></p>
-<pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
-from torchtitan.protocols.model_converter import ModelConvertersContainer
-
-model_converters = ModelConvertersContainer.Config(
-    converters=[
-        MXFP8Converter.Config(
-            recipe_name=&quot;mxfp8&quot;,
-            filter_fqns=[&quot;output&quot;, &quot;router.gate&quot;],
-        ),
-    ],
-)
-</code></pre>
-<p><strong>示例二：同时对线性层和 MoE 专家层启用低精度训练</strong></p>
+<h3 id="_6">配置示例</h3>
+<p>在模型的 <code>config_registry.py</code> 中配置 <code>model_converters</code> 并添加 <code>MXFP8Converter</code>：</p>
+<p><strong>示例：对指定线性层和 MoE 专家层启用 MXFP8 低精度训练</strong></p>
 <pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
 from torchtitan.protocols.model_converter import ModelConvertersContainer
 
@@ -283,25 +234,43 @@ from torchtitan_npu.converters import get_model_converter_config
 
 model_converters = ModelConvertersContainer.Config(
     converters=[
-        # npu_gmm 必须在 MXFP8Converter 之前
+        # NPU 基础 converter（npu_gmm 必须在 MXFP8Converter 之前）
+        get_model_converter_config(&quot;npu_rms_norm&quot;),
+        get_model_converter_config(&quot;npu_moe_dispatch&quot;),
         get_model_converter_config(&quot;npu_gmm&quot;),
+        get_model_converter_config(&quot;npu_rope&quot;),
+        get_model_converter_config(&quot;npu_smla&quot;),
+        get_model_converter_config(&quot;npu_mhc_pre&quot;),
+        # MXFP8 低精度训练
         MXFP8Converter.Config(
-            recipe_name=&quot;mxfp8&quot;,
-            filter_fqns=[&quot;output&quot;, &quot;router.gate&quot;],
+            recipe_name=&quot;mxfp8_rceil&quot;,
+            fqns=[
+                # Attention 线性层
+                &quot;pre_attention.wq_a&quot;,
+                &quot;pre_attention.wq_b&quot;,
+                &quot;pre_attention.wkv&quot;,
+                &quot;pre_attention.indexer.wq_b&quot;,
+                &quot;pre_attention.indexer.weights_proj&quot;,
+                &quot;post_attention.wo_a&quot;,
+                &quot;post_attention.wo_b&quot;,
+                # MoE 专家层
+                &quot;moe.experts&quot;,
+                &quot;moe.shared_experts&quot;,
+            ],
         ),
     ],
 )
 </code></pre>
-<h2 id="_6">验证清单</h2>
+<h2 id="_7">验证清单</h2>
 <ol>
-<li><strong>确认 converter 生效</strong>：启动日志中应出现以下关键字（MXFP8 和 HiFloat8 均适用）：</li>
-<li>线性层：<code>MX training active with recipe &lt;recipe_name&gt;</code>（其中 <code>&lt;recipe_name&gt;</code> 为 <code>mxfp8</code> 或 <code>hif8</code>）和 <code>Swapped to MXLinear_NPU layers</code></li>
-<li>MoE 专家层：<code>Converted all MoE grouped MM layers to use dynamic &lt;recipe_name&gt; quantization with scaled grouped GEMMs</code> 和 <code>[MXFP8/HiF8 GMM] Replaced &lt;N&gt; NPU GMM methods/functions</code></li>
-<li><strong>确认模块替换数量</strong>：日志中 <code>Replaced &lt;N&gt; NPU GMM methods/functions</code> 的数量应与预期的 MoE 专家模块数一致；线性层可通过 <code>model.named_modules()</code> 检查 <code>MXLinear</code> 类型的模块数量。</li>
+<li><strong>确认 converter 生效</strong>：启动日志中应出现以下关键字：</li>
+<li><code>MXFP8 MoE training enabled</code>（来自上游 <code>MXFP8Converter.__init__</code>）</li>
+<li><code>Converted layers matching FQNS ... to use dynamic mxfp8_rceil quantization for grouped_mm and linear ops</code>（来自上游 <code>MXFP8Converter.convert</code>）</li>
+<li><strong>确认模块替换数量</strong>：日志中转换信息应与配置的 <code>fqns</code> 列表匹配。</li>
 <li><strong>常见未生效场景排查</strong>：</li>
-<li><code>converters</code> 顺序错误：<code>"npu_gmm"</code> 未放在 <code>"quantize.grouped_mm.mx"</code> 之前，导致 MoE 专家层替换失败</li>
-<li><code>filter_fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
-<li>硬件不满足要求：日志报错 <code>[MXFP8/HiF8] is only supported on Ascend950 or higher architecture</code></li>
+<li><code>converters</code> 顺序错误：<code>npu_gmm</code> 未放在 <code>MXFP8Converter</code> 之前，导致 MoE 专家层替换失败</li>
+<li><code>fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
+<li>硬件不满足要求：日志报错 <code>MXFP8 is only supported on Ascend950 or higher architecture</code></li>
 </ol>
               
             </div>
