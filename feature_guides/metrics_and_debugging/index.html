@@ -94,9 +94,11 @@
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#torchtitan-npu">torchtitan-npu 扩展配置选项</a>
     </li>
+    <li class="toctree-l4"><a class="reference internal" href="#_11">离线解析</a>
+    </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_11">配置示例</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_12">配置示例</a>
     </li>
         </ul>
     </li>
@@ -107,6 +109,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
                   </li>
@@ -416,11 +420,27 @@ profiling = ProfilingConfig(
 <td><code>enable_online_parse</code></td>
 <td>bool</td>
 <td>true</td>
-<td>是否启用性能分析数据的在线解析。</td>
+<td>是否启用性能分析数据的在线解析。设置为 <code>false</code> 时仅落盘原始数据，需在训练结束后离线解析（见<a href="#离线解析">离线解析</a>）。</td>
 </tr>
 </tbody>
 </table>
-<h3 id="_11">配置示例</h3>
+<h4 id="_11">离线解析</h4>
+<p>当 <code>enable_online_parse=False</code> 时，性能分析仅将原始数据转储到 <code>save_traces_folder</code> 指定的目录，不进行在线解析。
+训练结束后，在 <code>save_traces_folder/profiling_data/</code> 目录下会生成以 <code>{hostname}_{pid}_{timestamp}_ascend_pt</code> 命名的子目录，包含原始 profiling 数据。多 rank 场景（<code>profile_ranks</code> 含多个 rank 或为 <code>[-1]</code>）下，每个 rank 会生成独立的 <code>*_ascend_pt</code> 子目录。使用 <code>scripts/parse_profiling_data.py</code> 对其进行离线解析：</p>
+<pre><code class="language-bash"># 解析单个 *_ascend_pt 目录
+python3 scripts/parse_profiling_data.py path/to/xxx_ascend_pt
+
+# 解析父目录下所有 *_ascend_pt（支持多 rank 场景）
+python3 scripts/parse_profiling_data.py path/to/save_traces_folder
+</code></pre>
+<p>脚本接受单个 <code>*_ascend_pt</code> 目录或其父目录（自动扫描 <code>profiling_data/*_ascend_pt</code> 和 <code>*_ascend_pt</code> 两种布局）。解析完成后，会在每个 <code>*_ascend_pt/ASCEND_PROFILER_OUTPUT/</code> 子目录下生成以下文件：</p>
+<ul>
+<li><code>kernel_details.csv</code>：NPU kernel 级别的耗时统计</li>
+<li><code>api_statistic.csv</code>：PyTorch API 调用统计</li>
+<li><code>ascend_pytorch_profiler_0.db</code>：可用 MindStudio Insight 或 Chrome Tracing 打开的 SQLite 格式 trace</li>
+<li><code>trace_view.json</code>：完整的 trace 视图数据</li>
+</ul>
+<h3 id="_12">配置示例</h3>
 <p>在 <code>config_registry.py</code> 的配置函数中设置，启用性能分析功能。</p>
 <p>使用 torchtitan 原生的基于频率的分析模式：</p>
 <pre><code class="language-python">from torchtitan_npu.config.configs import ProfilingConfig
@@ -445,7 +465,7 @@ profiling = ProfilingConfig(
     profile_record_shapes=True,
     profile_with_memory=False,
     profile_with_stack=False,
-    enable_online_parse=True,
+    enable_online_parse=True,  # 设为 False 启用离线模式，训练后用 parse_profiling_data.py 解析
 )
 </code></pre>
               

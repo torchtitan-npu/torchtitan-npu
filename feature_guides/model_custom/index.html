@@ -98,7 +98,7 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#41">4.1 注册阶段（模块导入时）</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#42-trainerinit_distributed">4.2 模型入口阶段（Trainer.init_distributed 拦截）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#42-trainerinit">4.2 模型入口阶段（Trainer.init 拦截）</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#43-torchtitan-convert">4.3 转换执行阶段（torchtitan 调用 convert 时）</a>
     </li>
@@ -113,6 +113,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
                   </li>
@@ -429,9 +431,9 @@ model_converters = ModelConvertersContainer.Config(
 <td><strong>全局注册单例</strong>，管理 ModelCustomConfig 和动态生成的 Converter 类</td>
 </tr>
 <tr>
-<td><code>init_distributed_wrapper</code> / <code>get_using_model_spec()</code></td>
-<td><code>patches/torchtitan/trainer_init_distributed.py</code></td>
-<td><strong>拦截 Trainer.init_distributed</strong> 捕获 Trainer.Config，供 converter 读取 ModelSpec；由 <code>_apply_patches()</code> 显式调用 <code>apply()</code> 安装</td>
+<td><code>get_trainer_config()</code></td>
+<td><code>patches/torchtitan/_trainer_config_stash.py</code></td>
+<td><strong>拦截 Trainer.<strong>init</strong></strong> 捕获 Trainer.Config，供 converter 读取 ModelSpec；由 <code>_apply_patches()</code> 的模块级 import 自动安装</td>
 </tr>
 </tbody>
 </table>
@@ -553,21 +555,17 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
     reg-&gt;&gt;reg: _converter_classes[&quot;my_npu_kernel&quot;] = converter_cls
     Note over reg: 动态生成的 converter_cls 会被 torchtitan 通过 Configurable.Config 发现
 </code></pre>
-<h3 id="42-trainerinit_distributed">4.2 模型入口阶段（Trainer.init_distributed 拦截）</h3>
-<p>该拦截通过 <code>patches/torchtitan/trainer_init_distributed.py</code> 实现，
-由 <code>_apply_patches()</code> 在最早期调用 <code>apply()</code> 安装，确保在其它 patch 之前
-捕获原始的 <code>Trainer.init_distributed</code>。</p>
+<h3 id="42-trainerinit">4.2 模型入口阶段（Trainer.<strong>init</strong> 拦截）</h3>
+<p>该拦截通过 <code>patches/torchtitan/_trainer_config_stash.py</code> 实现，在 <code>Trainer.__init__</code> 执行时自动捕获 <code>Trainer.Config</code> 并存储，供 converter 和训练循环中的其它 patch 读取。</p>
 <pre><code class="language-mermaid">sequenceDiagram
     participant trainer as Trainer
-    participant wrapper as init_distributed_wrapper
-    participant patch as trainer_init_distributed
+    participant stash as _trainer_config_stash
 
-    trainer-&gt;&gt;wrapper: init_distributed()
-    wrapper-&gt;&gt;wrapper: G_USING_TRAIN_CONFIG = self.config
-    wrapper-&gt;&gt;trainer: _original_init_distributed(self, *args, **kwargs)
-    trainer--&gt;&gt;trainer: 返回 ParallelDims
+    trainer-&gt;&gt;stash: Trainer.__init__(config)
+    stash-&gt;&gt;stash: _trainer_config = config
+    stash-&gt;&gt;trainer: 继续原始 __init__
 
-    Note over trainer,patch: G_USING_TRAIN_CONFIG 存储 Trainer.Config，包含 model_spec
+     Note over trainer,stash: _trainer_config 存储 Trainer.Config，包含 model_spec
 </code></pre>
 <h3 id="43-torchtitan-convert">4.3 转换执行阶段（torchtitan 调用 convert 时）</h3>
 <pre><code class="language-mermaid">sequenceDiagram
@@ -583,8 +581,8 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
 
     tt-&gt;&gt;mcc: convert(model)
 
-    mcc-&gt;&gt;patch: get_using_model_spec()
-    reg--&gt;&gt;mcc: model_spec
+     mcc-&gt;&gt;stash: get_trainer_config().model_spec
+     stash--&gt;&gt;mcc: model_spec
 
     mcc-&gt;&gt;config: model_converter
     alt model_converter 存在

@@ -5,15 +5,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>torch.compile 支持 - torchtitan-npu</title>
+    <title>TND Attention (Per-Document Causal Attention) - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "torch.compile \u652f\u6301";
-        var mkdocs_page_input_path = "feature_guides/torch_compile.md";
+        var mkdocs_page_name = "TND Attention (Per-Document Causal Attention)";
+        var mkdocs_page_input_path = "feature_guides/npu_tnd_attention.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -68,33 +68,27 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">TND Attention (Per-Document Causal Attention)</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">1. 实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#11">1.1 文档边界检测</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#12-context-parallel">1.2 Context Parallel</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">2. 配置方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">3. 关键文件</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-qwen3">4. 适配新模型（当前仅 Qwen3）</a>
+    </li>
+    </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">torch.compile 支持</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#npu-torchcompile">NPU 上的 torch.compile</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_1">支持范围</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1-inductor_npu_ext">1. 安装 inductor_npu_ext</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#2-compile">2. 配置 compile</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_2">注意事项</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#nameerror-name-_world-is-not-defined">NameError: name '_world' is not defined</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_3">清理修改模型结构后的编译产物</a>
-    </li>
-        </ul>
-    </li>
-    </ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
@@ -141,7 +135,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">torch.compile 支持</li>
+      <li class="breadcrumb-item active">TND Attention (Per-Document Causal Attention)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -150,60 +144,112 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="torchcompile">torch.compile 支持</h1>
-<p>torch.compile 是 PyTorch 2.0 的核心特性。通过 JIT （即时编译），将 PyTorch 代码转化为高度优化的融合算子，在几乎不改动原有代码的前提下显著提升性能。作为 PyTorch 原生的分布式训练框架，torchtitan 的一大优势便是可以便捷、充分地发挥 torch.compile 的性能收益。在此基础上，torchtitan-npu 结合 CANN 生态的编译能力，在 NPU 平台上的分布式训练任务中为 torch.compile 提供支持。</p>
-<h2 id="npu-torchcompile">NPU 上的 torch.compile</h2>
-<p>在 torch.compile 的工作流程中，PyTorch 代码依次经过 Dynamo 成图， Inductor 图编译优化、Codegen，生成在硬件 runtime 上执行的优化 DSL 代码。</p>
-<p align="center">
-<img src="../../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
-</p>
-
-<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
-<h2 id="_1">支持范围</h2>
-<p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V3.2、DeepSeek-V4</code> 模型的全流程编译。</p>
-<h2 id="torchcompile_1">torch.compile 示例</h2>
-<h3 id="1-inductor_npu_ext">1. 安装 inductor_npu_ext</h3>
-<p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
-<pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
-cd torchair
-git checkout 3c9418c2
-pip3 install -e experimental/_inductor_npu_ext/python/
-cd -
+                <h1 id="tnd-attention-per-document-causal-attention">TND Attention (Per-Document Causal Attention)</h1>
+<p>SFT 训练中样本通常短于最大序列长度，BSND 逐样本训练有大量算力浪费在 padding 上。
+TND Attention 将多条短样本打包到同一序列中，通过 block_causal mask 隔离各文档的注意力范围，
+实现更高训练吞吐并防止跨文档信息泄露。</p>
+<h2 id="1">1. 实现原理</h2>
+<p>继承上游 <code>VarlenAttention</code>，通过 <code>inner_attention</code> 插件机制替换 attention 后端：</p>
+<pre><code>GQAttention.forward (上游, 不修改)
+  ├─ QKV / QK-norm / RoPE    ← 复用上游
+  └─ inner_attention ──────► NPUVarlenAttention.forward
+                               └─ CANN FA v3 sparse_mode=7
 </code></pre>
-<h3 id="2-compile">2. 配置 compile</h3>
-<p>方式一：在模型的 <code>config_registry.py</code> 中配置 <code>CompileConfig</code>：</p>
-<pre><code class="language-python">from torchtitan.config import CompileConfig
-
-compile = CompileConfig(
-    enable=True,
-    # 编译完整模型，而不是只编译 loss
-    components=[&quot;model&quot;, &quot;loss&quot;],
-)
+<h3 id="11">1.1 文档边界检测</h3>
+<p>直接复用上游 EOS-based VarlenMetadata（<code>model.get_attention_masks()</code> 在
+<code>post_dataloading_process</code> 中计算，<code>add_eos=True</code> 确保每文档尾部有 EOS）。</p>
+<h3 id="12-context-parallel">1.2 Context Parallel</h3>
+<p>使用 Ulysses all-to-all：pre-hook 交换 Q/K/V (scatter head → gather seq)，
+post-hook 还原。forward 处理完整序列，与 CP=1 逻辑一致。</p>
+<p>约束：<code>n_heads % CP == 0</code> 且 <code>n_kv_heads % CP == 0</code>。
+Qwen3-30B-A3B (n_kv_heads=4): CP ≤ 4。</p>
+<h2 id="2">2. 配置方式</h2>
+<p>TND 通过替换模型 spec 中的 <code>inner_attention</code> 实现，核心调用链：</p>
+<pre><code>config_registry.py                       tnd_config.py
+┌─────────────────────┐   调用    ┌──────────────────────────────┐
+│ sft_xxx_tnd() ──────┼─────────►│ _enable_npu_varlen_attention │
+│   config = sft_xxx()│           │   layer.attention             │
+│   config.model_spec  │           │     .inner_attention          │
+│     = _enable_npu_   │           │     = NPUVarlenAttention     │
+│       varlen_attn(…)│           │     .mask_type                │
+└─────────────────────┘           │     = &quot;block_causal&quot;         │
+                                  └──────────────────────────────┘
 </code></pre>
-<p>方式二：启动训练时通过命令行开启：</p>
-<pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
-bash scripts/run_train.sh --compile.enable
-</code></pre>
-<h2 id="_2">注意事项</h2>
-<h3 id="nameerror-name-_world-is-not-defined"><code>NameError: name '_world' is not defined</code></h3>
-<p>如果编译时报错 <code>NameError: name '_world' is not defined</code>，训练前需要关闭 Inductor 的
-FxGraph / AOTAutograd 缓存：</p>
-<pre><code class="language-bash">export TORCHINDUCTOR_FX_GRAPH_CACHE=0
-export TORCHINDUCTOR_AUTOGRAD_CACHE=0
-</code></pre>
-<p>关闭上述两个缓存后，Inductor 不再走 <code>FxGraphCache.load_with_key</code> 路径，可以规避该问题，代价是每次启动都会重新走
-完整编译流程，一次性 warmup 时间会增加，稳态步长不受影响。</p>
-<h3 id="_3">清理修改模型结构后的编译产物</h3>
-<p>当模型结构发生变化（如修改代码、切换分支、更新算子实现等）后，旧的编译产物可能导致编译失败或运行异常。若怀疑命中了旧产物，可以清理以下目录后重新编译：</p>
-<pre><code class="language-bash">rm -rf /root/.cache
-rm -rf /tmp/* /tmp/.[!.]*
+<p><code>_enable_npu_varlen_attention</code> 遍历模型每一层，将 <code>inner_attention</code> 替换为
+<code>NPUVarlenAttention.Config()</code> 并将 <code>mask_type</code> 设为 <code>"block_causal"</code>。
+同时调用 <code>_patch_update_from_config</code> 绕过上游 CP 对 VarlenAttention 的限制。</p>
+<p>以 Qwen3-30B-A3B 为例，BSND 与 TND 的配置仅后缀不同，其余参数完全一致：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>配置名</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BSND</td>
+<td><code>sft_qwen3_30ba3b_gsm8k</code></td>
+</tr>
+<tr>
+<td>TND</td>
+<td><code>sft_qwen3_30ba3b_gsm8k_tnd</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>注意</strong>：当前仅支持 Qwen3 系列模型。其他模型需完成 attention 层适配后接入。</p>
+</blockquote>
+<h2 id="3">3. 关键文件</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/common/npu_varlen_attention.py</code></td>
+<td>NPUVarlenAttention 类 + FA v3 forward</td>
+</tr>
+<tr>
+<td><code>models/qwen3/tnd_config.py</code></td>
+<td><code>_enable_npu_varlen_attention</code> + CP-Varlen bypass</td>
+</tr>
+<tr>
+<td><code>models/qwen3/__init__.py</code></td>
+<td>NPU model registry（<code>parallelize_fn</code> 注入）</td>
+</tr>
+<tr>
+<td><code>distributed/context_parallel/npu_varlen_cp.py</code></td>
+<td>UlyssesVarlenCP（all-to-all CP 策略 + mask handler）</td>
+</tr>
+<tr>
+<td><code>models/qwen3/config_registry.py</code></td>
+<td>TND 配置注册</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-qwen3">4. 适配新模型（当前仅 Qwen3）</h2>
+<blockquote>
+<p><strong>当前支持范围</strong>：仅 Qwen3 系列模型已完成 TND 适配。其他模型架构需完成
+attention 层适配（确保 <code>inner_attention</code> 插件机制可用）后方可接入。</p>
+</blockquote>
+<p>适配步骤：</p>
+<ol>
+<li>在模型的 <code>__init__.py</code> 中确保 <code>GQAttention</code> 作为默认 attention 层</li>
+<li>注册 TND config，调用 <code>_enable_npu_varlen_attention</code> 替换 <code>inner_attention</code>：</li>
+</ol>
+<pre><code class="language-python">from torchtitan_npu.models.qwen3.tnd_config import _enable_npu_varlen_attention
+model_spec = _enable_npu_varlen_attention(model_registry(&quot;your_flavor&quot;))
 </code></pre>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../swap_optimizer/" class="btn btn-neutral float-left" title="SwapOptimizer 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../virtual_optimizer/" class="btn btn-neutral float-right" title="Virtual Optimizer - 优化器显存虚拟化特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../npu_fused_ops/" class="btn btn-neutral float-left" title="NPU 融合算子适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../swap_optimizer/" class="btn btn-neutral float-right" title="SwapOptimizer 特性">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -226,10 +272,10 @@ rm -rf /tmp/* /tmp/.[!.]*
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../swap_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../npu_fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../virtual_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../swap_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
