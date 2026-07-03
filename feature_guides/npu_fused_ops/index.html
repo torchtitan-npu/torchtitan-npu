@@ -268,7 +268,7 @@ logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLev
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/moe_dispatch.py</code>、<code>torchtitan_npu/converters/kernels/permutation.py</code></p>
 <h2 id="rmsnorm">RMSNorm</h2>
 <p>RMSNorm 通过计算输入张量每个样本的平方均值的平方根来稳定深层网络的训练。</p>
-<p>本 ModelConverter 将模型中的 RmsNorm 操作替换为基于 <code>npu_rms_norm</code> 融合算子的实现。</p>
+<p>本 ModelConverter 将模型中的 RMSNorm 操作替换为基于 <code>npu_rms_norm</code> 融合算子的实现。</p>
 <p><strong>配置项</strong>：<code>npu_rms_norm</code>\
 <strong>配置示例</strong>：</p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_rms_norm&quot;)

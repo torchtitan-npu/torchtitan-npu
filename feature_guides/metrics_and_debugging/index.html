@@ -384,13 +384,13 @@ profiling = ProfilingConfig(
 <td><code>profile_step_start</code></td>
 <td>int</td>
 <td>0</td>
-<td>开始性能分析的步数。如果设置为大于 0 的值，将使用基于步数的分析模式。</td>
+<td>开始性能分析的步数。需与 <code>profile_step_end</code> 同时设置为大于 0 的值，才使用基于步数的分析模式。</td>
 </tr>
 <tr>
 <td><code>profile_step_end</code></td>
 <td>int</td>
 <td>0</td>
-<td>结束性能分析的步数。如果设置为 0，将使用 <code>profile_step_start + profiler_active</code>。</td>
+<td>结束性能分析的步数。需与 <code>profile_step_start</code> 同时设置为大于 0 的值，才使用基于步数的分析模式。</td>
 </tr>
 <tr>
 <td><code>profile_ranks</code></td>
