@@ -269,7 +269,7 @@
 <td>—</td>
 <td>✅</td>
 <td>✅</td>
-<td><code>sft_deepseek_v4_flash_debug_256_experts_43_layers_tau</code></td>
+<td><code>sft_deepseek_v4_flash_16k_128die_tau</code></td>
 </tr>
 <tr>
 <td>DeepSeek-V4</td>
@@ -278,7 +278,7 @@
 <td>✅</td>
 <td>—</td>
 <td>—</td>
-<td><code>sft_deepseek_v4_flash_debug_256_experts_43_layers_gsm8k</code></td>
+<td><code>sft_deepseek_v4_flash_1k_128die_gsm8k</code></td>
 </tr>
 </tbody>
 </table>
@@ -309,10 +309,14 @@
 </code></pre>
 <p>详细数据准备、训练和评测流程见文末 <a href="#附录-awordle-sft-样例">Wordle SFT 样例</a>。</p>
 <h3 id="deepseek-v4-sfttau-bench-tool-call">DeepSeek-V4 SFT（tau-bench 多轮 + Tool Call）</h3>
-<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v4 CONFIG=sft_deepseek_v4_flash_debug_256_experts_43_layers_tau bash scripts/run_train.sh
+<pre><code class="language-bash">CONFIG=sft_deepseek_v4_flash_16k_128die_tau \
+DATASET_PATH=/data/dataset/tau-historical-sft/processed_clean \
+  bash examples/deepseek_v4/sft_deepseek_v4_flash_16k_A3.sh
 </code></pre>
 <h3 id="deepseek-v4-sftgsm8k">DeepSeek-V4 SFT（GSM8K 单轮）</h3>
-<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v4 CONFIG=sft_deepseek_v4_flash_debug_256_experts_43_layers_gsm8k bash scripts/run_train.sh
+<pre><code class="language-bash">CONFIG=sft_deepseek_v4_flash_1k_128die_gsm8k \
+DATASET_PATH=/data/dataset/openai/gsm8k \
+  bash examples/deepseek_v4/sft_deepseek_v4_flash_16k_A3.sh
 </code></pre>
 <hr />
 <h2 id="chatencoder">自定义编码器（ChatEncoder）</h2>

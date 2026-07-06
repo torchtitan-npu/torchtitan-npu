@@ -201,7 +201,7 @@ source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 <blockquote>
 <p>[!NOTE]
 * <code>MODULE</code>: 指定模型 Python 模块，默认 <code>torchtitan_npu.models.deepseek_v32</code>。切换模型时改为对应模块，例如 DeepSeek-V4 改为 <code>torchtitan_npu.models.deepseek_v4</code>。
-* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>deepseek_v4_flash_single_server_16_experts_43_layers_bf16</code>。
+* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>debug_deepseek_v4_flash_single_node</code>。
 * <code>NGPU</code>: 指定单节点参与训练的 NPU 数量，<code>scripts/run_train.sh</code> 默认值为 16。
 * <code>--training.steps</code> 与 <code>--training.global_batch_size</code>: 动态覆盖 registry 配置中的字段。</p>
 </blockquote>
