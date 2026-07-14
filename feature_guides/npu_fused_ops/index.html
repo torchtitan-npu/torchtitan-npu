@@ -216,7 +216,10 @@ model_converters = ModelConvertersContainer.Config(
 <hr />
 <h2 id="smla-sparse-flash-mla">SMLA (Sparse Flash MLA)</h2>
 <p><code>npu_smla</code> 面向 DeepSeek-V4 的稀疏 MLA 注意力路径。该 ModelConverter 会根据硬件类型选择实现：
-在 A5 上替换为 <code>torch_npu</code> 提供的 SMLA 融合算子路径，并将 SMLA 所需的 attention masks 接入 torchtitan 原生 <code>post_dataloading_process</code>；在非 A5 场景下继续使用兼容原有 DeepSeek-V4 sparse attention / LI / LI loss 的 NPU 实现。</p>
+在 A5 上通过 <a href="https://gitcode.com/cann/ops-transformer"><code>cann_ops_transformer</code></a>
+提供的 <code>sparse_flash_mla</code>、<code>lightning_indexer</code> 及对应 metadata/反向算子执行；
+在非 A5 场景下继续使用兼容原有 DeepSeek-V4 sparse attention / LI / LI loss 的 NPU 实现。
+A5 路径要求 <code>cann_ops_transformer</code> 能够被 Python 导入，缺失时 converter 会直接报错并指出所缺依赖。</p>
 <p><strong>配置示例：</strong></p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_smla&quot;)
 </code></pre>
@@ -233,14 +236,14 @@ logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLev
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/npu_smla.py</code></p>
 <hr />
 <h2 id="mhcpre">MHCPre</h2>
-<p><code>npu_mhc_pre</code> 面向 DeepSeek-V4 的 MHC pre-processing 路径，将模型中的 <code>HcPre</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>torch_npu.npu_hc_pre</code> 及其反向融合算子；在非 A5 场景下使用已有 Triton 实现。DeepSeek-V4 默认配置中已启用该 converter。</p>
+<p><code>npu_mhc_pre</code> 面向 DeepSeek-V4 的 MHC pre-processing 路径，将模型中的 <code>HcPre</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>cann_ops_transformer.ops.mhc_pre_sinkhorn</code> 及其反向融合算子；在非 A5 场景下使用已有 Triton 实现。DeepSeek-V4 默认配置中已启用该 converter。</p>
 <p><strong>配置示例</strong>：</p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_mhc_pre&quot;)
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/mhc_prepost.py</code></p>
 <hr />
 <h2 id="mhcpost">MHCPost</h2>
-<p><code>npu_mhc_post</code> 面向 DeepSeek-V4 的 MHC post-processing 路径，将模型中的 <code>HcPost</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>torch_npu.npu_hc_post</code> 及其反向融合算子；在非 A5 场景下会走已有 Triton 实现并替换 <code>HcHead</code>。</p>
+<p><code>npu_mhc_post</code> 面向 DeepSeek-V4 的 MHC post-processing 路径，将模型中的 <code>HcPost</code> 模块替换为 NPU 亲和实现。在 A5 上使用 <code>cann_ops_transformer.ops.mhc_post</code> 及其反向融合算子；在非 A5 场景下会走已有 Triton 实现并替换 <code>HcHead</code>。</p>
 <p>该 converter 当前未在 DeepSeek-V4 默认 <code>config_registry.py</code> 中打开，主要是出于性能考虑：A5 上建议按需打开以使用 MHC post 融合算子；A3 上建议保持关闭，继续使用默认模型路径，避免 converter 替换带来的额外开销或性能退化。</p>
 <p><strong>配置示例</strong>：</p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_mhc_post&quot;)
