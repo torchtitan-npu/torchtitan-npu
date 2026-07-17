@@ -387,52 +387,52 @@ model_converters = ModelConvertersContainer.Config(
 <tbody>
 <tr>
 <td><code>register_model_converter()</code></td>
-<td><code>converters/registry.py</code></td>
+<td><code>torchtitan_npu/converters/registry.py</code></td>
 <td><strong>注册装饰器</strong>，将自定义配置注册到全局单例 <code>_ConverterRegistry</code>，并通过ModelConverter应用到模型</td>
 </tr>
 <tr>
 <td><code>ModelCustomConfig</code></td>
-<td><code>converters/model_custom_interface.py</code></td>
+<td><code>torchtitan_npu/converters/model_custom_interface.py</code></td>
 <td><strong>声明模型自定义配置</strong>，描述自定义所需的补丁</td>
 </tr>
 <tr>
 <td><code>ModelCustomConfigConverter</code></td>
-<td><code>converters/framework/model_custom_config_converter.py</code></td>
+<td><code>torchtitan_npu/converters/framework/model_custom_config_converter.py</code></td>
 <td><strong>配合自定义模型配置的ModelConverter</strong>，继承 Configurable 和 ModelConverter，读取配置并应用到模型</td>
 </tr>
 <tr>
 <td><code>ModelCustomConverter</code></td>
-<td><code>converters/model_custom_interface.py</code></td>
+<td><code>torchtitan_npu/converters/model_custom_interface.py</code></td>
 <td><strong>执行Module替换的抽象基类</strong>，开发者自定义子类，用于满足较为复杂的替换场景</td>
 </tr>
 <tr>
 <td><code>ParallelizePlanUpdater</code> (ABC)</td>
-<td><code>converters/model_custom_interface.py</code></td>
+<td><code>torchtitan_npu/converters/model_custom_interface.py</code></td>
 <td><strong>并行策略修改接口</strong>，在 <code>parallelize_module</code> 前拦截并修改 TP/EP 策略（classmethod）</td>
 </tr>
 <tr>
 <td><code>StateDictUpdater</code> (ABC)</td>
-<td><code>converters/model_custom_interface.py</code></td>
+<td><code>torchtitan_npu/converters/model_custom_interface.py</code></td>
 <td><strong>权重格式转换接口</strong>，在 <code>to_hf</code> / <code>from_hf</code> 时转换权重结构，在模型原有的<code>from_hf</code>之后 / <code>to_hf</code>之前执行（classmethod）</td>
 </tr>
 <tr>
 <td><code>ParallelizePlanUpdateWrapper</code></td>
-<td><code>converters/framework/parallelize_plan_update_wrapper.py</code></td>
+<td><code>torchtitan_npu/converters/framework/parallelize_plan_update_wrapper.py</code></td>
 <td>使用<code>ParallelizePlanUpdateWrapper</code>封装的方法替换<code>parallelize_module</code>并在执行时修改并行策略</td>
 </tr>
 <tr>
 <td><code>StateDictUpdateWrapper</code></td>
-<td><code>converters/framework/state_dict_update_wrapper.py</code></td>
+<td><code>torchtitan_npu/converters/framework/state_dict_update_wrapper.py</code></td>
 <td>运行时动态包装 <code>state_dict_adapter</code>，注入 <code>StateDictUpdater</code> 链</td>
 </tr>
 <tr>
 <td><code>_ConverterRegistry</code></td>
-<td><code>converters/framework/model_custom_config_registry.py</code></td>
+<td><code>torchtitan_npu/converters/framework/model_custom_config_registry.py</code></td>
 <td><strong>全局注册单例</strong>，管理 ModelCustomConfig 和动态生成的 Converter 类</td>
 </tr>
 <tr>
 <td><code>get_trainer_config()</code></td>
-<td><code>patches/torchtitan/_trainer_config_stash.py</code></td>
+<td><code>torchtitan_npu/patches/torchtitan/_trainer_config_stash.py</code></td>
 <td><strong>拦截 Trainer.<strong>init</strong></strong> 捕获 Trainer.Config，供 converter 读取 ModelSpec；由 <code>_apply_patches()</code> 的模块级 import 自动安装</td>
 </tr>
 </tbody>
@@ -556,7 +556,7 @@ ModelCustomConfigConverter ..&gt; StateDictUpdateWrapper
     Note over reg: 动态生成的 converter_cls 会被 torchtitan 通过 Configurable.Config 发现
 </code></pre>
 <h3 id="42-trainerinit">4.2 模型入口阶段（Trainer.<strong>init</strong> 拦截）</h3>
-<p>该拦截通过 <code>patches/torchtitan/_trainer_config_stash.py</code> 实现，在 <code>Trainer.__init__</code> 执行时自动捕获 <code>Trainer.Config</code> 并存储，供 converter 和训练循环中的其它 patch 读取。</p>
+<p>该拦截通过 <code>torchtitan_npu/patches/torchtitan/_trainer_config_stash.py</code> 实现，在 <code>Trainer.__init__</code> 执行时自动捕获 <code>Trainer.Config</code> 并存储，供 converter 和训练循环中的其它 patch 读取。</p>
 <pre><code class="language-mermaid">sequenceDiagram
     participant trainer as Trainer
     participant stash as _trainer_config_stash
