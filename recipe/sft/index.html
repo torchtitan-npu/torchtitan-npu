@@ -107,6 +107,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-sftgsm8k">DeepSeek-V4 SFT（GSM8K 单轮）</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-mini-1b-sftyelp-review-full">DeepSeek-V4-Mini-1B SFT（Yelp Review Full 单轮）</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#chatencoder">自定义编码器（ChatEncoder）</a>
@@ -275,6 +277,14 @@
 <td>—</td>
 <td>—</td>
 </tr>
+<tr>
+<td>DeepSeek-V4-Mini-1B</td>
+<td>Yelp Review Full</td>
+<td>ChatML template</td>
+<td>✅</td>
+<td>—</td>
+<td>—</td>
+</tr>
 </tbody>
 </table>
 <h2 id="_2">架构概述</h2>
@@ -320,6 +330,13 @@ CHAT_PROCESSOR=torchtitan_npu.hf_datasets.chat_processors.process_gsm8k_sample \
   bash examples/deepseek_v4/sft_deepseek_v4_flash_16k_A3.sh \
     --training.seq_len 1024 \
     --parallelism.context_parallel_degree 1
+</code></pre>
+<h3 id="deepseek-v4-mini-1b-sftyelp-review-full">DeepSeek-V4-Mini-1B SFT（Yelp Review Full 单轮）</h3>
+<pre><code class="language-bash">HF_ASSETS_PATH=/data/models/deepseek-v4-mini-1B-init \
+CHECKPOINT_INITIAL_LOAD_PATH=/data/models/deepseek-v4-mini-1B-init \
+DATA_FILES=/data/dataset/yelp_review_full/train-00000-of-00001.parquet \
+CHECKPOINT_FOLDER=./outputs/deepseek_v4_1b_yelp/checkpoint \
+  bash examples/deepseek_v4/sft_deepseek_v4_1k_A3.sh
 </code></pre>
 <hr />
 <h2 id="chatencoder">自定义编码器（ChatEncoder）</h2>
