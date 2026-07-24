@@ -76,11 +76,13 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#mxfp8converter">MXFP8Converter 配置</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_6">配置示例</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">环境变量配置</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">配置示例</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_7">验证清单</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">验证清单</a>
     </li>
     </ul>
                   </li>
@@ -226,7 +228,24 @@
 </tr>
 </tbody>
 </table>
-<h3 id="_6">配置示例</h3>
+<h3 id="_6">环境变量配置</h3>
+<table>
+<thead>
+<tr>
+<th>环境变量</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MXFP8_DUAL_AXIS_FORWARD</code></td>
+<td><code>1</code>（启用）</td>
+<td>控制 MXFP8 线性层和 MoE 专家层是否启用 forward dual-axis 量化（forward 阶段同时生成 backward 的量化数据），默认启用。设置为 <code>0</code> 或 <code>false</code> 可关闭，forward 回退到 single-axis 量化行为。无论 <code>MXFP8_DUAL_AXIS_FORWARD</code> 是否启用，Linear的 backward grad始终使用 dual-axis 量化。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_7">配置示例</h3>
 <p>在模型的 <code>config_registry.py</code> 中配置 <code>model_converters</code> 并添加 <code>MXFP8Converter</code>：</p>
 <p><strong>示例：对指定线性层和 MoE 专家层启用 MXFP8 低精度训练</strong></p>
 <pre><code class="language-python">from torchtitan.components.quantization.mx import MXFP8Converter
@@ -263,7 +282,7 @@ model_converters = ModelConvertersContainer.Config(
     ],
 )
 </code></pre>
-<h2 id="_7">验证清单</h2>
+<h2 id="_8">验证清单</h2>
 <ol>
 <li><strong>确认 converter 生效</strong>：启动日志中应出现以下关键字：</li>
 <li><code>MXFP8 MoE training enabled</code>（来自上游 <code>MXFP8Converter.__init__</code>）</li>
