@@ -463,7 +463,7 @@ class MyEncoderConfig(ChatEncoderConfig):
 <ol>
 <li><strong>编码</strong>：通过 Jinja2 chat template 或 <code>chat_encoder</code> 渲染为完整 token 序列</li>
 <li><strong>Label masking</strong>：通过 ChatML header 扫描或编码器返回的 assistant 区间，仅对 assistant 回复计算 loss</li>
-<li><strong>Packing</strong>：对多个样本做 greedy packing（短样本打包到同一 seq_len 窗口，EOS 分隔，per-document position 重置）</li>
+<li><strong>Packing</strong>：当 attention <code>mask_type</code> 为 <code>block_causal</code>（FlexAttention/VarlenAttention，或 dense-mask SDPA）时，对多个样本做 greedy packing（短样本打包到同一 seq_len 窗口，EOS 分隔，per-document position 重置）。普通 <code>causal</code> SDPA 为避免跨文档 attention 会将每个样本 pre-pad 到 <code>seq_len</code>，实际上不做 packing</li>
 <li><strong>截断/丢弃</strong>：超过 seq_len 的样本自动丢弃（而非截断）</li>
 </ol>
 <hr />
