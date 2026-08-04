@@ -62,6 +62,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/low_precision_training/">低精度训练特性（MXFP8）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/metrics_and_debugging/">调试支持特性</a>
@@ -221,10 +223,15 @@ pip install -e .
     </tr>
     <!-- 训练精度 -->
     <tr>
-      <td>训练精度</td>
+      <td rowspan="2">训练精度</td>
       <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/low_precision_training.md">MxFP8 量化</a></td>
       <td>✅</td>
       <td>✅ (Ascend 950)</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/fsdp_parameter_precision.md">FSDP 参数级精度保留</a></td>
+      <td>❌</td>
+      <td>✅</td>
     </tr>
     <!-- 训练调试与监控 -->
     <tr>
@@ -452,5 +459,5 @@ pip install -e .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-08-03 16:21:45.687477+00:00
+Build Date UTC : 2026-08-04 16:10:03.512392+00:00
 -->

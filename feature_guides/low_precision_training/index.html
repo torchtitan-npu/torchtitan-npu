@@ -58,6 +58,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8）</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">硬件要求</a>
@@ -271,7 +273,6 @@ model_converters = ModelConvertersContainer.Config(
                 &quot;pre_attention.wq_b&quot;,
                 &quot;pre_attention.wkv&quot;,
                 &quot;pre_attention.indexer.wq_b&quot;,
-                &quot;pre_attention.indexer.weights_proj&quot;,
                 &quot;post_attention.wo_a&quot;,
                 &quot;post_attention.wo_b&quot;,
                 # MoE 专家层
@@ -297,7 +298,7 @@ model_converters = ModelConvertersContainer.Config(
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../deepseek_v32_mtp/" class="btn btn-neutral float-left" title="多Token预测特性(Multi Token Prediction, MTP)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../fsdp_parameter_precision/" class="btn btn-neutral float-left" title="Fsdp parameter precision"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../metrics_and_debugging/" class="btn btn-neutral float-right" title="调试支持特性">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -321,7 +322,7 @@ model_converters = ModelConvertersContainer.Config(
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../deepseek_v32_mtp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../fsdp_parameter_precision/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">Next &raquo;</a></span>
