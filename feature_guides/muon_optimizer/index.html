@@ -76,6 +76,8 @@
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#newton-schulzhybrid_ns">混合 Newton-Schulz（hybrid_ns）</a>
     </li>
+    <li class="toctree-l4"><a class="reference internal" href="#newton-schulz_1">编译 Newton-Schulz</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#_3">学习率调整模式</a>
@@ -107,6 +109,8 @@
     <li class="toctree-l4"><a class="reference internal" href="#2original">示例 2：original 模式</a>
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#3-swap-optimizer">示例 3：启用 Swap Optimizer</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#4-muon-newton-schulz">示例 4：只编译 Muon Newton-Schulz</a>
     </li>
         </ul>
     </li>
@@ -202,6 +206,29 @@
 <li><strong>后 2 步</strong>：切换到次系数 $(2.0, -1.5, 0.5)$</li>
 </ul>
 <p>此策略在保持收敛速度的同时，提升了正交化结果的数值稳定性。</p>
+<h4 id="newton-schulz_1">编译 Newton-Schulz</h4>
+<p>Muon 支持只对 Newton-Schulz 张量函数启用 <code>torch.compile</code>，编译边界只覆盖 <code>zeropower_via_newtonschulz5()</code>，其余逻辑仍保持 eager 执行。</p>
+<p>当前验证环境版本：<code>torch_npu 2.12.0.20260805</code>、<code>CANN 9.2.0 (20260730)</code>。当前版本的代码暂不支持同时开启 DSV4 的 <code>npu_smla</code> converter。</p>
+<p>启用方式是打开全局 compile，并在 <code>components</code> 中包含 <code>"muon"</code>：</p>
+<pre><code class="language-python">from torchtitan.config import CompileConfig
+
+compile = CompileConfig(
+    enable=True,
+    components=[&quot;muon&quot;],
+)
+</code></pre>
+<p>启动时也可以通过命令行覆盖：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --compile.enable \
+  --compile.components muon
+</code></pre>
+<p>Muon compile 当前使用如下策略：</p>
+<ul>
+<li><code>fullgraph=True</code>：要求 Newton-Schulz 函数完整成图，避免编译边界内出现 graph break</li>
+<li><code>dynamic=True</code>：允许 Newton-Schulz 在不同矩阵尺寸间复用动态图编译结果，减少 shape specialization 导致的重复编译</li>
+<li><code>backend=&lt;compile.backend&gt;</code>：若 <code>CompileConfig.backend</code> 已配置，则透传给 <code>torch.compile</code></li>
+</ul>
+<p>启用 <code>dynamic=True</code> 后，Muon Newton-Schulz 可覆盖 2D 与 3D 输入以及不同矩阵尺寸，避免仅因 batch 或矩阵形状变化触发大量 rank/shape specialization。</p>
 <h3 id="_3">学习率调整模式</h3>
 <p>Muon 优化器支持两种学习率调整模式（通过 <code>muon_adjust_lr_fn</code> 配置），其核心区别在于如何根据矩阵形状调整学习率，以及是否需要独立的超参数调优。</p>
 <table>
@@ -413,6 +440,21 @@ optimizer = OptimizerConfig(
 )
 </code></pre>
 <p>如果同时开启 <code>virtual_optimizer=True</code>，当前实现会直接拒绝构建，因为 Muon 尚未适配 Virtual Optimizer 的状态分片和 step 路径。</p>
+<h4 id="4-muon-newton-schulz">示例 4：只编译 Muon Newton-Schulz</h4>
+<p>该配置适合验证 optimizer 侧 compile，不影响 model/loss 的 eager 或原有 compile 策略：</p>
+<pre><code class="language-python">from torchtitan.config import CompileConfig
+
+compile = CompileConfig(
+    enable=True,
+    components=[&quot;muon&quot;],
+)
+</code></pre>
+<p>启动时也可以通过命令行覆盖同名字段：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --compile.enable \
+  --compile.components muon
+</code></pre>
+<p>Muon compile 默认使用 <code>dynamic=True</code>，通常不需要额外提高 <code>torch._dynamo.config.recompile_limit</code>。</p>
 <h2 id="_8">参考文献</h2>
 <ul>
 <li><a href="https://arxiv.org/pdf/2606.19348">DeepSeek-V4 Technical Report</a></li>

@@ -178,10 +178,33 @@ cd -
 
 compile = CompileConfig(
     enable=True,
-    # 编译完整模型，而不是只编译 loss
-    components=[&quot;model&quot;, &quot;loss&quot;],
+    # 编译完整模型
+    components=[&quot;model&quot;, &quot;loss&quot;, &quot;muon&quot;],
 )
 </code></pre>
+<p><code>components</code> 可以按需选择编译范围：</p>
+<table>
+<thead>
+<tr>
+<th>component</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"model"</code></td>
+<td>编译模型 forward/backward 主图</td>
+</tr>
+<tr>
+<td><code>"loss"</code></td>
+<td>编译 loss 计算</td>
+</tr>
+<tr>
+<td><code>"muon"</code></td>
+<td>编译 Muon optimizer 中的 Newton-Schulz 张量函数，详见 <a href="../muon_optimizer/">Muon 优化器特性</a></td>
+</tr>
+</tbody>
+</table>
 <p>方式二：启动训练时通过命令行开启：</p>
 <pre><code class="language-bash">export TORCHINDUCTOR_SIZE_ASSERTS=0
 bash scripts/run_train.sh --compile.enable

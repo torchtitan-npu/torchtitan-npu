@@ -158,8 +158,14 @@ TND Attention 将多条短样本打包到同一序列中，通过 block_causal m
                                └─ CANN FA v3 sparse_mode=7
 </code></pre>
 <h3 id="11">1.1 文档边界检测</h3>
-<p>直接复用上游 EOS-based VarlenMetadata（<code>model.get_attention_masks()</code> 在
-<code>post_dataloading_process</code> 中计算，<code>add_eos=True</code> 确保每文档尾部有 EOS）。</p>
+<p>文档边界以 dataloader 返回的 <code>positions</code> 为唯一依据。greedy packing 每放入一个新的
+原始样本时都会将 position 重置为 <code>0</code>，因此 <code>positions == 0</code> 的位置就是各文档起点。
+<code>post_dataloading_process</code> 会先在未切分的全局 <code>positions</code> 上计算这些起点，再由
+<code>model.get_attention_masks()</code> 构造 <code>VarlenMetadata</code>。</p>
+<p>不能使用 <code>input_ids == eos_id</code> 判断文档边界：chat template 可能在同一条对话的消息之间
+插入 EOS，padding token 也可能与 EOS 共用 token id。消息内部的 EOS 不会重置
+<code>positions</code>，只有开始放置下一个 packed 样本时才会重置。更完整的 packing 说明见
+<a href="../../recipe/sft/#文档边界如何判定">SFT 文档边界判定</a>。</p>
 <h3 id="12-context-parallel">1.2 Context Parallel</h3>
 <p>使用 Ulysses all-to-all：pre-hook 交换 Q/K/V (scatter head → gather seq)，
 post-hook 还原。forward 处理完整序列，与 CP=1 逻辑一致。</p>

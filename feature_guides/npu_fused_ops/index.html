@@ -87,6 +87,10 @@
     <li class="toctree-l2"><a class="reference internal" href="#rmsnorm">RMSNorm</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#rope">RoPE</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#in-place-partial-rope">In-place Partial RoPE</a>
+    </li>
+        </ul>
     </li>
     </ul>
                   </li>
@@ -178,7 +182,9 @@ model_converters = ModelConvertersContainer.Config(
   - <a href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
   - <a href="#npu-moe-dispatch">NPU MoE Dispatch</a>
   - <a href="#rmsnorm">RMSNorm</a>
-  - <a href="#rope">RoPE</a></p>
+  - <a href="#rope">RoPE</a>
+    - <a href="#in-place-partial-rope">In-place Partial RoPE</a>
+  - <a href="#mhc_head_compute_mix">MHC head compute mix</a></p>
 <p>关于本仓库适配的各融合算子的详细说明，请查看对应的 NPU 融合算子开发者文档。</p>
 <hr />
 <h2 id="dsa-deepseek-sparse-attention">DSA (DeepSeek Sparse Attention)</h2>
@@ -289,6 +295,50 @@ logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLev
 </code></pre>
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/rope.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_rotary_mul.md"><code>npu_rope</code></a></p>
+<h3 id="in-place-partial-rope">In-place Partial RoPE</h3>
+<p><code>npu_rope_inplace_partial</code> 将匹配到的 partial RoPE 路径替换为基于
+<code>cann_ops_transformer.ops.inplace_partial_rotary_mul</code> 的融合实现。原实现需要拆分待旋转区间、
+生成旋转结果，再与未旋转部分重新拼接；融合算子直接将结果写回
+<code>x[..., start:end]</code>，且保持该范围之外的数据不变。这样可以减少中间 Tensor 分配、<code>cat</code>
+操作和额外的显存读写。该 converter 同时复用 <code>npu_rope</code> 的预计算 cos/sin cache，避免
+partial RoPE 重复执行 real/imag、<code>repeat_interleave</code>。</p>
+<p><strong>使用要求：</strong></p>
+<ul>
+<li>对匹配到 partial RoPE 绑定的模型，converter 会检查当前环境是否提供
+  <code>cann_ops_transformer.ops.inplace_partial_rotary_mul</code>；算子不可用时会显式抛出异常。
+  未匹配到绑定的模型会直接跳过。</li>
+<li>需要安装提供
+  <code>cann_ops_transformer.ops.inplace_partial_rotary_mul</code> 及其反向算子的
+  <a href="https://gitcode.com/cann/ops-transformer"><code>ops-transformer</code></a> 软件包。</li>
+<li>当前已接入 DeepSeek-V4 的 partial RoPE 调用；算子本身不限定模型。如果 converter
+  被其他模型选中但未找到对应调用路径，会直接跳过，不修改该模型。</li>
+</ul>
+<p><code>npu_rope_inplace_partial</code> 只替换 partial RoPE 绑定，可与 <code>npu_rope</code> 同时配置。
+当环境提供所需融合算子时，将其加入 DeepSeek-V4 converter 列表即可：</p>
+<pre><code class="language-python">get_model_converter_config(&quot;npu_rope_inplace_partial&quot;)
+</code></pre>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/inplace_partial_rope.py</code> \
+<strong>相关 NPU 融合算子开发者文档：</strong>
+<a href="https://gitcode.com/cann/ops-transformer/blob/master/torch_extension/cann_ops_transformer/docs/zh/inplace_partial_rotary_mul.md"><code>inplace_partial_rotary_mul</code></a></p>
+<hr />
+<p>## mhc_head_compute_mix
+ mhc_head_compute_mix 是专为多头混合（Multi‑Head Compute Mix）设计的自定义算子，主要用于模型中 HcHead 模块的前向与反向计算。它接收输入张量 x、权重矩阵、以及 head‑wise 的 scale 与 base 参数，经 RMS 归一化、投影、sigmoid 变换和 BMM 运算后，输出混合后的结果，并保存反向传播所需的中间状态。</p>
+<p>该 converter 当前未在 DeepSeek-V4 默认 <code>config_registry.py</code> 中打开，A3 上建议保持关闭，继续使用默认模型路径，避免 converter 替换带来的额外开销或性能退化。</p>
+<p><strong>配置示例</strong>：</p>
+<p>1、添加配置
+ <code>python
+ get_model_converter_config("npu_mhc_head_compute_mix_tilelang")</code>
+2、删除可能覆盖配置的追加设置</p>
+<p>将torchtitan_npu\models\deepseek_v4\config_registry.py的debug_deepseek_v4_flash_single_node中的追加配置npu_mhc_post删去。</p>
+<p><strong>tilelang-ascend安装</strong>：</p>
+<p>参考tilelang-ascend开源社区安装指南：https://github.com/tile-ai/tilelang-ascend#installation</p>
+<p><code>shell
+ git clone --recursive https://github.com/tile-ai/tilelang-ascend.git
+ cd tilelang-ascend
+ bash install_ascend.sh
+ source set_env.sh</code></p>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/mhc_head_compute_mix_tilelang.py</code></p>
+<p><strong>相关 tilelang-ascend 算子开源社区路径：</strong> <a href="https://github.com/tile-ai/tilelang-ascend/blob/ascendc_pto/examples/tile_kernels/mhc/head_compute_mix_kernel.py"><code>mhc_head_compute_mix</code></a></p>
               
             </div>
           </div><footer>
