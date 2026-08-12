@@ -86,6 +86,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_8">验证清单</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cli">CLI 启动方式</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
@@ -294,6 +296,70 @@ model_converters = ModelConvertersContainer.Config(
 <li><code>fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
 <li>硬件不满足要求：日志报错 <code>MXFP8 is only supported on Ascend950 or higher architecture</code></li>
 </ol>
+<h2 id="cli">CLI 启动方式</h2>
+<p>实验目录 <code>torchtitan_npu/experiments/ao_npu/benchmarks/e2e/dsv4_flash_single_node_train/</code> 提供 <code>run_train.sh</code> 作为低精度训练的启动入口。通过<strong>环境变量</strong>控制量化 recipe，无需修改 Python 代码。该脚本使用 <code>RecipeQuantizeConverter</code>，支持多种量化方案一键切换。</p>
+<pre><code class="language-bash"># 进入实验目录
+cd torchtitan_npu/experiments/ao_npu/benchmarks/e2e/dsv4_flash_single_node_train/
+
+# 默认启动（mix recipe + MXFP4 QAT 开启）
+bash run_train.sh
+
+# 切换量化 recipe
+RECIPE=all_mxfp8 bash run_train.sh
+RECIPE=all_block_fp8 bash run_train.sh
+
+# 关闭 MXFP4 QAT（routed expert 仅用 BlockFP8，不加 FP4 fake-quant）
+RECIPE=mix ENABLE_MXFP4_QAT=false bash run_train.sh
+
+# 完全关闭量化，跑 BF16 基线用于对比
+ENABLE_QUANTIZED_TRAINING=false bash run_train.sh
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>环境变量</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RECIPE</code></td>
+<td><code>mix</code></td>
+<td>量化 recipe：<code>all_mxfp8</code>、<code>mix</code>、<code>all_block_fp8</code></td>
+</tr>
+<tr>
+<td><code>ENABLE_QUANTIZED_TRAINING</code></td>
+<td><code>true</code></td>
+<td>设为 <code>false</code> 跳过所有量化 converter，等价于 BF16 训练</td>
+</tr>
+<tr>
+<td><code>ENABLE_MXFP4_QAT</code></td>
+<td><code>true</code></td>
+<td>设为 <code>false</code> 关闭 routed expert 的 MXFP4 fake-quantize</td>
+</tr>
+<tr>
+<td><code>DST_TYPE_MAX</code></td>
+<td><code>0.0</code></td>
+<td>MXFP4 QAT 权重 fake-quantize 的目标 dtype max（0.0 = 自动推断）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>其他训练参数</strong>通过 tyro CLI flag 覆盖，例如：</p>
+<pre><code class="language-bash">RECIPE=mix ENABLE_MXFP4_QAT=false bash run_train.sh \
+  --training.steps 1000 \
+  --training.global_batch_size 128 \
+  --optimizer.lr 1e-4 \
+  --checkpoint.enable --checkpoint.initial_load_path /path/to/ckpt
+</code></pre>
+<p><strong>日志输出</strong>：启动时脚本会打印所有环境变量和解析后的最终值，便于确认量化配置是否按预期生效。</p>
+<pre><code>==== Benchmark env vars ====
+RECIPE                 = mix
+Enable Quantized Train = true
+Enable MXFP4 QAT       = true
+...
+============================
+</code></pre>
               
             </div>
           </div><footer>

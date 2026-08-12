@@ -82,6 +82,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#swiglugroup">SwigluGroup</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#npu-moe-dispatch">NPU MoE Dispatch</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#reduce_fused">reduce_fused</a>
@@ -182,6 +184,7 @@ model_converters = ModelConvertersContainer.Config(
   - <a href="#mhcpre">MHCPre</a>
   - <a href="#mhcpost">MHCPost</a>
   - <a href="#gmmgrouped-matmul">GMM（Grouped MatMul）</a>
+  - <a href="#swiglugroup">SwigluGroup</a>
   - <a href="#npu-moe-dispatch">NPU MoE Dispatch</a>
   - <a href="#rmsnorm">RMSNorm</a>
   - <a href="#rope">RoPE</a>
@@ -272,8 +275,27 @@ logging.getLogger(&quot;torchtitan_npu.converters.kernels.npu_smla&quot;).setLev
 <p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/gmm.py</code> \
 <strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://www.hiascend.com/document/detail/zh/Pytorch/730/apiref/torchnpuCustomsapi/docs/context/torch_npu-npu_grouped_matmul.md"><code>npu_grouped_matmul</code></a></p>
 <hr />
+<h2 id="swiglugroup">SwigluGroup</h2>
+<p>在 MoE 专家 FFN 中，<code>w1</code> 和 <code>w3</code> 投影结果会组成 gate/up 激活输入。
+常规实现需要依次完成限幅（模型配置 <code>swiglu_limit</code> 时）和 SwiGLU 激活；
+调用方传入 routed-score 时，还需对激活结果进行缩放，之后再送入 <code>w2</code> 投影。
+<code>SwigluGroup</code> 将这些连续的逐元素计算（包括可选的 routed-score 缩放）
+合并为一次算子调用，减少中间张量和算子下发开销。</p>
+<p><code>npu_swiglu_group</code> ModelConverter 将共享专家和路由专家的上述激活阶段
+替换为 <code>cann_ops_nn.swiglu_group</code>。共享专家仍使用普通线性层，可独立启用；
+路由专家会自动启用 <code>npu_gmm</code> 的分组矩阵乘路径，并将两次 GMM 之间的激活
+替换为 <code>SwigluGroup</code>。已有的 <code>npu_gmm</code> 配置可以保留，两者的先后顺序不影响
+最终转换结果。</p>
+<p>启用方式：</p>
+<pre><code class="language-python">get_model_converter_config(&quot;npu_swiglu_group&quot;),
+</code></pre>
+<p>对于包含路由专家的模型，不需要再单独配置 <code>npu_gmm</code>。</p>
+<p><strong>ModelConverter 源码路径：</strong> <code>torchtitan_npu/converters/kernels/swiglu_group.py</code></p>
+<p><strong>通用共享专家适配：</strong> <code>torchtitan_npu/models/common/moe.py</code></p>
+<p><strong>相关 NPU 融合算子开发者文档：</strong> <a href="https://gitcode.com/cann/ops-nn/blob/master/torch_extension/cann_ops_nn/ops/activation/swiglu_group/swiglu_group.md"><code>SwigluGroup</code></a>、<a href="https://gitcode.com/cann/ops-nn/blob/master/torch_extension/cann_ops_nn/ops/activation/swiglu_group_backward/swiglu_group_backward.md"><code>SwigluGroupBackward</code></a></p>
+<hr />
 <h2 id="npu-moe-dispatch">NPU MoE Dispatch</h2>
-<p><code>npu_moe_dispatch</code> 面向 DS 系列和 Qwen3 MoE 的标准 <code>ExpertParallel</code> 路径。该 ModelConverter 负责接入 NPU MoE dispatch 流程：router 后仍使用 <code>npu_moe_token_permute</code> 做第一组 token/expert 聚合，expert 计算后仍使用 unpermute 还原；同时通过并行策略更新器将标准 <code>ExpertParallel</code> 替换为 <code>NpuExpertParallel</code>。</p>
+<p><code>npu_moe_dispatch</code> 面向 DS 系列和 Qwen3 MoE 的标准 <code>ExpertParallel</code> 路径。该 ModelConverter 负责接入 NPU MoE dispatch 流程：router 后仍使用 <code>npu_moe_token_permute</code> 做第一组 token/expert 聚合，expert 计算后仍使用 unpermute 还原；同时通过并行策略更新器将标准 <code>ExpertParallel</code> 替换为 <code>NpuExpertParallel</code>。共享专家的通用 FeedForward 适配也由该层完成，默认使用原生小算子 activation，具体融合算子由后续 converter 注入。</p>
 <p>在 EP all-to-all 之后，标准 dispatch 流程需要把 rank-major token layout 重新整理为 local expert-major layout。这里的 <code>torch_npu.npu_moe_re_routing</code> 只优化这一段 local reroute：它替换旧路径中的 <code>repeat_interleave + npu_moe_token_permute</code>，减少局部重排热点上的冗余算子。</p>
 <p>需要注意，<code>npu_moe_re_routing</code> 不替换 MoE router 后的 <code>npu_moe_token_permute</code>。router 后的第一组 token permute 负责根据 <code>selected_experts_indices [T, K]</code> 生成 top-k expert slots；EP all-to-all 后的本卡重排负责根据 <code>counts [ep_degree, num_local_experts]</code> 调整本卡收到的 local buffer，两者输入语义和布局目标不同。模型配置应直接使用 <code>npu_moe_dispatch</code>。</p>
 <pre><code class="language-python">get_model_converter_config(&quot;npu_moe_dispatch&quot;)
