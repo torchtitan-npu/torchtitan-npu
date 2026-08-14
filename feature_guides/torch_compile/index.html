@@ -82,7 +82,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#torchcompile_1">torch.compile 示例</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1-inductor_npu_ext">1. 安装 inductor_npu_ext</a>
+    <li class="toctree-l3"><a class="reference internal" href="#1-ascendc-codegen">1. 使用 AscendC Codegen 后端</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#2-compile">2. 配置 compile</a>
     </li>
@@ -160,17 +160,20 @@
 <img src="../../assets/include_npu_ext.png" style="width:80%; max-width: 1200px" >
 </p>
 
-<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
+<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，使用 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>torch_npu</code> 内置的 AscendC Codegen 后端</a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
 <h2 id="_1">支持范围</h2>
 <p>torchtitan-npu 当前支持 <code>DeepSeek-V3、DeepSeek-V3.2、DeepSeek-V4</code> 模型的全流程编译。</p>
 <h2 id="torchcompile_1">torch.compile 示例</h2>
-<h3 id="1-inductor_npu_ext">1. 安装 inductor_npu_ext</h3>
-<p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
-<pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
-cd torchair
-git checkout 3c9418c2
-pip3 install -e experimental/_inductor_npu_ext/python/
-cd -
+<h3 id="1-ascendc-codegen">1. 使用 AscendC Codegen 后端</h3>
+<p>AscendC Codegen 后端已随兼容版本的 <code>torch_npu</code> 打包在 <code>torch_npu/_inductor/ascendc</code> 中，无需单独安装。通过 <code>torchtitan_npu.entry</code> 启动训练并开启 <code>torch.compile</code> 时，本仓会自动选择该后端。</p>
+<p>在独立代码中直接调用 <code>torch.compile</code> 时，可通过 <code>options</code> 显式选择：</p>
+<pre><code class="language-python">import torch
+import torch_npu  # noqa: F401
+
+compiled_fn = torch.compile(
+    fn,
+    options={&quot;npu_backend&quot;: &quot;ascendc&quot;},
+)
 </code></pre>
 <h3 id="2-compile">2. 配置 compile</h3>
 <p>方式一：在模型的 <code>config_registry.py</code> 中配置 <code>CompileConfig</code>：</p>
@@ -180,6 +183,8 @@ compile = CompileConfig(
     enable=True,
     # 编译完整模型
     components=[&quot;model&quot;, &quot;loss&quot;, &quot;muon&quot;],
+    # Dynamo 使用 Inductor；AscendC 是 Inductor 内部的 NPU Codegen 后端
+    backend=&quot;inductor&quot;,
 )
 </code></pre>
 <p><code>components</code> 可以按需选择编译范围：</p>

@@ -235,7 +235,7 @@ python tests/smoke_tests/integration_test.py output_dir \
 <h4 id="_7">新增测试用例步骤</h4>
 <ol>
 <li>打开 <code>tests/smoke_tests/integration_test.py</code></li>
-<li>在 <code>generate_smoke_tests()</code> 中，按用例类型将新配置添加到对应的分组函数（<code>_fake_backend_tests()</code> / <code>_base_tests()</code> / <code>_tp_tests()</code> / <code>_ep_tests()</code> / <code>_checkpoint_tests()</code>）的返回列表中（例如下面的 TP 用例加到 <code>_tp_tests()</code>）：</li>
+<li>在 <code>generate_smoke_tests()</code> 中，按用例类型将新配置添加到对应的分组函数（<code>_fake_backend_tests()</code> / <code>_base_tests()</code> / <code>_tp_tests()</code> / <code>_ep_tests()</code>）的返回列表中（例如下面的 TP 用例加到 <code>_tp_tests()</code>）：</li>
 </ol>
 <pre><code class="language-python">OverrideDefinitions(
     [

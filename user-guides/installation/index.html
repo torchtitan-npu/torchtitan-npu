@@ -113,7 +113,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#3-torchtitan-npu">3. 安装torchtitan-npu</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#4-inductor-npu-exttorchcompile">4. 安装inductor-npu-ext（可选，使能torch.compile时需要）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#4-torchcompile">4. 配置torch.compile（可选）</a>
     </li>
         </ul>
     </li>
@@ -170,8 +170,8 @@
 <td>master</td>
 <td>main <code>ac13e536c84e7f6647b14fa9375c3c8a8a2b8578</code></td>
 <td>2.12.0</td>
-<td>2.12.0rc1</td>
-<td><a href="https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/master/20260730143326087/">9.2.0_daily0730</a></td>
+<td>2.12 daily版本（详见requirements.txt文件）</td>
+<td><a href="https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/legacy/20260805101249091/">9.2.0_daily0805</a></td>
 <td>Python3.11.x</td>
 <td>3.2.1</td>
 </tr>
@@ -226,31 +226,22 @@
 
 <blockquote>
 <p>注：安装 NNAL（Ascend Transformer Boost加速库）前，请先执行 <code>source /usr/local/Ascend/cann/set_env.sh</code> 配置 CANN 环境变量。</p>
-<p>注：单独安装 torch_npu 2.12.0rc1 时，请同时安装 numpy 和 PyYAML，避免导入 torch_npu 时缺少依赖。</p>
 </blockquote>
 <h3 id="2-torchtitan-npumaster">2. 下载torchtitan-npu源码master分支（请注意下列命令的大小写）</h3>
 <p><code>shell
 git clone https://gitcode.com/cann/torchtitan-npu.git</code></p>
 <h3 id="3-torchtitan-npu">3. 安装torchtitan-npu</h3>
 <pre><code class="language-shell">cd torchtitan-npu
-pip install -r requirements.txt
-pip install -e .
+python3 -m pip install -r requirements.txt
+python3 -m pip install -e .
 </code></pre>
 <blockquote>
 <p>注：如有旧版本torchtitan-npu，请先<a href="#卸载">卸载</a>，再进行安装</p>
 <p>注：<code>requirements.txt</code> 已为 <code>triton-ascend==3.2.1</code> 配置 <code>--extra-index-url https://triton-ascend.osinfra.cn/pypi/simple</code>；默认 PyPI 源当前不提供该版本，单独安装时请使用 <code>pip install --extra-index-url https://triton-ascend.osinfra.cn/pypi/simple triton-ascend==3.2.1</code>。<code>triton-ascend</code> 是安装包名，实际 Python 模块名为 <code>triton</code>，代码中请使用 <code>import triton</code>，不要使用 <code>import triton_ascend</code>。</p>
 </blockquote>
-<h3 id="4-inductor-npu-exttorchcompile">4. 安装inductor-npu-ext（可选，使能torch.compile时需要）</h3>
-<p>为了在 NPU 平台上充分利用 <code>torch.compile</code> 原生的编译能力，<code>torchtitan_npu</code> 在保留 Dynamo 与 Inductor 既有编译流程的基础上，接入了 Codegen 后端 <a href="https://gitcode.com/Ascend/torchair/blob/master/experimental/_inductor_npu_ext/README.md"><code>inductor-npu-ext</code></a>。该后端借助 <a href="https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/900beta1/graph/graphguide/autofuse_1_0001.html">AutoFuse</a> 的自动融合能力，从 Inductor IR 生成 AscendC 融合 Kernel。</p>
-<p>inductor_npu_ext 需要从源码安装。在运行环境内执行以下命令：</p>
-<pre><code class="language-bash">git clone https://gitcode.com/Ascend/torchair.git
-cd torchair/experimental/_inductor_npu_ext/
-pip3 install -e ./python/
-cd -
-</code></pre>
-<blockquote>
-<p>注：具体torch.compile特性文档请参考 <a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/torch_compile.md">说明文档</a></p>
-</blockquote>
+<h3 id="4-torchcompile">4. 配置torch.compile（可选）</h3>
+<p>AscendC Codegen 后端已随兼容版本的 <code>torch_npu</code> 打包在 <code>torch_npu/_inductor/ascendc</code> 中，无需单独安装。通过 <code>torchtitan_npu.entry</code> 启动训练并开启 <code>torch.compile</code> 时，本仓会自动选择该后端。</p>
+<p>具体配置和启动方式请参考 <a href="../../feature_guides/torch_compile/">torch.compile 说明文档</a>。</p>
 <h2 id="pypi">PyPI安装</h2>
 <blockquote>
 <p>主线暂未提供此安装方式，待torchtitan发布稳定版本后提供</p>

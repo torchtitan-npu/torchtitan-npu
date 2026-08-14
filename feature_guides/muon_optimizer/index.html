@@ -208,7 +208,6 @@
 <p>此策略在保持收敛速度的同时，提升了正交化结果的数值稳定性。</p>
 <h4 id="newton-schulz_1">编译 Newton-Schulz</h4>
 <p>Muon 支持只对 Newton-Schulz 张量函数启用 <code>torch.compile</code>，编译边界只覆盖 <code>zeropower_via_newtonschulz5()</code>，其余逻辑仍保持 eager 执行。</p>
-<p>当前验证环境版本：<code>torch_npu 2.12.0.20260805</code>、<code>CANN 9.2.0 (20260730)</code>。当前版本的代码暂不支持同时开启 DSV4 的 <code>npu_smla</code> converter。</p>
 <p>启用方式是打开全局 compile，并在 <code>components</code> 中包含 <code>"muon"</code>：</p>
 <pre><code class="language-python">from torchtitan.config import CompileConfig
 
