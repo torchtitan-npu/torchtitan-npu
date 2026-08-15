@@ -105,15 +105,15 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">快速上手</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#_2">数据准备</a>
+    <li class="toctree-l2"><a class="reference internal" href="#deepseek-v32">数据准备（DeepSeek-V3.2 示例）</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#cann">配置 CANN 环境变量</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_3">启动训练任务</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">启动训练任务</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_4">单机训练任务</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">单机训练任务</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_5">多机训练任务</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">多机训练任务</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#rank">排查启动报错：查看更多 rank 日志</a>
     </li>
@@ -149,9 +149,9 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="_1">快速上手</h1>
-<p>参考 <a href="../installation/">软件安装</a> 准备环境后，以DeepSeek-V3.2模型为例，按照如下步骤在 NPU 平台上运行
-torchtitan-npu。</p>
-<h2 id="_2">数据准备</h2>
+<p>参考 <a href="../installation/">软件安装</a> 准备环境后，即可在 NPU 平台上运行 torchtitan-npu。
+<code>scripts/run_train.sh</code> 默认使用 Qwen3-0.6B debug 配置；下文同时提供 DeepSeek-V3.2 示例。</p>
+<h2 id="deepseek-v32">数据准备（DeepSeek-V3.2 示例）</h2>
 <ol>
 <li>准备 Tokenizer <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/tree/main">（以 DeepSeek-V3.2 网络为例）</a>。</li>
 </ol>
@@ -166,7 +166,9 @@ python scripts/download_hf_assets.py --repo_id deepseek-ai/DeepSeek-V3.2 --asset
 <pre><code class="language-python">hf_assets_path=&quot;./deepseekv3.2-tokenizer&quot;,
 </code></pre>
 <p>测试场景可直接使用项目预置在 <code>tests/assets/tokenizer/deepseekv3_tokenizer/</code> 的 tokenizer，无需重复下载：</p>
-<pre><code class="language-bash">bash scripts/run_train.sh --hf_assets_path ./tests/assets/tokenizer/deepseekv3_tokenizer
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v32 \
+CONFIG=deepseek_v32_671b_4layers_debug \
+bash scripts/run_train.sh --hf_assets_path ./tests/assets/tokenizer/deepseekv3_tokenizer
 </code></pre>
 <ol>
 <li>下载数据集。以 <a href="https://huggingface.co/datasets/lsb/enwiki20230101">enwiki 数据集</a>
@@ -188,12 +190,19 @@ source /usr/local/Ascend/nnal/atb/set_env.sh
 # 自定义算子环境（仅在启用 custom operators 时需要）
 source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 </code></pre>
-<h2 id="_3">启动训练任务</h2>
+<h2 id="_2">启动训练任务</h2>
 <p>启动 torchtitan-npu 训练任务时，推荐使用以下脚本：单机环境使用 <code>scripts/run_train.sh</code>，多机环境使用
 <code>scripts/run_train_multinodes.sh</code>。以下展示了一些常见任务的启动方式。</p>
-<h3 id="_4">单机训练任务</h3>
-<p>默认配置，以 16 NPU 启动 DeepSeek-V3.2 4层debug模型训练任务：</p>
+<h3 id="_3">单机训练任务</h3>
+<p>脚本默认配置以 16 NPU 启动 Qwen3-0.6B debug 模型训练任务：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh
+</code></pre>
+<p>该默认配置使用项目预置的 <code>tests/assets/tokenizer/qwen3-tokenizer/</code> 和 <code>tests/assets/c4_test/</code>，不依赖上方的 DeepSeek tokenizer。</p>
+<p>本页前面的数据准备以 DeepSeek-V3.2 为例。如需启动 DeepSeek-V3.2 4 层 debug
+模型，请显式指定对应的模块和配置：</p>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v32 \
+CONFIG=deepseek_v32_671b_4layers_debug \
+bash scripts/run_train.sh
 </code></pre>
 <p>自定义配置，调整训练步数和全局 batch size：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh \
@@ -202,13 +211,13 @@ source /usr/local/Ascend/cann/opp/vendors/custom_transformer/bin/set_env.bash
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-* <code>MODULE</code>: 指定模型 Python 模块，默认 <code>torchtitan_npu.models.deepseek_v32</code>。切换模型时改为对应模块，例如 DeepSeek-V4 改为 <code>torchtitan_npu.models.deepseek_v4</code>。
-* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>deepseek_v32_671b_4layers_debug</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V4 改为 <code>debug_deepseek_v4_flash_single_node</code>。
+* <code>MODULE</code>: 指定模型 Python 模块，默认 <code>torchtitan_npu.models.qwen3</code>。切换模型时改为对应模块，例如 DeepSeek-V3.2 改为 <code>torchtitan_npu.models.deepseek_v32</code>，DeepSeek-V4 改为 <code>torchtitan_npu.models.deepseek_v4</code>。
+* <code>CONFIG</code>: 指定 <code>config_registry.py</code> 中的配置函数，默认 <code>debug_qwen3_06b_single_node</code>。需与 <code>MODULE</code> 对应同一模型，例如 DeepSeek-V3.2 4 层 debug 配置为 <code>deepseek_v32_671b_4layers_debug</code>，DeepSeek-V4 改为 <code>debug_deepseek_v4_flash_single_node</code>。
 * <code>NGPU</code>: 指定单机或多机每节点参与训练的 NPU 数量；<code>scripts/run_train.sh</code> 默认值为 16，<code>scripts/run_train_multinodes.sh</code> 默认值为 8。
 * <code>training.allow_hf32</code>：控制 NPU MatMul、Conv、aclnn 算子是否启用 HF32，默认启用，无需传参；关闭时添加 <code>--training.no-allow_hf32</code>，这是 Tyro 为该布尔字段自动生成的反向选项。
 * <code>--training.steps</code> 与 <code>--training.global_batch_size</code>: 动态覆盖 registry 配置中的字段。</p>
 </blockquote>
-<h3 id="_5">多机训练任务</h3>
+<h3 id="_4">多机训练任务</h3>
 <p>在执行启动命令前，按照集群的实际情况编辑 <code>scripts/run_train_multinodes.sh</code> 文件中的网络与节点配置：</p>
 <pre><code class="language-bash"># TODO change to your network interface
 Network_Interface=enp23s0f3 # 填入 ifconfig 的驱动名
