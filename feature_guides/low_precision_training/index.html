@@ -175,15 +175,15 @@
 </thead>
 <tbody>
 <tr>
-<td><code>torchtitan_npu/patches/torchao_npu/mx_capability_check.py</code></td>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/patches/mx_capability_check.py</code></td>
 <td>替换 <code>has_cuda_capability</code> 函数，使 MXFP8Converter 在 NPU 上进行硬件校验</td>
 </tr>
 <tr>
-<td><code>torchtitan_npu/patches/torchao_npu/mx_linear.py</code></td>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/patches/mx_linear.py</code></td>
 <td>替换 torchao 的 <code>_to_mxfp8_then_scaled_mm</code>，将线性层 MXFP8 计算重定向至 NPU 算子</td>
 </tr>
 <tr>
-<td><code>torchtitan_npu/patches/torchao_npu/mxfp8_grouped_mm.py</code></td>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/patches/mxfp8_grouped_mm.py</code></td>
 <td>替换 torchao 的 <code>_to_mxfp8_then_scaled_grouped_mm</code>，将 MoE 分组矩阵乘法重定向至 NPU 算子</td>
 </tr>
 </tbody>
