@@ -109,7 +109,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-sftgsm8k">DeepSeek-V4 SFT（GSM8K 单轮）</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-mini-1b-sftyelp-review-full">DeepSeek-V4-Mini-1B SFT（Yelp Review Full 单轮）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-mini-1b-sftdaring-anteater-full">DeepSeek-V4-Mini-1B SFT（Daring-Anteater Full 单轮）</a>
     </li>
         </ul>
     </li>
@@ -283,7 +283,7 @@
 </tr>
 <tr>
 <td>DeepSeek-V4-Mini-1B</td>
-<td>Yelp Review Full</td>
+<td>Daring-Anteater</td>
 <td>ChatML template</td>
 <td>✅</td>
 <td>—</td>
@@ -335,11 +335,11 @@ CHAT_PROCESSOR=torchtitan_npu.hf_datasets.chat_processors.process_gsm8k_sample \
     --training.seq_len 1024 \
     --parallelism.context_parallel_degree 1
 </code></pre>
-<h3 id="deepseek-v4-mini-1b-sftyelp-review-full">DeepSeek-V4-Mini-1B SFT（Yelp Review Full 单轮）</h3>
+<h3 id="deepseek-v4-mini-1b-sftdaring-anteater-full">DeepSeek-V4-Mini-1B SFT（Daring-Anteater Full 单轮）</h3>
 <pre><code class="language-bash">HF_ASSETS_PATH=/data/models/deepseek-v4-mini-1B-init \
 CHECKPOINT_INITIAL_LOAD_PATH=/data/models/deepseek-v4-mini-1B-init \
-DATA_FILES=/data/dataset/yelp_review_full/train-00000-of-00001.parquet \
-CHECKPOINT_FOLDER=./outputs/deepseek_v4_1b_yelp/checkpoint \
+DATA_FILES=/data/dataset/Daring-Anteater/train.jsonl \
+CHECKPOINT_FOLDER=./outputs/deepseek_v4_1b_sft/checkpoint \
   bash examples/deepseek_v4/sft_deepseek_v4_1k_A3.sh
 </code></pre>
 <hr />
