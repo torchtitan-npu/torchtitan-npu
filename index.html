@@ -64,7 +64,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/fsdp_parameter_precision/">Fsdp parameter precision</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/low_precision_training/">低精度训练特性（MXFP8）</a>
+                  <li class="toctree-l1"><a class="reference internal" href="feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiF8）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="feature_guides/metrics_and_debugging/">调试支持特性</a>
                   </li>
@@ -161,6 +161,7 @@ LICENSE file in the root directory of this source tree.
 <h1 id="_3">最新消息</h1>
 <hr />
 <ul>
+<li>[Aug. 2026]: 🚀 <strong>支持 HiFloat8（HiF8）低精度训练</strong>：新增 per-tensor 动态量化的 HiF8 训练后端，覆盖 Linear 与 MoE 专家层，在 Ascend 950 NPU 上进一步提升 DeepSeek-V4 等大模型的训练吞吐。</li>
 <li>[May. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Pro 模型续训练支持</a></strong>：基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图。</li>
 <li>[May. 2026]: ⚠️ <strong>配置系统重构</strong>：master 分支对齐 torchtitan main 的 <code>config_registry.py</code> / <code>ConfigManager</code> 机制，模型训练使用 <code>--module</code> 和 <code>--config</code> 启动，不再通过 <code>--job.config_file</code> 加载 TOML。</li>
 <li>[Apr. 2026]: 🚀 <strong><a href="https://gitcode.com/cann/cann-recipes-train/blob/master/llm_pretrain/deepseekv4/README.md">DeepSeek-V4-Flash 续训练 0day 支持</a></strong>：基于纯FSDP + 大EP极简切分，使能AutoFuse特性，达成训练入图，开箱即优。</li>
@@ -223,9 +224,14 @@ pip install -e .
     </tr>
     <!-- 训练精度 -->
     <tr>
-      <td rowspan="2">训练精度</td>
+      <td rowspan="3">训练精度</td>
       <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/low_precision_training.md">MxFP8 量化</a></td>
       <td>✅</td>
+      <td>✅ (Ascend 950)</td>
+    </tr>
+    <tr>
+      <td><a href="https://gitcode.com/cann/torchtitan-npu/blob/master/docs/feature_guides/low_precision_training.md">HiFloat8 量化</a></td>
+      <td>❌</td>
       <td>✅ (Ascend 950)</td>
     </tr>
     <tr>
@@ -459,5 +465,5 @@ pip install -e .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-08-19 14:30:01.671909+00:00
+Build Date UTC : 2026-08-20 14:32:57.713041+00:00
 -->

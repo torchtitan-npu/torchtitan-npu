@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>低精度训练特性（MXFP8） - torchtitan-npu</title>
+    <title>低精度训练特性（MXFP8 / HiF8） - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3\u7279\u6027\uff08MXFP8\uff09";
+        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3\u7279\u6027\uff08MXFP8 / HiF8\uff09";
         var mkdocs_page_input_path = "feature_guides/low_precision_training.md";
         var mkdocs_page_url = null;
       </script>
@@ -60,7 +60,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../fsdp_parameter_precision/">Fsdp parameter precision</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8）</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练特性（MXFP8 / HiF8）</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">硬件要求</a>
     </li>
@@ -68,15 +68,23 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_3">整体架构</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hif8">整体架构（HiF8）</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#_4">线性层低精度</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hif8_1">线性层低精度（HiF8）</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#moe">MoE 专家层低精度</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#moe-hif8">MoE 专家层低精度（HiF8）</a>
     </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_5">配置选项</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#mxfp8converter">MXFP8Converter 配置</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hif8_2">HiF8 配置</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#_6">环境变量配置</a>
     </li>
@@ -149,7 +157,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">低精度训练特性（MXFP8）</li>
+      <li class="breadcrumb-item active">低精度训练特性（MXFP8 / HiF8）</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -158,11 +166,12 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="mxfp8">低精度训练特性（MXFP8）</h1>
+                <h1 id="mxfp8-hif8">低精度训练特性（MXFP8 / HiF8）</h1>
 <p>在大规模语言模型的分布式训练中，矩阵乘法运算（GEMM）占据了绝大部分计算开销。传统的 BF16/FP16 混合精度训练虽然已大幅降低了显存占用，但在超大规模模型（如 DeepSeek-V3 671B）上仍面临计算效率瓶颈。低精度训练通过将线性层和 MoE 专家层的矩阵乘法降至 8-bit 浮点精度执行，在保持训练收敛性的前提下，显著提升计算吞吐并降低显存消耗。</p>
 <p>本特性基于 <a href="https://github.com/pytorch/ao">torchao</a> 的 MXFP8 训练框架，通过 NPU 侧的 monkey-patch 将 torchao 的 MXFP8 计算路径重定向至 <code>torch_npu</code> 原生算子，覆盖普通线性层（nn.Linear）和 MoE 专家层（Grouped MM）两大场景。</p>
+<p>除 MXFP8 外，torchtitan-npu 还通过实验性插件子包 <code>torchtitan_npu/experiments/ao_npu/torchao_npu</code>  提供 HiF8（<code>torch_npu.hifloat8</code>）作为另一种 8-bit 精度训练路径，同样覆盖上述两大场景。与 MXFP8 的 per-block（e8m0 microscaling）量化不同，HiF8 是<strong>纯 per-tensor</strong> 动态量化：整个激活/权重张量只计算一个标量 scale。</p>
 <h2 id="_1">硬件要求</h2>
-<p>低精度训练特性仅支持 <strong>Ascend 950 及更高架构</strong>的 NPU 设备。系统在初始化时会通过 <code>torch_npu.npu.get_device_name()</code> 进行硬件检测，不满足要求时将抛出异常。</p>
+<p>低精度训练特性仅支持 <strong>Ascend 950 及更高架构</strong>的 NPU 设备。MXFP8 在初始化时会通过 <code>torch_npu.npu.get_device_name()</code> 进行硬件检测，不满足要求时将抛出异常；HiF8 当前未在 Python 层做显式硬件能力校验，不支持的硬件上会在实际调用 <code>torch_npu.npu_dynamic_quant</code>/<code>npu_quant_matmul</code> 等算子时由算子层报错。</p>
 <h2 id="_2">实现原理</h2>
 <h3 id="_3">整体架构</h3>
 <p>本特性采用 <strong>torchao 原生 MXFP8 框架 + NPU 算子替换</strong> 的架构。torchtitan 上游提供 <code>MXFP8Converter</code> 作为模型转换入口，torchao 负责量化配置与权重包装，torchtitan-npu 通过 monkey-patch 将 torchao 内部的矩阵乘法调度函数替换为 NPU 实现。相关代码主要分布在以下文件中：</p>
@@ -188,12 +197,46 @@
 </tr>
 </tbody>
 </table>
+<h3 id="hif8">整体架构（HiF8）</h3>
+<p>HiF8 不复用上述 <code>MXFP8Converter</code> + patch 架构，而是接入 <code>torchao_npu</code> 已有的 <strong>ParamSwap 参数级拦截框架</strong>：<code>NpuQuantizeConverter</code>（把 <code>ParamSwapConfig</code> 转交给 <code>torchao.quantize_()</code>）→ <code>ParamSwapConfig</code>（prepare/convert 两步生命周期，wrap/unwrap <code>nn.Parameter</code>）→ <code>HiF8TrainingWeightWrapperTensor</code>（<code>__torch_function__</code> 拦截计算类 op）。相关代码主要分布在：</p>
+<table>
+<thead>
+<tr>
+<th>文件路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/quantization/quant_configs.py</code></td>
+<td><code>HiF8QuantizeConfig</code>：per-tensor 量化配置，唯一字段 <code>elem_dtype</code> 锁定为 <code>torch_npu.hifloat8</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/wrapper_tensors/hif8_wrapper_tensor.py</code></td>
+<td><code>HiF8TrainingWeightWrapperTensor</code>：拦截 <code>mm</code>/<code>matmul</code>/<code>grouped_mm</code>/<code>linear</code>/<code>addmm</code>，换成 HiF8 量化 kernel</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/ops/hif8_ops.py</code></td>
+<td><code>to_hif8_then_mm</code>/<code>to_hif8_then_grouped_mm</code>：per-tensor HiF8 量化的 Linear/Grouped MM 正反向实现</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/experiments/ao_npu/torchao_npu/interfaces/torchtitan.py</code></td>
+<td><code>NpuQuantizeConverter</code>：把 <code>ParamSwapConfig</code> 接入 torchtitan 的 <code>ModelConvertersContainer</code></td>
+</tr>
+</tbody>
+</table>
 <h3 id="_4">线性层低精度</h3>
 <p><code>MXFP8Converter</code> 在转换阶段，通过 torchao 的 <code>quantize_</code> API 对模型中指定 FQN 的 <code>nn.Linear</code> 模块的权重进行包装（<code>MXFP8TrainingWeightWrapperTensor</code>）。在前向传播时，权重包装器的 <code>__torch_function__</code> 拦截矩阵乘法调用，进入 <code>_to_mxfp8_then_scaled_mm</code> 函数。</p>
 <p>NPU 侧通过 patch <code>torchao.prototype.mx_formats.mx_linear._to_mxfp8_then_scaled_mm</code>，将其替换为调用 NPU 原生算子的 <code>NpuMXFP8MM</code>：</p>
 <ul>
 <li><strong>前向传播</strong>：使用 <code>torch_npu.npu_dynamic_mx_quant</code> 对激活和权重分别进行 per-block 量化（block size=32，沿 axis=-1 方向），每 32 个元素共享一个 e8m0 scale，再通过 <code>torch_npu.npu_quant_matmul</code> 执行 FP8 矩阵乘法，输出恢复为原始精度（BF16）。</li>
 <li><strong>反向传播</strong>：输入梯度（dx）和权重梯度（dw）的计算同样在 FP8 精度下完成，其中权重梯度使用 <code>npu_dynamic_mx_quant</code> 对权重沿 axis=-2 方向进行 per-block 量化。</li>
+</ul>
+<h3 id="hif8_1">线性层低精度（HiF8）</h3>
+<p><code>HiF8TrainingWeightWrapperTensor.__torch_function__</code> 拦截 <code>torch.nn.functional.linear</code>/<code>torch.addmm</code>/<code>torch.mm</code>/<code>torch.matmul</code>，转调用 <code>to_hif8_then_mm</code>：</p>
+<ul>
+<li><strong>前向传播</strong>：对激活和权重分别用 <code>torch_npu.npu_dynamic_quant(quant_mode="pertensor")</code> 量化为 HiF8 + 一个标量 scale，再用 <code>torch_npu.npu_quant_matmul</code> 计算，输出恢复为原始 BF16 精度。</li>
+<li><strong>反向传播</strong>：直接复用前向已量化的激活/权重及其 scale（转置对 per-tensor scale 无影响）计算输入梯度和权重梯度，只对新出现的梯度现场量化一次，不需要重新量化激活/权重。</li>
 </ul>
 <h3 id="moe">MoE 专家层低精度</h3>
 <p>对于 MoE（Mixture of Experts）架构中的专家层，torchao 通过 <code>_to_mxfp8_then_scaled_grouped_mm</code> 函数调度分组矩阵乘法。</p>
@@ -205,8 +248,17 @@
 <blockquote>
 <p><strong>注意</strong>：MoE 低精度功能依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 converters 配置中 <code>npu_gmm</code> 必须位于 <code>MXFP8Converter</code> 之前。</p>
 </blockquote>
+<h3 id="moe-hif8">MoE 专家层低精度（HiF8）</h3>
+<p>拦截 <code>torch._grouped_mm</code>，转调用 <code>to_hif8_then_grouped_mm</code>：</p>
+<ul>
+<li><strong>前向传播</strong>：激活/权重整体各量化出一个标量 scale，再用 <code>torch_npu.npu_grouped_matmul</code> 计算；scale 通过 <code>.reshape(1).expand(...)</code> 广播成算子要求的按 token/按专家长度的向量。</li>
+<li><strong>反向传播</strong>：输入梯度复用前向对激活的量化结果；权重梯度两个 scale 都按专家数广播（而非 token 数），且需要对转置后的权重重新做一次量化，未复用前向的量化结果。</li>
+</ul>
+<blockquote>
+<p><strong>注意</strong>：MoE 场景下 HiF8 是纯 per-tensor 量化：同一次 forward/backward 里所有本地专家、所有 token 共享同一个标量 scale；同样依赖 <code>npu_gmm</code> converter 提供的分组矩阵乘法基础实现，因此在 converters 配置中 <code>npu_gmm</code> 必须位于 <code>NpuQuantizeConverter</code> 之前。</p>
+</blockquote>
 <h2 id="_5">配置选项</h2>
-<p>低精度训练通过 <code>ModelConvertersContainer.Config</code> 的 <code>converters</code> 列表启用，使用上游 <code>MXFP8Converter.Config</code> 进行配置。</p>
+<p>低精度训练通过 <code>ModelConvertersContainer.Config</code> 的 <code>converters</code> 列表启用。MXFP8 使用上游 <code>MXFP8Converter.Config</code> 进行配置；HiF8 使用 <code>NpuQuantizeConverter.Config</code> 包一层 <code>ParamSwapConfig</code> 进行配置，不使用 <code>MXFP8Converter.Config</code>。</p>
 <h3 id="mxfp8converter">MXFP8Converter 配置</h3>
 <table>
 <thead>
@@ -232,6 +284,38 @@
 </tr>
 </tbody>
 </table>
+<h3 id="hif8_2">HiF8 配置</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HiF8QuantizeConfig.elem_dtype</code></td>
+<td><code>torch.dtype</code></td>
+<td><code>torch_npu.hifloat8</code></td>
+<td>唯一字段，<code>__post_init__</code> 强制锁定为该值，实际不可配置，仅为与 <code>MXQuantizeConfig</code> 等其他 config 接口保持一致</td>
+</tr>
+<tr>
+<td><code>NpuQuantizeConverter.Config.filter_fn</code></td>
+<td><code>(nn.Module, str) -&gt; bool</code></td>
+<td><code>_is_linear</code></td>
+<td>模块级过滤器，决定哪些模块参与转换</td>
+</tr>
+<tr>
+<td><code>ParamSwapConfig.params_filter_fn</code></td>
+<td><code>(nn.Parameter, str) -&gt; bool</code></td>
+<td><code>_is_parameter</code></td>
+<td>参数级过滤器，决定命中模块下的哪些参数被 wrap</td>
+</tr>
+</tbody>
+</table>
+<p><code>ParamSwapConfig</code> 的 <code>weight_config</code>/<code>activation_config</code> 必须都传且均为 <code>HiF8QuantizeConfig</code>，否则 <code>HiF8TrainingWeightWrapperTensor.__init__</code> 会抛出 <code>ValueError</code>。</p>
 <h3 id="_6">环境变量配置</h3>
 <table>
 <thead>
@@ -249,6 +333,9 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>HiF8 没有 dual-axis 量化机制（不区分 block/axis），不受 <code>MXFP8_DUAL_AXIS_FORWARD</code> 影响，也没有对应的环境变量。</p>
+</blockquote>
 <h3 id="_7">配置示例</h3>
 <p>在模型的 <code>config_registry.py</code> 中配置 <code>model_converters</code> 并添加 <code>MXFP8Converter</code>：</p>
 <p><strong>示例：对指定线性层和 MoE 专家层启用 MXFP8 低精度训练</strong></p>
@@ -285,16 +372,62 @@ model_converters = ModelConvertersContainer.Config(
     ],
 )
 </code></pre>
+<p><strong>示例：对指定线性层和 MoE 专家层启用 HiF8 低精度训练</strong></p>
+<pre><code class="language-python">from torchtitan.protocols.model_converter import ModelConvertersContainer
+
+from torchtitan_npu.converters import get_model_converter_config
+from torchtitan_npu.experiments.ao_npu.torchao_npu.configs import ParamSwapConfig
+from torchtitan_npu.experiments.ao_npu.torchao_npu.interfaces.torchtitan import (
+    NpuQuantizeConverter,
+    is_attention,
+    is_routed_expert,
+    is_shared_expert,
+)
+from torchtitan_npu.experiments.ao_npu.torchao_npu.quantization.filters import (
+    any_filter,
+    match_fqn_suffix,
+)
+from torchtitan_npu.experiments.ao_npu.torchao_npu.quantization.quant_configs import HiF8QuantizeConfig
+
+model_converters = ModelConvertersContainer.Config(
+    converters=[
+        # NPU 基础 converter（npu_gmm 必须在 NpuQuantizeConverter 之前）
+        get_model_converter_config(&quot;npu_rms_norm&quot;),
+        get_model_converter_config(&quot;npu_moe_dispatch&quot;),
+        get_model_converter_config(&quot;npu_gmm&quot;),
+        get_model_converter_config(&quot;npu_rope&quot;),
+        get_model_converter_config(&quot;npu_smla&quot;),
+        get_model_converter_config(&quot;npu_mhc_pre&quot;),
+        # HiF8 低精度训练
+        NpuQuantizeConverter.Config(
+            base_config=ParamSwapConfig(
+                weight_config=HiF8QuantizeConfig(),
+                activation_config=HiF8QuantizeConfig(),
+            ),
+            filter_fn=any_filter(
+                # Attention 线性层 + 共享专家 + 路由专家
+                is_attention,
+                is_shared_expert,
+                is_routed_expert,
+                match_fqn_suffix(&quot;.e_proj&quot;, &quot;.h_proj&quot;),
+            ),
+        ),
+    ],
+)
+</code></pre>
+<p>参照 <code>torchtitan_npu/experiments/ao_npu/benchmarks/e2e/dsv4_flash_single_node/config_registry.py</code> 中的 <code>debug_deepseek_v4_flash_single_node_hif8_qat()</code>。</p>
 <h2 id="_8">验证清单</h2>
 <ol>
 <li><strong>确认 converter 生效</strong>：启动日志中应出现以下关键字：</li>
 <li><code>MXFP8 MoE training enabled</code>（来自上游 <code>MXFP8Converter.__init__</code>）</li>
 <li><code>Converted layers matching FQNS ... to use dynamic mxfp8_rceil quantization for grouped_mm and linear ops</code>（来自上游 <code>MXFP8Converter.convert</code>）</li>
-<li><strong>确认模块替换数量</strong>：日志中转换信息应与配置的 <code>fqns</code> 列表匹配。</li>
+<li>HiF8：<code>Parameter quantize active with base_config=ParamSwapConfig</code>（来自 <code>NpuQuantizeConverter.__init__</code>）及 <code>Applied parameter quantize wrapping (prepare step)</code>（来自 <code>NpuQuantizeConverter.convert</code>）</li>
+<li><strong>确认模块替换数量</strong>：MXFP8 日志中的转换信息应与配置的 <code>fqns</code> 列表匹配；HiF8 可在 <code>filter_fn</code>/<code>params_filter_fn</code> 命中范围内抽查若干参数，确认其 <code>.data</code> 类型为 <code>HiF8TrainingWeightWrapperTensor</code> 而非普通 tensor。</li>
 <li><strong>常见未生效场景排查</strong>：</li>
-<li><code>converters</code> 顺序错误：<code>npu_gmm</code> 未放在 <code>MXFP8Converter</code> 之前，导致 MoE 专家层替换失败</li>
-<li><code>fqns</code> 匹配不到目标模块：检查模块的 FQN 是否包含配置的子字符串（注意大小写敏感）</li>
-<li>硬件不满足要求：日志报错 <code>MXFP8 is only supported on Ascend950 or higher architecture</code></li>
+<li><code>converters</code> 顺序错误：<code>npu_gmm</code> 未放在 <code>MXFP8Converter</code>/<code>NpuQuantizeConverter</code> 之前，导致 MoE 专家层替换失败</li>
+<li><code>fqns</code>（MXFP8）/<code>filter_fn</code>（HiF8）匹配不到目标模块：检查模块的 FQN 是否符合配置的匹配条件（注意大小写敏感）</li>
+<li>硬件不满足要求：MXFP8 日志报错 <code>MXFP8 is only supported on Ascend950 or higher architecture</code>；HiF8 未做提前校验，报错会发生在实际调用 NPU 算子时</li>
+<li>HiF8 特有：<code>weight_config</code>/<code>activation_config</code> 未同时提供、或类型不一致，<code>HiF8TrainingWeightWrapperTensor</code> 构造时会抛出 <code>ValueError</code></li>
 </ol>
 <h2 id="cli">CLI 启动方式</h2>
 <p>实验目录 <code>torchtitan_npu/experiments/ao_npu/benchmarks/e2e/dsv4_flash_single_node_train/</code> 提供 <code>run_train.sh</code> 作为低精度训练的启动入口。通过<strong>环境变量</strong>控制量化 recipe，无需修改 Python 代码。该脚本使用 <code>RecipeQuantizeConverter</code>，支持多种量化方案一键切换。</p>
