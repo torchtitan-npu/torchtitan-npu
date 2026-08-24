@@ -98,37 +98,39 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">测试使用指南</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#_2">常用命令</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_3">单元测试</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">测试前置条件</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_4">冒烟测试</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">常用命令</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">单元测试</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">冒烟测试</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#integration-test">集成测试 (Integration Test)</a>
         <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#_5">运行方式</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_6">运行方式</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#_6">命令行参数</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_7">命令行参数</a>
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#overridedefinitions">OverrideDefinitions 使用说明</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#_7">新增测试用例步骤</a>
+    <li class="toctree-l4"><a class="reference internal" href="#_8">新增测试用例步骤</a>
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#config-registry">Config Registry 配置</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_8">模型并行专项命令</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_9">模型并行专项命令</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_9">什么时候用哪个命令</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_10">什么时候用哪个命令</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_10">快速判断</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_11">快速判断</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_11">测试报告</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_12">测试报告</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_12">使用建议</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_13">使用建议</a>
     </li>
     </ul>
                   </li>
@@ -165,8 +167,16 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="_1">测试使用指南</h1>
-<h2 id="_2">常用命令</h2>
-<h3 id="_3">单元测试</h3>
+<h2 id="_2">测试前置条件</h2>
+<p>运行 <code>.ci/unit_test.sh</code> 或 <code>.ci/smoke_test.sh</code> 前，请在同一 shell 中加载与 <code>torch_npu</code>
+匹配的 CANN 环境：</p>
+<pre><code class="language-bash">source /实际安装目录/set_env.sh
+# 例如：source /usr/local/Ascend/cann/set_env.sh
+</code></pre>
+<p>冒烟测试还需要可用的 NPU 和匹配驱动。请从仓库根目录执行脚本；CANN 安装在其他路径时
+直接替换上述路径，无需创建符号链接。</p>
+<h2 id="_3">常用命令</h2>
+<h3 id="_4">单元测试</h3>
 <pre><code class="language-bash"># 运行全部单元测试（带 NPU patch 的 torchtitan 上游 UT + 本仓 torchtitan-npu UT）
 bash .ci/unit_test.sh
 
@@ -174,20 +184,21 @@ bash .ci/unit_test.sh
 python3 -m pytest -v --tb=short tests/unit_tests
 </code></pre>
 <p><code>.ci/unit_test.sh</code> 会依次执行两组单元测试。即使上游 UT 失败，本仓 UT 仍会继续执行；两组测试结束后脚本会输出退出码汇总，任意一组失败时最终返回非零退出码。</p>
-<h3 id="_4">冒烟测试</h3>
+<h3 id="_5">冒烟测试</h3>
 <pre><code class="language-bash"># 运行 smoke 套件（torchtitan-npu 集成 smoke + tests/smoke_tests）
 bash .ci/smoke_test.sh
 </code></pre>
 <blockquote>
 <p>注意：<code>.ci/smoke_test.sh</code> 中 <code>run_torchtitan_smoke</code>（上游集成 smoke 路径）当前被注释掉，
-因此默认运行只执行 torchtitan-npu 集成 smoke 和 <code>pytest tests/smoke_tests</code>。</p>
+因此默认运行只执行 torchtitan-npu 集成 smoke 和 <code>pytest tests/smoke_tests</code>。脚本不会再用固定
+的 NPU 内存阈值阻止测试。</p>
 </blockquote>
 <h3 id="integration-test">集成测试 (Integration Test)</h3>
 <p><code>tests/smoke_tests/integration_test.py</code> 是端到端集成测试入口，用于验证：
 - 新增模型功能支持情况
 - 特性兼容性
 - 并行策略兼容性</p>
-<h4 id="_5">运行方式</h4>
+<h4 id="_6">运行方式</h4>
 <pre><code class="language-bash"># 通过 .ci/smoke_test.sh 运行（集成 smoke 是套件的一部分）
 bash .ci/smoke_test.sh
 
@@ -196,7 +207,7 @@ python tests/smoke_tests/integration_test.py output_dir \
     --test_name all \
     --ngpu 2
 </code></pre>
-<h4 id="_6">命令行参数</h4>
+<h4 id="_7">命令行参数</h4>
 <table>
 <thead>
 <tr>
@@ -233,7 +244,7 @@ python tests/smoke_tests/integration_test.py output_dir \
     disabled=False,          # 可选：是否禁用
 )
 </code></pre>
-<h4 id="_7">新增测试用例步骤</h4>
+<h4 id="_8">新增测试用例步骤</h4>
 <ol>
 <li>打开 <code>tests/smoke_tests/integration_test.py</code></li>
 <li>在 <code>generate_smoke_tests()</code> 中，按用例类型将新配置添加到对应的分组函数（<code>_fake_backend_tests()</code> / <code>_base_tests()</code> / <code>_tp_tests()</code> / <code>_ep_tests()</code>）的返回列表中（例如下面的 TP 用例加到 <code>_tp_tests()</code>）：</li>
@@ -259,14 +270,14 @@ python tests/smoke_tests/integration_test.py output_dir \
 <h4 id="config-registry">Config Registry 配置</h4>
 <p>集成测试每个测试用例会向<code>scripts/run_train.sh</code> 传入 <code>--module</code> 和 <code>--config</code>，再追加 <code>tyro</code> 嵌套覆盖参数，例如
 <code>--training.steps 2</code> 或 <code>--parallelism.tensor_parallel_degree 2</code>。</p>
-<h3 id="_8">模型并行专项命令</h3>
+<h3 id="_9">模型并行专项命令</h3>
 <pre><code class="language-bash"># 基础模型并行冒烟测试
 python3 -m pytest -v tests/smoke_tests/model_parallel/
 
 # 多进程模型并行冒烟测试
 RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v tests/smoke_tests/model_parallel/
 </code></pre>
-<h2 id="_9">什么时候用哪个命令</h2>
+<h2 id="_10">什么时候用哪个命令</h2>
 <table>
 <thead>
 <tr>
@@ -293,21 +304,21 @@ RUN_MODEL_PARALLEL_MULTI_RANK=true torchrun --nproc_per_node=4 -m pytest -v test
 </tr>
 </tbody>
 </table>
-<h2 id="_10">快速判断</h2>
+<h2 id="_11">快速判断</h2>
 <ul>
 <li>只改了硬件无关逻辑：先跑 <code>.ci/unit_test.sh</code></li>
 <li>改了 NPU 特性链路或 wrapper：跑 <code>.ci/smoke_test.sh</code></li>
 <li>改了训练主链路接线：用 <code>integration_test.py --test_name &lt;name&gt;</code> 定向跑对应用例</li>
 <li>改了模型并行行为：跑 <code>pytest tests/smoke_tests/model_parallel/</code></li>
 </ul>
-<h2 id="_11">测试报告</h2>
+<h2 id="_12">测试报告</h2>
 <ul>
 <li>输出目录：<code>test_reports/</code></li>
 <li>常见产物：</li>
 <li><code>smoke_test.log</code>：torchtitan-npu 集成 smoke 日志</li>
 <li><code>integration_tests/</code>：集成测试结果目录</li>
 </ul>
-<h2 id="_12">使用建议</h2>
+<h2 id="_13">使用建议</h2>
 <ol>
 <li>先跑和改动最匹配的最小命令。</li>
 <li>不依赖 NPU 的改动，优先跑 <code>.ci/unit_test.sh</code>。</li>
