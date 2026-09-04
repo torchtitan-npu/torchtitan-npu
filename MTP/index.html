@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>DeepSeek-V3.2 / DeepSeek-V4 MTP - torchtitan-npu</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V3.2 / DeepSeek-V4 MTP";
+        var mkdocs_page_input_path = "MTP.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-mtp">1. MTP 原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#11">1.1 序列移动和有效位置</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#12-deepseek-v32-mtp">1.2 DeepSeek-V3.2 MTP</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#13-deepseek-v4-mtp">1.3 DeepSeek-V4 MTP</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#14-deepseek-v4-context-parallel">1.4 DeepSeek-V4 Context Parallel</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#15-chunked-loss">1.5 Chunked loss</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">2. 代码结构</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#21-mtp">2.1 公共 MTP 模块</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#22-deepseek-v32">2.2 DeepSeek-V3.2 目录</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#23-deepseek-v4">2.3 DeepSeek-V4 目录</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#24">2.4 与原模型解耦</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">3. 使能方式</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#31-recipe">3.1 默认 recipe</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#32-mtp">3.2 自定义 MTP 深度</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#33-mtp">3.3 关闭 MTP</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">DeepSeek-V3.2 / DeepSeek-V4 MTP</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v32-deepseek-v4-mtp">DeepSeek-V3.2 / DeepSeek-V4 MTP</h1>
+<p>本文介绍 TorchTitan-NPU 中 DeepSeek-V3.2 和 DeepSeek-V4 的
+Multi-Token Prediction（MTP）训练特性，内容包括 MTP 原理、代码结构和使能
+方式。</p>
+<h2 id="1-mtp">1. MTP 原理</h2>
+<p>标准自回归训练采用 Next-Token Prediction（NTP）：位置 <code>t</code> 的 hidden state
+只预测下一个 token。MTP 在保留主预测任务的基础上，增加若干串联的辅助预测
+深度，让模型同时学习更远位置的 token。</p>
+<p>设输入 token 为 <code>x</code>，主干最终 hidden state 为 <code>h^(0)</code>。第 <code>k</code> 个 MTP 深度
+接收：</p>
+<ul>
+<li>主干或上一个 MTP 深度产生的 <code>h^(k-1)</code>；</li>
+<li>左移 <code>k</code> 位后的 token embedding；</li>
+<li>当前深度对应的有效位置掩码。</li>
+</ul>
+<p>如果 <code>label[t]</code> 是输入位置 <code>t</code> 的下一个 token，那么第 <code>k</code> 个 MTP 深度会
+利用第 <code>k</code> 个未来 token 的 embedding，预测第 <code>k + 1</code> 个未来 token。当前
+深度产生的 hidden state 会继续传给下一个深度，因此多个 MTP 深度构成一条
+逐层推进的辅助预测链，而不是若干相互独立的输出 head。</p>
+<h3 id="11">1.1 序列移动和有效位置</h3>
+<p><code>roll_mtp_sequence</code> 负责生成左移后的 token，并同时返回 <code>valid_mask</code>：</p>
+<ul>
+<li>屏蔽序列尾部不存在足够未来 token 的位置；</li>
+<li>packed sequence 根据 <code>positions</code> 屏蔽跨文档边界的位置；</li>
+<li>无效位置不参与 MTP loss，也不会把无效的上一深度 hidden state 传入当前
+  深度。</li>
+</ul>
+<p>模型返回主预测和各 MTP 深度组成的列表。使用普通 <code>MTPLoss</code> 时列表元素是
+logits；使用默认的分块损失时列表元素是 LM head 之前的 hidden state：</p>
+<pre><code class="language-text">outputs[0]     主 NTP 任务的 logits 或 hidden state
+outputs[k]     第 k 个 MTP 深度的 logits 或 hidden state
+</code></pre>
+<p><code>MTPLoss</code> 接收该列表以及 <code>positions</code>，在 loss 内部按相同规则移动 labels，因而
+不需要模型额外返回有效位置掩码。设 MTP 深度数为 <code>K</code>，总损失为：</p>
+<pre><code class="language-text">L = L_main + mtp_scale / K * sum(L_mtp,k)
+</code></pre>
+<p>主损失和各层 MTP 损失均采用 token-sum 交叉熵，最后统一按照全局有效 token 数
+进行归一化。<code>mtp_scale</code> 用于控制辅助预测任务对总梯度的贡献。</p>
+<h3 id="12-deepseek-v32-mtp">1.2 DeepSeek-V3.2 MTP</h3>
+<p>DeepSeek-V3.2 的主干输出和 MTP state 都是
+<code>[batch, sequence, hidden]</code> 三维张量。每个 MTP block 执行以下步骤：</p>
+<ol>
+<li>分别归一化未来 token embedding 和上一深度 hidden state；</li>
+<li>将二者拼接，通过 <code>eh_proj</code> 投影回模型 hidden size；</li>
+<li>执行一个包含 DSA attention 和 FFN/MoE 的 Transformer block；</li>
+<li>通过 MTP norm 和共享 LM head 得到该深度的预测 logits；</li>
+<li>将该深度 hidden state 传给下一个 MTP 深度。</li>
+</ol>
+<p>MTP block 复用 DeepSeek-V3.2 的 DSA attention 配置，但拥有独立参数，不与
+主干最后一层共享权重。</p>
+<h3 id="13-deepseek-v4-mtp">1.3 DeepSeek-V4 MTP</h3>
+<p>DeepSeek-V4 主干使用 mHC，多流 hidden state 的形状为
+<code>[batch, sequence, hc_mult, hidden]</code>。MTP 过程中不能先把这些 stream 合并成
+普通三维 hidden，否则会丢失 mHC 状态。每个 DeepSeek-V4 MTP block 执行：</p>
+<ol>
+<li>分别投影未来 token embedding 和上一深度的多流 hidden state；</li>
+<li>将 token embedding 投影广播到每个 mHC stream；</li>
+<li>通过 <code>HcPre -&gt; Attention -&gt; HcPost</code> 更新 attention 分支；</li>
+<li>通过 <code>HcPre -&gt; FFN/MoE -&gt; HcPost</code> 更新 FFN 分支；</li>
+<li>使用当前深度独立的 <code>HcHead</code> 生成三维 prediction hidden；</li>
+<li>三维 prediction hidden 进入共享 LM head，多流 hidden state 则继续传给下一
+   个 MTP 深度。</li>
+</ol>
+<p>DeepSeek-V4 MTP 保留 mHC 多流状态，但其 attention 使用非压缩形式，不启用
+主干 DSA 的 compressor 和 indexer。</p>
+<h3 id="14-deepseek-v4-context-parallel">1.4 DeepSeek-V4 Context Parallel</h3>
+<p>MTP 的 future-token shift 不能在 CP rank-local 序列上执行：<code>headtail</code> 等负载
+均衡会让一个 rank 持有不连续的前缀和后缀，局部移动会在 rank 边界读取错误
+token。实现因此在 <code>cp_shard</code> 之前对完整序列统一生成：</p>
+<ul>
+<li>每个 MTP 深度的 future token；</li>
+<li>packed sequence 感知的有效位置 mask；</li>
+<li>每个 MTP 深度的监督 label。</li>
+</ul>
+<p>这些张量与普通 <code>inputs</code>、<code>labels</code>、<code>positions</code> 一起进入 TorchTitan 原生
+<code>cp_shard</code>，复用相同的 load balancer 和 sequence 维切分。这样既保留普通 CP
+路径，也保证 token、label 和 mask 在每个 rank 上严格同位。</p>
+<p>该流程只接入 DeepSeek-V4：继续复用已有压缩 metadata 和 CP plan 构造，只把
+MTP 张量加入同一次通用 tensor shard。DeepSeek-V3 和 DeepSeek-V3.2 保留社区
+MTP 的原有限制，<code>context_parallel_degree &gt; 1</code> 时在配置更新阶段报错；两者已有的
+非 MTP CP 路径不变。</p>
+<p>该处理与 Megatron-LM MTP 在 CP 边界交换 future token/label 的数学目标一致；
+区别是 TorchTitan 的模型 metadata hook 位于 CP 切分之前，因此可直接在全局
+序列上生成并统一切分，无需额外点对点通信。</p>
+<h3 id="15-chunked-loss">1.5 Chunked loss</h3>
+<p>DeepSeek-V4 的默认 recipe 使用 <code>MTPChunkedLossWrapper</code>。它继承并逐预测分支调用
+TorchTitan 原生 <code>ChunkedLossWrapper</code>，因此复用其 sequence chunk、LM head
+FSDP、梯度累加和 decoder backward bridge。主分支权重为 <code>1</code>，每个 MTP 分支
+权重为 <code>mtp_scale / K</code>。</p>
+<p>分支权重在分块 loss 内部、内部 <code>backward()</code> 之前应用，而不是在最终标量上
+事后相乘。这样 LM head 和 decoder hidden gradient 都与未分块 MTP loss
+保持相同缩放，同时避免构造完整 <code>[batch, sequence, vocab]</code> logits。</p>
+<p>DeepSeek-V3.2 不适配 chunk loss，直接复用社区
+<code>list[logits] + MTPLoss</code> 训练路径。</p>
+<h2 id="2">2. 代码结构</h2>
+<h3 id="21-mtp">2.1 公共 MTP 模块</h3>
+<p>公共能力由社区 <code>torchtitan.models.deepseek_v3.mtp</code> 提供：</p>
+<table>
+<thead>
+<tr>
+<th>对象</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>roll_mtp_sequence</code></td>
+<td>移动 token，处理序列尾部和 packed 文档边界</td>
+</tr>
+<tr>
+<td><code>MTPLoss</code></td>
+<td>计算主 NTP loss 和加权 MTP loss</td>
+</tr>
+<tr>
+<td><code>MTPTransformerBlock</code></td>
+<td>实现 DeepSeek-V3.2 的 MTP 融合和 Transformer block</td>
+</tr>
+<tr>
+<td><code>MTPDecoder</code></td>
+<td>管理 MTP layers、forward 输出和 FSDP 接入</td>
+</tr>
+</tbody>
+</table>
+<p>TorchTitan-NPU 只补充社区当前尚未提供的组合能力：</p>
+<table>
+<thead>
+<tr>
+<th>对象</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prepare_mtp_batch</code></td>
+<td>为 DeepSeek-V4 在 CP 之前生成各深度 token、mask 和 label</td>
+</tr>
+<tr>
+<td><code>MTPChunkedLossWrapper</code></td>
+<td>为 DeepSeek-V4 将原生 chunked loss 扩展到主预测和各 MTP 预测</td>
+</tr>
+</tbody>
+</table>
+<p>DeepSeek-V3.2 直接继承社区 MTP decoder，并复用社区的 block 构造和并行入口。
+DeepSeek-V4 复用 <code>roll_mtp_sequence</code> 和社区多预测列表接口，只实现 mHC 多流
+状态、CP 和 chunk loss 所需的专用 decoder 与 block。只有 DeepSeek-V4 的专用
+decoder 配置放开 MTP 与 CP 的组合；没有修改社区 <code>MTPDecoder</code> 或 <code>MTPLoss</code>。</p>
+<h3 id="22-deepseek-v32">2.2 DeepSeek-V3.2 目录</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>MTP 相关职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deepseek_v3_2/__init__.py</code></td>
+<td>根据 <code>num_mtp_layers</code> 构造独立的 MTP block 配置</td>
+</tr>
+<tr>
+<td><code>deepseek_v3_2/model.py</code></td>
+<td>继承社区 <code>DeepSeekV3Model</code> 的 MTP 行为并叠加 DSA mask handler</td>
+</tr>
+<tr>
+<td><code>deepseek_v3_2/parallelize.py</code></td>
+<td>直接复用社区 DeepSeek-V3 并行入口</td>
+</tr>
+<tr>
+<td><code>deepseek_v3_2/sharding.py</code></td>
+<td>复用社区 MTP sharding，仅叠加 DSA attention/indexer 布局</td>
+</tr>
+<tr>
+<td><code>deepseek_v3_2/state_dict_adapter.py</code></td>
+<td>复用社区 MTP 权重转换，仅补充 DSA indexer 键映射</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-deepseek-v4">2.3 DeepSeek-V4 目录</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>MTP 相关职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deepseek_v4/__init__.py</code></td>
+<td>根据模型规格构造非压缩、mHC-aware 的 MTP blocks</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/model.py</code></td>
+<td>保留主干多流 state，并组织主预测和 MTP 预测</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/mtp.py</code></td>
+<td>实现 DeepSeek-V4 mHC MTP block、CP batch 和 chunk loss</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/config_registry.py</code></td>
+<td>默认 recipe 构造 MTP 模型并配置 MTP chunk loss</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/parallelize.py</code></td>
+<td>让 MTP blocks 复用现有 DSV4 并行流程</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/sharding.py</code></td>
+<td>增加 MTP fusion、mHC head 和有效掩码布局</td>
+</tr>
+<tr>
+<td><code>deepseek_v4/state_dict_adapter.py</code></td>
+<td>转换本地 <code>mtp_layers</code> 与 HF <code>mtp.&lt;depth&gt;</code> 参数</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24">2.4 与原模型解耦</h3>
+<p>DeepSeek-V3.2 使用社区约定：<code>config.mtp_layers</code> 为空列表时关闭 MTP，运行时
+<code>model.mtp_layers</code> 为 <code>None</code>。DeepSeek-V4 遵循同一约定。关闭时 forward 返回
+普通 logits，MTP 并行和 sharding 增量逻辑不会执行。</p>
+<p>MTP 开启后，参数归属于独立的 <code>model.mtp_layers</code>。社区 DeepSeek-V3 并行入口
+负责让这些 blocks 沿用主干相同的 TP/SP、EP、activation checkpoint、compile
+和 FSDP 处理顺序；DeepSeek-V4 的专用 decoder 与 sharding 遵循相同约定。</p>
+<p>DeepSeek-V3.2 直接使用社区的 <code>list[logits] + MTPLoss</code>。DeepSeek-V4 使用
+<code>list[hidden] + MTPChunkedLossWrapper</code>；wrapper 是标准 <code>ChunkedLossWrapper</code>
+子类，因此 <code>Trainer</code> 原有的 LM head 注入和 <code>_skip_lm_head</code> 流程无需修改。</p>
+<p>当前并行限制如下：</p>
+<ul>
+<li>DeepSeek-V3 和 DeepSeek-V3.2 MTP 暂不支持 Context Parallel（CP）和
+  Pipeline Parallel（PP），启用时必须保持 <code>context_parallel_degree=1</code> 和
+  <code>pipeline_parallel_degree=1</code>。</li>
+<li>DeepSeek-V4 MTP 支持 CP，但暂不支持 PP；启用时必须保持
+  <code>pipeline_parallel_degree=1</code>。</li>
+</ul>
+<p>不支持的并行组合会在模型配置更新阶段直接报错。</p>
+<h2 id="3">3. 使能方式</h2>
+<h3 id="31-recipe">3.1 默认 recipe</h3>
+<p>DeepSeek-V4 的默认 recipe 已经启用 MTP，不需要额外提供只转调默认配置的
+<code>deepseek_v4_debugmodel_mtp</code>：</p>
+<pre><code class="language-text">DeepSeek-V4:
+  --module torchtitan_npu.models.deepseek_v4
+  --config deepseek_v4_debugmodel
+</code></pre>
+<p>该 recipe 会构造一个 MTP 深度，并使用 <code>MTPChunkedLossWrapper.Config</code>；其内部
+仍使用标准 <code>CrossEntropyLoss</code>。DeepSeek-V3.2 不在 NPU
+<code>config_registry.py</code> 中重复声明 MTP recipe，模型侧直接复用社区 MTP 能力。</p>
+<p>模型和 loss 必须同时切换。只构造 MTP layers 而继续使用普通 loss，或者只配置
+<code>MTPLoss</code> 而没有构造 MTP layers，都会造成模型输出与 loss 输入不匹配。</p>
+<h3 id="32-mtp">3.2 自定义 MTP 深度</h3>
+<p><code>num_mtp_layers</code> 是 <code>model_registry</code> 的模型构造参数。需要调整预测深度时，应在
+recipe 中同时设置模型和对应的 loss。DeepSeek-V3.2 使用：</p>
+<pre><code class="language-python">config.model_spec = model_registry(&quot;debugmodel&quot;, num_mtp_layers=2)
+config.loss = MTPLoss.Config(
+    mtp_scale=0.3,
+    global_vocab_size=decoder_vocab_size(config.model_spec),
+)
+</code></pre>
+<p>DeepSeek-V4 使用：</p>
+<pre><code class="language-python">config.model_spec = model_registry(&quot;debugmodel&quot;, num_mtp_layers=2)
+config.loss = MTPChunkedLossWrapper.Config(
+    mtp_scale=0.3,
+    num_chunks=8,
+    loss_fn=CrossEntropyLoss.Config(
+        global_vocab_size=decoder_vocab_size(config.model_spec),
+    ),
+)
+</code></pre>
+<p>主要参数如下：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>num_mtp_layers</code></td>
+<td>MTP 辅助预测深度数；大于 0 时构造 MTP blocks</td>
+</tr>
+<tr>
+<td><code>mtp_scale</code></td>
+<td>所有 MTP 辅助损失的总权重</td>
+</tr>
+<tr>
+<td><code>global_vocab_size</code></td>
+<td>词表并行交叉熵使用的完整词表大小</td>
+</tr>
+<tr>
+<td><code>num_chunks</code></td>
+<td>DeepSeek-V4 每个主/MTP hidden sequence 的 loss 分块数</td>
+</tr>
+<tr>
+<td><code>mtp_layers</code></td>
+<td>模型内部展开后的 MTP block 配置列表，通常不手工构造</td>
+</tr>
+</tbody>
+</table>
+<p>DeepSeek-V4 默认 recipe 使用 <code>mtp_scale=0.3</code>。</p>
+<h3 id="33-mtp">3.3 关闭 MTP</h3>
+<p>关闭 MTP 时需要让模型构造保持 <code>num_mtp_layers=0</code>，并使用普通 loss。此时
+<code>config.mtp_layers</code> 为空列表，运行时 <code>model.mtp_layers is None</code>；模型不创建
+MTP 参数，训练只计算主 NTP loss。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../graph_pattern_fusion/" class="btn btn-neutral float-right" title="片段融合算子接入">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+      <span><a href="../graph_pattern_fusion/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

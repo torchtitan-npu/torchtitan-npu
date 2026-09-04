@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 GraphTrainer 编译路径适配 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 GraphTrainer \u7f16\u8bd1\u8def\u5f84\u9002\u914d";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_graph_trainer.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#graphtrainer">上游 GraphTrainer 特性</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">本仓实现</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">配置入口</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">模型变体</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">并行化</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#graph-safe">Graph-safe 改造</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#inductor-runtime-estimation-patch">Inductor runtime estimation patch</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">激活方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">支持范围与限制</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">相关文档</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 GraphTrainer 编译路径适配</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-graphtrainer">DeepSeek-V4 GraphTrainer 编译路径适配</h1>
+<p>GraphTrainer 是 torchtitan 上游 <code>experiments/graph_trainer/</code> 中的编译式分布式训练实验：用 <code>minimal_fx_tracer</code> 把 forward、loss、backward（可选 optimizer.step）整体捕获为单个 FX 图，所有优化都以 graph pass 的形式作用于同一张图。本适配让 DeepSeek-V4（DSV4）在该编译路径上可在 Ascend NPU 运行，与现有 eager 路径并行存在、互不影响。默认不启用：需要显式选择 <code>graph_trainer_*</code> 配置名。</p>
+<h2 id="graphtrainer">上游 GraphTrainer 特性</h2>
+<p>设计动机见上游 <a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/experiments/graph_trainer/MANIFESTO.md">MANIFESTO</a>：CPU 侧 kernel 启动开销随算力增长成为瓶颈，分布式训练需要编译器提供对性能、数值和可调试性的显式控制。核心能力：</p>
+<ul>
+<li><strong>整步单图捕获</strong>：<code>minimal_fx_tracer</code> 基于 <code>make_fx</code>，在 FakeTensor 模式下联合 trace forward + loss + backward，不经 AOTAutograd 分割，所有反向计算在图内显式可见。</li>
+<li><strong>SimpleFSDP</strong>：把 all-gather / reduce-scatter 表达为图内可 trace 的 DTensor 操作，集合通信成为图中的节点，可被 pass 重排、融合与重叠。</li>
+<li><strong>张量粒度内存策略</strong>：每个激活可独立选择保存、重算或 CPU offload，区别于模块级 eager SAC。</li>
+<li><strong>Graph pass 流水线</strong>：默认（保数值）pass 与 opt-in 性能 pass 分层，包括 bucketing 通信重叠、异步 TP、regional/full Inductor 编译、CUDA graph、CPU offload、选择性激活重算等。</li>
+<li><strong>可组合并行</strong>：FSDP、TP、EP 均在图内表达；EP overlap（MoE chunk 级通信重叠）为实验性 pass。</li>
+</ul>
+<p>编译模式固定为 <code>aot_fx_trace</code>（上游已弃用 <code>aot</code> 与 <code>jit</code> 两种旧模式）。NPU 上必须禁用 <code>cudagraph_pass</code>（CUDA graph capture 无意义且不兼容），本适配的编译配置已内置该禁用项。</p>
+<h2 id="_1">本仓实现</h2>
+<h3 id="_2">配置入口</h3>
+<p><code>torchtitan_npu/models/deepseek_v4/config_registry.py</code> 新增 4 个配置工厂，均复用对应 eager 配置，经 <code>to_graph_trainer_config</code> 包装为 <code>GraphTrainer.Config</code>：</p>
+<table>
+<thead>
+<tr>
+<th>配置名</th>
+<th>对应 eager 配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>graph_trainer_deepseek_v4_debugmodel</code></td>
+<td><code>deepseek_v4_debugmodel</code></td>
+</tr>
+<tr>
+<td><code>graph_trainer_deepseek_v4_flash</code></td>
+<td><code>deepseek_v4_flash</code></td>
+</tr>
+<tr>
+<td><code>graph_trainer_deepseek_v4_flash_43layers_16experts</code></td>
+<td><code>deepseek_v4_flash_43layers_16experts</code></td>
+</tr>
+<tr>
+<td><code>graph_trainer_deepseek_v4_pro</code></td>
+<td><code>deepseek_v4_pro</code></td>
+</tr>
+</tbody>
+</table>
+<p>编译配置统一为 <code>mode="aot_fx_trace"</code>、<code>memory_policy="full"</code>、<code>disable_passes=["cudagraph_pass"]</code>。模型通过 <code>_graph_trainer_model_registry</code> 包装为 <code>GraphTrainerDeepSeekV4Model.Config</code>，并行化函数指向 <code>parallelize_graph_trainer_deepseek_v4</code>。</p>
+<h3 id="_3">模型变体</h3>
+<p><code>GraphTrainerDeepSeekV4Model</code>（<code>model.py</code>）继承 eager 模型，仅在 <code>init_states</code> 外包一层 <code>disable_active_parametrization()</code>：懒初始化 parametrization（如 RoPE 频率缓冲）必须在 FX tracer 记录图之前物化，否则录制到的图不完整。</p>
+<h3 id="_4">并行化</h3>
+<p><code>parallelize_graph_trainer_deepseek_v4</code>（<code>parallelize.py</code>）是 DSV4 专属路径——eager 路径复用 DeepSeek-V3 并行化（DSV4 稀疏注意力分片基于它），而编译路径不能把稀疏注意力计算在 FSDP 下重排，故单独实现：</p>
+<ol>
+<li>对 MoE 的 dispatch / combine / compute 区域与各子模块 FQN 附加图节点标注（<code>annotate_moe_ep_regions</code> + <code>annotate_module_fqns</code>），供 bucketing、区域编译等下游 pass 消费。</li>
+<li>TP / EP 启用时调用 <code>model.parallelize(parallel_dims)</code>。</li>
+<li>无条件应用 <code>apply_simple_fsdp</code>：fsdp mesh 在 degree 1 时也存在（<code>ParallelDims._mesh_exist</code>），因此单卡下 MixedPrecisionPolicy 的 param_dtype cast 仍然生效。</li>
+<li>按模式应用 <code>apply_graph_trainer_compile</code>。</li>
+</ol>
+<p>入口处有两条硬约束：<code>spmd_types</code> backend 不支持（simple_fsdp 构建于 raw DTensor 操作之上，该 backend 会报错）；TP 启用时 <code>seq_len</code> 必须整除 <code>parallel_dims.seq_len_divisor</code>（TP degree × 2·CP degree，<code>use_local_output=True</code> 使用 plain tensor）。</p>
+<h3 id="graph-safe">Graph-safe 改造</h3>
+<p>GraphTrainer 的 trace 约束与 eager 有本质差异：<code>minimal_fx_tracer</code> 在 FakeTensor 下联合 trace，数据相关控制流与形状推导无法静态化，aot_autograd recompute 会丢弃 forward 中的 in-place 写。DSV4 稀疏注意力路径中依赖 in-place 写或数据相关形状推断的写法，在编译路径均改为函数式等价实现；注意力元数据 dataclass 注册为 pytree node，使 <code>minimal_fx_tracer</code> 能够识别其结构。</p>
+<h3 id="inductor-runtime-estimation-patch">Inductor runtime estimation patch</h3>
+<p><code>patches/torch_npu/inductor_runtime_estimation.py</code>（新增，包导入时按需生效）：NPU 上以常量 1200 GB/s 代替 Triton CUDA-driver 探测 DRAM 带宽——该值只进入 graph 调度 roofline 估计，不改变生成算子；同时默认开启 <code>standalone_compile(donate_graph_module=True)</code>，避免图模块深拷贝开销。仅在 <code>torch.npu.is_available()</code> 时应用。</p>
+<h2 id="_5">激活方式</h2>
+<p>以 flash 43layers 模型、8 卡 EP=8 为例（对应 0825 验证脚本 <code>acc_align_smoke_ep_overlap.sh</code>）：</p>
+<pre><code class="language-bash">torchrun --nproc_per_node=8 -m torchtitan.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config graph_trainer_deepseek_v4_flash_43layers_16experts \
+  --parallelism.expert-parallel-degree 8 \
+  --parallelism.data-parallel-shard-degree 8 \
+  --parallelism.spmd-backend default \
+  --override.imports \
+    torchtitan_npu.override.common.rms_norm.asc \
+    torchtitan_npu.override.common.rope.asc_complex \
+    torchtitan_npu.override.deepseek_v4.sparse_attn.asc_metadata \
+    torchtitan_npu.override.deepseek_v4.sparse_attn.asc \
+    torchtitan_npu.override.deepseek_v4.mhc.asc_hc_pre \
+    torchtitan_npu.override.deepseek_v4.mhc.asc_hc_post \
+    torchtitan_npu.override.common.token_dispatcher.asc \
+    torchtitan_npu.override.common.optimizer.virtual \
+    torchtitan_npu.override.common.optimizer.checkpoint_virtual
+</code></pre>
+<p>编译配置（<code>aot_fx_trace</code>、禁用 <code>cudagraph_pass</code>）由配置工厂内置，无需 CLI 传入；<code>--compile.disable_passes cudagraph_pass</code> 仅对 eager 配置的默认编译路径必需。</p>
+<h2 id="_6">支持范围与限制</h2>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>编译模式</td>
+<td><code>aot_fx_trace</code>；NPU 上禁用 <code>cudagraph_pass</code></td>
+</tr>
+<tr>
+<td>并行组合</td>
+<td>FSDP（含 degree 1）、EP 已验证；TP 要求 <code>seq_len</code> 整除 <code>seq_len_divisor</code></td>
+</tr>
+<tr>
+<td><code>spmd_types</code> backend</td>
+<td>不支持（simple_fsdp 依赖 raw DTensor 操作）</td>
+</tr>
+<tr>
+<td>Context Parallel</td>
+<td>不支持（DSV4 稀疏注意力编译路径未适配 CP）</td>
+</tr>
+<tr>
+<td>EP overlap（上游实验性 pass）</td>
+<td>未验证</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_7">相关文档</h2>
+<ul>
+<li>上游 GraphTrainer 说明与 EP overlap 用法：<a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/experiments/graph_trainer/README.md"><code>torchtitan/experiments/graph_trainer/README.md</code></a></li>
+<li>DSV4 稀疏注意力与 TND 融合路径：<a href="../deepseek_v4_tnd/"><code>deepseek_v4_tnd.md</code></a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v4_cp/" class="btn btn-neutral float-left" title="DeepSeek-V4 上下文并行（CP）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_tnd/" class="btn btn-neutral float-right" title="DeepSeek-V4 TND 适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v4_cp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_tnd/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

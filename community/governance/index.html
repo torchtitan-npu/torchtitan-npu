@@ -36,24 +36,22 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../contributors/">提交者与贡献者（Committers and Contributors）</a>
-                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">社区治理</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#_2">使命</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">项目定位</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_3">基本原则</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">协作原则</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_4">治理结构</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">治理边界</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#user">User</a>
     </li>
@@ -69,64 +67,55 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_5">决策机制</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_6">晋升与退出机制</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">版本基线</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_7">发布与版本治理</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">贡献流程</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">提交前准备</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_8">贡献流程</a>
+    <li class="toctree-l3"><a class="reference internal" href="#pr">PR 内容</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_9">行为准则</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_9">反馈与协作渠道</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_10">晋升与退出</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_11">行为准则</a>
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../versioning_policy/">版本策略</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiF8）</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/model_custom/">Model Custom框架介绍</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/vlm/">VLM NPU 支持</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
-                </li>
-    </ul>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Recipe</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Test guides</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -161,118 +150,125 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="_1">社区治理</h1>
-<h2 id="_2">使命</h2>
-<p><code>torchtitan-npu</code> 致力于为昇腾 NPU 提供面向 <code>torchtitan</code> 的训练适配与优化能力，
-让 PyTorch native 的大模型训练能够在昇腾平台上稳定、高效、可观测地运行。</p>
-<p>项目重点包括：</p>
+<h2 id="_2">项目定位</h2>
+<p><code>torchtitan-npu</code> 是 <code>torchtitan</code> 的 Ascend NPU 适配插件，使用配置级 <code>override</code>、
+PyTorch backend 注册机制和 NPU 专属算子扩展上游训练能力。</p>
+<p>项目文档和技术结论以源码、配置、测试和脚本为依据。涉及设备、CANN、
+<code>torch_npu</code>、dtype、并行方式或 checkpoint 格式的结论，应同时说明适用范围和验证状态。</p>
+<h2 id="_3">协作原则</h2>
 <ul>
-<li>保持与上游 <code>torchtitan</code> 的训练架构、配置系统和分布式能力协同演进。</li>
-<li>提供 NPU 亲和优化，包括融合算子、图优化、图下沉、算子自动融合和显存优化。</li>
-<li>支持大模型训练场景中的并行策略、模型适配、精度验证、性能分析和调试维测。</li>
-<li>通过开放协作沉淀可复用的训练经验，服务 CANN 与 PyTorch 生态开发者。</li>
+<li><strong>开放协作</strong>：接受 Issue、PR、文档、测试、实验报告和场景反馈等形式的贡献。</li>
+<li><strong>证据优先</strong>：兼容性、性能和数值结论应有源码、配置、日志、测试或可复现实验支撑。</li>
+<li><strong>上游友好</strong>：与 NPU 无关的通用能力优先回馈上游 <code>torchtitan</code>；本仓聚焦 Ascend 适配。</li>
+<li><strong>最小改动</strong>：优先复用已有模型、patch、override 和测试入口，避免重复实现。</li>
+<li><strong>质量优先</strong>：影响训练正确性、checkpoint 兼容性、性能或分布式行为的改动必须提供相应验证。</li>
+<li><strong>可追溯</strong>：重大设计、上游基线、版本配套和治理决策应通过 Issue、PR 或 SIG 记录留痕。</li>
 </ul>
-<h2 id="_3">基本原则</h2>
-<ul>
-<li><strong>开放协作</strong>：欢迎 Issue、PR、文档、测试、实验报告和场景反馈等多种形式的贡献。</li>
-<li><strong>代码为准</strong>：技术结论、兼容性说明和性能数据应有代码、配置、日志或实验结果支撑。</li>
-<li><strong>上游友好</strong>：与 NPU 平台无关的通用能力优先回馈上游 <code>torchtitan</code>，本仓聚焦昇腾适配和优化。</li>
-<li><strong>质量优先</strong>：影响训练正确性、性能或兼容性的改动必须提供必要验证。</li>
-<li><strong>可追溯</strong>：版本兼容、上游基线、重大决策和治理角色变化应通过文档、Issue、PR 或 SIG 会议记录留痕。</li>
-</ul>
-<h2 id="_4">治理结构</h2>
-<p><code>torchtitan-npu</code> 是 CANN 组织下的开源项目，日常技术治理与社区协作依托
-GitCode 仓库和 CANN <code>framework-adapter</code> SIG 展开。更高层级的社区组织与治理
-遵循 CANN 社区统一安排。</p>
-<p>本项目的正式角色定义、晋升标准、投票流程和非活跃退出机制遵循
-<a href="https://gitcode.com/cann/community/blob/master/governance/role-definition-and-promotion-mechanism.md">CANN 社区角色定义及晋升机制</a>。
-本文仅结合 <code>torchtitan-npu</code> 项目说明各角色在本仓中的协作边界。</p>
+<h2 id="_4">治理边界</h2>
+<p><code>torchtitan-npu</code> 属于 CANN 开源社区，项目技术治理和社区协作依托 GitCode 仓库及
+CANN <code>framework-adapter</code> SIG 展开。CANN 社区的正式角色定义、晋升、投票、公告和
+非活跃退出机制以
+<a href="https://gitcode.com/cann/community/blob/master/governance/role-definition-and-promotion-mechanism.md">CANN 社区角色定义及晋升机制</a>
+为准；本文只说明这些角色在本仓中的协作边界。</p>
 <h3 id="user">User</h3>
-<p>User 指使用 <code>torchtitan-npu</code> 的用户。User 可以通过 Issue、讨论、SIG 会议或
-PR 反馈安装、训练、精度、性能、文档和易用性问题，也可以提出新模型、新算子、
-新并行策略或调试能力需求。</p>
+<p>User 指使用 <code>torchtitan-npu</code> 的用户。User 可以通过 GitCode Issue、讨论或 SIG 会议
+反馈安装、训练、精度、性能、文档和易用性问题，也可以提出模型、算子、并行策略或
+调试能力需求。</p>
 <h3 id="contributor">Contributor</h3>
-<p>Contributor 指以任何形式参与项目的人，包括但不限于：</p>
+<p>Contributor 指以任何形式参与本项目的人，包括：</p>
 <ul>
-<li>提交文档、测试、代码、配置或性能数据。</li>
-<li>参与 PR review、SIG 讨论、版本验证或问题定位。</li>
+<li>提交代码、配置、文档、测试或性能数据。</li>
+<li>参与 PR review、问题定位、版本验证或 SIG 讨论。</li>
 </ul>
 <p>Contributor 不要求拥有仓库写权限。一次有效贡献即可成为 Contributor。</p>
 <h3 id="committer">Committer</h3>
-<p>Committer 是具备特定代码仓库写权限的项目成员。<code>torchtitan-npu</code> 的 Committer
-权限和职责按本仓维度申请与管理。典型职责包括：</p>
+<p>Committer 是具备本仓写权限的项目成员。典型职责包括：</p>
 <ul>
-<li>维护关键代码路径和文档质量。</li>
-<li>合入已满足质量要求的 PR。</li>
-<li>协助处理紧急缺陷、回归问题和版本发布前的阻塞项。</li>
+<li>维护负责的代码路径、文档和测试质量。</li>
+<li>Review 并合入满足质量要求的 PR。</li>
+<li>协助处理缺陷、回归、checkpoint 兼容性和发布前阻塞项。</li>
 <li>推动 CI、测试、文档和开发流程持续改进。</li>
-<li>处理社区 Issue，帮助 Contributors 提升代码开发和问题定位能力。</li>
 </ul>
-<p>Committer 应持续展现高质量贡献、负责任的 review 和对项目方向的理解。</p>
+<p>Committer 应持续提供高质量贡献、负责任的 review 和可追溯的技术判断。</p>
 <h3 id="maintainer">Maintainer</h3>
-<p>Maintainer 负责特定 SIG 的运营和维护。对于 <code>torchtitan-npu</code>，Maintainer
-主要通过 CANN <code>framework-adapter</code> SIG 协调项目方向和社区健康度。典型职责包括：</p>
+<p>Maintainer 负责特定模块或 CANN <code>framework-adapter</code> SIG 的运营维护。典型职责包括：</p>
 <ul>
-<li>制定或维护 Roadmap、版本策略、上游同步策略和关键技术方向。</li>
-<li>对重大架构调整、兼容性变化、发布节奏和治理事项做最终协调。</li>
-<li>组织或参与 SIG 例会、版本复盘、技术方案评审和社区沟通。</li>
-<li>吸纳并发展 Committer，推动项目孵化、推广和长期维护。</li>
-<li>按 CANN 社区要求向相关委员会同步 SIG 运营进展。</li>
+<li>协调 Roadmap、版本配套、上游同步和关键技术方向。</li>
+<li>组织重大架构、兼容性、分布式或性能变更的评审。</li>
+<li>组织 SIG 例会、版本复盘和社区沟通。</li>
+<li>吸纳并发展 Committer，推动项目长期维护。</li>
 </ul>
-<p>Maintainer 应对 <code>torchtitan</code>、<code>torchtitan-npu</code>、昇腾软件栈和大模型训练流程有深入理解，
-并长期参与项目建设。</p>
+<p>Maintainer 应熟悉 <code>torchtitan</code>、<code>torchtitan-npu</code>、Ascend 软件栈和大模型训练流程，
+并持续参与项目建设。</p>
 <h3 id="pmc-tsc">PMC 与 TSC</h3>
 <p>项目管理委员会（PMC）和技术指导委员会（TSC）的职责、产生方式和退出机制遵循
-CANN 社区统一治理文件。<code>torchtitan-npu</code> 的重大社区治理事项应按需提交到
-<code>framework-adapter</code> SIG、PMC 或 TSC 流程中。</p>
+CANN 社区统一治理文件。需要跨项目或影响社区方向的事项，应按需提交
+<code>framework-adapter</code> SIG、PMC 或 TSC 流程。</p>
 <h2 id="_5">决策机制</h2>
-<p>项目优先采用共识决策：</p>
+<p>项目优先采用基于证据的共识决策：</p>
 <ol>
 <li>一般改动通过 PR review 达成共识后合入。</li>
-<li>影响架构、兼容性、性能基线、上游同步或发布策略的改动，应在 Issue、PR
-   或 SIG 会议中充分讨论。</li>
-<li>若存在分歧，由相关模块 Maintainer 组织讨论并给出处理意见。</li>
-<li>对项目方向有重大影响的事项，应同步到 CANN <code>framework-adapter</code> SIG 或
-   CANN 社区治理流程中。</li>
+<li>影响架构、兼容性、checkpoint、性能基线、上游同步或版本配套的改动，应在 Issue、
+   PR 或 SIG 会议中充分讨论，并提供相应验证依据。</li>
+<li>存在分歧时，由相关模块 Maintainer 组织讨论，记录不同方案的取舍和最终处理意见。</li>
+<li>对项目方向有重大影响的事项，应同步到 CANN <code>framework-adapter</code> SIG 或 CANN 社区
+   治理流程。</li>
 </ol>
-<h2 id="_6">晋升与退出机制</h2>
-<p><code>torchtitan-npu</code> 不单独维护一套独立晋升标准。Committer、Maintainer、PMC、
-TSC 的晋升、投票、公告、配置更新和非活跃退出流程均以
+<h2 id="_6">版本基线</h2>
+<p>不同开发基线使用相应的软件配套。分支、上游 commit 和软件版本配套以
+<a href="../../user-guides/installation/#版本配套表">安装指南中的版本配套表</a> 为准。</p>
+<p>涉及上游同步或依赖调整的 PR 应：</p>
+<ul>
+<li>在描述中注明目标分支和上游 <code>torchtitan</code> commit。</li>
+<li>同步检查 <code>requirements.txt</code>、<code>.ci/lint.sh</code>、patch 目标和测试入口。</li>
+<li>需要时更新安装指南、相关功能文档和配置示例。</li>
+<li>不直接套用其他开发基线的配置、命令或运行时结论。</li>
+</ul>
+<h2 id="_7">贡献流程</h2>
+<h3 id="_8">提交前准备</h3>
+<ol>
+<li>明确目标分支、改动范围和非目标，先读取相关源码、配置、测试和脚本。</li>
+<li>对共享模型组件、patch、override、分布式工具或 checkpoint 逻辑审计所有调用点。</li>
+<li>代码改动补充或更新相关测试；文档改动核对命令、路径、链接和支持范围。</li>
+<li>涉及数值、性能、checkpoint 或 NPU 行为时，记录设备、软件版本、并行方式、dtype、
+   输入规模和实际验证结果。</li>
+</ol>
+<h3 id="pr">PR 内容</h3>
+<p>PR 应遵循仓内
+<a href="../../.gitcode/PULL_REQUEST_TEMPLATE/PULL_REQUEST_TEMPLATE.md">PR 模板</a>，至少说明：</p>
+<ul>
+<li>改动动机和预期行为。</li>
+<li>受影响的模块、配置或用户路径。</li>
+<li>实际执行的测试和验证命令；未执行项应说明原因。</li>
+<li>兼容性、checkpoint、性能或数值行为的变化。</li>
+</ul>
+<p>提交前可按 <a href="../../developer_guides/lint_guide/">Lint 指南</a> 执行文件级或全仓 pre-commit
+检查。文档、配置和代码示例应保留机器可读标识符的准确拼写。</p>
+<h3 id="_9">反馈与协作渠道</h3>
+<ul>
+<li><strong>Issue</strong>：报告缺陷、兼容性问题、文档问题或功能需求。</li>
+<li><strong>PR review</strong>：围绕代码、配置、测试和实验数据提出可操作意见。</li>
+<li><strong>SIG 会议</strong>：讨论跨模块设计、版本配套和社区协作事项。</li>
+<li><strong>讨论区</strong>：交流使用经验和未形成 Issue/PR 的问题。</li>
+</ul>
+<h2 id="_10">晋升与退出</h2>
+<p>本仓不单独维护一套与 CANN 社区分离的晋升标准。Committer、Maintainer、PMC 和 TSC
+的晋升、投票、公告、权限更新及非活跃退出流程，以
 <a href="https://gitcode.com/cann/community/blob/master/governance/role-definition-and-promotion-mechanism.md">CANN 社区角色定义及晋升机制</a>
 为准。</p>
-<p>对于本仓 Committer 申请，应按代码仓库维度准备贡献材料，并通过
-<code>framework-adapter</code> SIG 流程推进。候选人通常需要证明其对 <code>torchtitan-npu</code>
-相关代码路径足够熟悉，且具备持续的代码贡献、PR review、问题处理和社区协作记录。</p>
-<p>Maintainer 晋升应通过 CANN <code>framework-adapter</code> SIG 例会和 CANN 社区统一机制完成。
-非活跃成员退出也遵循 CANN 社区统一定义和处理流程。</p>
-<h2 id="_7">发布与版本治理</h2>
-<p><code>torchtitan-npu</code> 采用“分支 + commit 基线”的方式与上游 <code>torchtitan</code> 对齐。
-版本兼容性、分支同步信息和上游基线应以 <a href="../versioning_policy/">版本策略</a> 为准。</p>
-<p>每次完成上游同步、发布适配或依赖兼容性调整后，应同步更新：</p>
-<ul>
-<li><code>docs/community/versioning_policy.md</code></li>
-<li><code>docs/user-guides/installation.md</code></li>
-<li><code>README.md</code></li>
-<li>相关特性文档、测试指南或配置示例</li>
-</ul>
-<h2 id="_8">贡献流程</h2>
-<p>贡献者应遵循 <a href="../../CONTRIBUTING.md">贡献指南</a>：</p>
-<ul>
-<li>从 <code>master</code> 创建分支并提交 PR。</li>
-<li>影响功能的改动应补充或更新测试。</li>
-<li>提交前通过格式检查和必要测试。</li>
-<li>PR 描述应包含改动动机、实现方案和验证结果。</li>
-<li>涉及精度或性能的改动，应提供可复现的实验说明。</li>
-<li>涉及上游 <code>torchtitan</code> 同步的改动，应同步更新版本策略。</li>
-</ul>
-<h2 id="_9">行为准则</h2>
-<p>社区讨论应保持专业、尊重和建设性。不同意见应围绕事实、代码、实验数据和用户场景展开。
-对恶意攻击、骚扰、泄露敏感信息或破坏社区协作的行为，维护者可根据项目治理流程进行处理。</p>
+<p>本仓 Committer 申请应按代码仓库维度准备贡献材料，并通过
+<code>framework-adapter</code> SIG 流程推进。材料应体现对相关代码路径的理解，以及持续的代码
+贡献、PR review、问题处理或社区协作记录。</p>
+<h2 id="_11">行为准则</h2>
+<p>社区讨论应保持专业、尊重和建设性。不同意见应围绕事实、代码、配置、实验数据和用户
+场景展开。对恶意攻击、骚扰、泄露敏感信息或破坏社区协作的行为，维护者可依据 CANN
+社区治理流程处理。</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../contributors/" class="btn btn-neutral float-left" title="提交者与贡献者（Committers and Contributors）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../versioning_policy/" class="btn btn-neutral float-right" title="版本策略">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../graph_pattern_fusion/" class="btn btn-neutral float-left" title="片段融合算子接入"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../developer_guides/checkpoint/" class="btn btn-neutral float-right" title="Checkpoint 使用指南">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -295,10 +291,10 @@ TSC 的晋升、投票、公告、配置更新和非活跃退出流程均以
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../contributors/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../graph_pattern_fusion/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../versioning_policy/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../developer_guides/checkpoint/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

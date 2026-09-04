@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Lint 指南 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Lint \u6307\u5357";
+        var mkdocs_page_input_path = "developer_guides/lint_guide.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Lint 指南</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">检查范围</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">环境与依赖</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">最小安装</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">执行检查</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">检查本次修改</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">检查整个仓库</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#git-hook">安装 Git hook</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">检查失败时</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">Lint 指南</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="lint">Lint 指南</h1>
+<p>本指南只覆盖代码静态检查、格式检查和开源合规检查，不包含模型训练、模型加载、NPU 算子验证或功能测试。
+Lint 可以在 CPU 环境执行，不需要 CANN、HCCL、可用的 Ascend NPU 或完整的运行时依赖。</p>
+<h2 id="_1">检查范围</h2>
+<p>仓库通过 pre-commit 统一执行检查，具体配置见
+<a href="../../.pre-commit-config.yaml"><code>.pre-commit-config.yaml</code></a>。不同文件类型会触发不同的 hook：</p>
+<table>
+<thead>
+<tr>
+<th>修改内容</th>
+<th>主要检查</th>
+<th>是否需要 NPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown、YAML、JSON 和配置文件</td>
+<td>文件格式、尾随空格、冲突标记、拼写和 OAT 合规性</td>
+<td>否</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>Ruff 格式与规则检查、Pyrefly 类型检查</td>
+<td>否</td>
+</tr>
+<tr>
+<td>C/C++</td>
+<td>clang-format 格式检查</td>
+<td>否</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">环境与依赖</h2>
+<p>本地建议使用 Python 3.12，与仓库 CI 的要求保持一致。Windows 环境需要使用 WSL 发行版或
+Git Bash，以便执行 OAT hook 使用的 <code>bash scripts/oat_check.sh</code>。</p>
+<h3 id="_3">最小安装</h3>
+<p>只检查 Markdown、配置文件或其他非 Python 文件时，安装 pre-commit 即可：</p>
+<pre><code class="language-bash">python -m pip install pre-commit
+</code></pre>
+<p>修改 Python 文件时，还需要 Pyrefly。可以只安装相关工具：</p>
+<pre><code class="language-bash">python -m pip install pre-commit pyrefly
+</code></pre>
+<p>也可以安装仓库提供的开发依赖。该依赖集合用于 lint 和开发测试，不包含 <code>torch</code>、<code>torch_npu</code>、
+<code>torchtitan</code> 或 Triton 等训练运行时依赖：</p>
+<pre><code class="language-bash">python -m pip install -r requirements-dev.txt
+</code></pre>
+<p><code>scripts/oat_check.sh</code> 在检测到本地没有 <code>oat-py</code> 时会尝试自动安装 <code>oat-py&gt;=1.0.1</code>。
+<code>requirements.txt</code> 只在需要进行模型运行、训练或 NPU 功能验证时安装，本指南不要求安装它。</p>
+<h2 id="_4">执行检查</h2>
+<h3 id="_5">检查本次修改</h3>
+<p>提交 PR 前，优先对本次修改的文件执行增量检查：</p>
+<pre><code class="language-bash">python -m pre_commit run --files &lt;file1&gt; &lt;file2&gt; --show-diff-on-failure
+</code></pre>
+<p>例如：</p>
+<pre><code class="language-bash">python -m pre_commit run --files docs/developer_guides/lint_guide.md --show-diff-on-failure
+</code></pre>
+<p>部分 hook（例如 Ruff 和 clang-format）可能会自动修复文件。检查完成后，应查看工作区差异并重新运行命令。</p>
+<h3 id="_6">检查整个仓库</h3>
+<p>需要复现仓库级 lint 时执行：</p>
+<pre><code class="language-bash">python -m pre_commit run --all-files --show-diff-on-failure
+</code></pre>
+<p>该命令仍然只进行静态检查，不会启动训练。</p>
+<h3 id="git-hook">安装 Git hook</h3>
+<p>提交前必须安装 Git hook。安装后，每次提交会自动对增量文件执行检查：</p>
+<pre><code class="language-bash">python -m pre_commit install
+</code></pre>
+<h2 id="_7">检查失败时</h2>
+<ul>
+<li>根据 hook 输出修复格式、拼写、类型或合规问题，然后重新运行同一条命令。</li>
+<li>如果提示 <code>pyrefly</code> 不存在，安装 <code>pyrefly</code> 或完整的 <code>requirements-dev.txt</code>。</li>
+<li>如果 Windows shell 找不到 <code>bash</code>，切换到 Git Bash 或已安装 Linux 发行版的 WSL。</li>
+<li>Lint 无法替代 NPU 功能验证。涉及 <code>torch_npu</code>、NPU 算子、分布式并行、checkpoint 或模型训练行为的改动，
+  仍需在具备相应设备和软件栈的环境中另行验证。</li>
+</ul>
+<p>相关配置和开发依赖如下：</p>
+<ul>
+<li><a href="../../requirements-dev.txt"><code>requirements-dev.txt</code></a></li>
+<li><a href="../../pyproject.toml"><code>pyproject.toml</code></a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../config_extensions/" class="btn btn-neutral float-left" title="NPU 配置扩展指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../low-value-ut-principles/" class="btn btn-neutral float-right" title="低价值 UT 原则">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../config_extensions/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../low-value-ut-principles/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>调试支持特性 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u8c03\u8bd5\u652f\u6301\u7279\u6027";
+        var mkdocs_page_input_path = "developer_guides/metrics_and_debugging.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">调试支持特性</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#memory-snapshot">Memory Snapshot</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">使用场景</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">配置选项</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">使用场景</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">配置选项</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#torchtitan-cli">torchtitan 原生 CLI 配置选项</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#torchtitan-npu-override">torchtitan-npu override 扩展选项</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#_7">离线解析</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">配置示例</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">调试支持特性</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">调试支持特性</h1>
+<p>torchtitan-npu 目前提供多种调试特性支持，帮助开发者定位分布式训练中的各类问题，包括内存问题和性能瓶颈等。以下是常见使用场景和对应功能的快速参考：</p>
+<table>
+<thead>
+<tr>
+<th>使用场景</th>
+<th>对应功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分析 OOM 和内存泄漏</td>
+<td><a href="#memory-snapshot">Memory Snapshot</a></td>
+</tr>
+<tr>
+<td>定位性能瓶颈和优化性能</td>
+<td><a href="#profiling">Profiling</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="memory-snapshot">Memory Snapshot</h2>
+<p>内存快照功能用于捕获和记录训练过程中的内存使用情况，包括内存分配、显存占用、张量生命周期等信息。通过命令行参数进行定时内存快照收集，本功能生成的<code>.pickle</code>格式内存快照文件可通过<a href="https://docs.pytorch.org/memory_viz">memory_viz</a>工具进行解析和可视化查看。</p>
+<h3 id="_2">使用场景</h3>
+<ul>
+<li>训练过程中出现 OOM（Out of Memory）错误，需要分析内存占用情况</li>
+<li>怀疑存在内存泄漏，需要追踪内存分配和释放情况</li>
+<li>需要优化显存使用，了解框架不同模块的内存占用</li>
+</ul>
+<h3 id="_3">配置选项</h3>
+<p>torchtitan 原生提供内存快照功能，使用以下 CLI 参数配置：</p>
+<table>
+<thead>
+<tr>
+<th>CLI 参数</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--profiler.enable-memory-snapshot</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用内存快照功能。</td>
+</tr>
+<tr>
+<td><code>--profiler.save-memory-snapshot-folder</code></td>
+<td>str</td>
+<td>"profiling/memory_snapshot"</td>
+<td>内存快照文件保存目录。</td>
+</tr>
+<tr>
+<td><code>--profiler.profile-freq</code></td>
+<td>int</td>
+<td>10</td>
+<td>每隔多少个训练步骤收集一次内存快照。</td>
+</tr>
+</tbody>
+</table>
+<p>torchtitan 原生内存快照功能会按照 <code>--profiler.profile-freq</code> 指定的频率定期收集内存快照，并在发生 OOM 错误时自动转储当前内存快照。收集到的内存快照将保存到 <code>--profiler.save-memory-snapshot-folder</code> 指定的目录中。</p>
+<h3 id="_4">配置示例</h3>
+<p>通过训练命令的分层 CLI 参数启用内存快照：</p>
+<pre><code class="language-bash">torchrun --nproc_per_node=2 -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_debugmodel \
+  --profiler.enable-memory-snapshot \
+  --profiler.save-memory-snapshot-folder profiling/memory_snapshot \
+  --profiler.profile-freq 10
+</code></pre>
+<hr />
+<h2 id="profiling">Profiling</h2>
+<p>性能分析是优化训练性能的关键工具。torchtitan-npu 对性能分析功能进行了 NPU 适配，支持详细的性能数据收集和分析。系统使用 <code>torch_npu.profiler</code> 提供的原生性能分析器，能够追踪 CPU 和 NPU 的活动，记录内存使用情况、调用栈信息、张量形状等详细数据，并提供 AI 算力利用率指标。</p>
+<p>当前分支使用时需通过 CLI 的 <code>--override.imports</code> 参数启用
+<code>torchtitan_npu.override.common.profiler.cann</code>。</p>
+<h3 id="_5">使用场景</h3>
+<ul>
+<li>需要分析训练过程中的性能瓶颈</li>
+<li>需要对比不同配置或优化方案的性能表现</li>
+<li>需要定位训练过程中的性能异常或退化</li>
+</ul>
+<h3 id="_6">配置选项</h3>
+<p>性能分析配置使用 TorchTitan 的分层 CLI 参数，并通过
+<code>--override.imports</code> 启用 CANN profiler。rank 筛选和 CANN 专属选项
+通过 override 条目附带的 JSON 参数传入。</p>
+<h4 id="torchtitan-cli">torchtitan 原生 CLI 配置选项</h4>
+<table>
+<thead>
+<tr>
+<th>CLI 参数</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--profiler.enable-profiling</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否启用性能分析功能。</td>
+</tr>
+<tr>
+<td><code>--profiler.save-traces-folder</code></td>
+<td>str</td>
+<td>"profiling/traces"</td>
+<td>性能分析结果的保存目录路径。</td>
+</tr>
+<tr>
+<td><code>--profiler.profile-freq</code></td>
+<td>int</td>
+<td>10</td>
+<td>周期模式下每隔多少步采集一次。</td>
+</tr>
+<tr>
+<td><code>--profiler.profiler-warmup</code></td>
+<td>int</td>
+<td>3</td>
+<td>性能分析器的预热步数。</td>
+</tr>
+<tr>
+<td><code>--profiler.profiler-active</code></td>
+<td>int</td>
+<td>1</td>
+<td>性能分析器的采集步数。</td>
+</tr>
+<tr>
+<td><code>--profiler.profiler-repeat</code></td>
+<td>int</td>
+<td>null</td>
+<td>周期模式重复采集的次数；设置为 <code>1</code> 时采集一次后停止。</td>
+</tr>
+<tr>
+<td><code>--profiler.profiler-skip-first</code></td>
+<td>int</td>
+<td>0</td>
+<td>开始第一个采集周期前跳过的训练步数。</td>
+</tr>
+</tbody>
+</table>
+<p>CLI 中的布尔参数是开关形式：启用时直接写参数名，不要在后面追加
+<code>true</code>；需要关闭已启用的布尔项时使用对应的 <code>--profiler.no-...</code> 参数。</p>
+<h4 id="torchtitan-npu-override">torchtitan-npu override 扩展选项</h4>
+<p>下表中的字段名是 override JSON 键名，通过 <code>--override.imports</code> 参数传入。</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profile_ranks</code></td>
+<td>list[int]</td>
+<td>[-1]</td>
+<td>需要进行性能分析的 rank 列表，例如 [0, 1, 2]。使用 [-1] 表示对所有 rank 进行分析。</td>
+</tr>
+<tr>
+<td><code>profile_with_memory</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否在性能分析期间记录内存使用情况。</td>
+</tr>
+<tr>
+<td><code>profile_with_stack</code></td>
+<td>bool</td>
+<td>false</td>
+<td>是否在性能分析期间记录调用栈信息。</td>
+</tr>
+<tr>
+<td><code>enable_online_parse</code></td>
+<td>bool</td>
+<td>true</td>
+<td>是否启用性能分析数据的在线解析。设置为 <code>false</code> 时仅落盘原始数据，需在训练结束后离线解析（见<a href="#离线解析">离线解析</a>）。</td>
+</tr>
+</tbody>
+</table>
+<p>当前分支的对应情况如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>当前分支对应方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profile_ranks</code></td>
+<td>只在指定 rank 上启动 profiler。<code>[-1]</code> 表示所有 rank，未选中的 rank 正常训练但不采集。</td>
+</tr>
+<tr>
+<td><code>profile_with_memory</code></td>
+<td>通过 override 参数控制，默认值为 <code>false</code>。</td>
+</tr>
+<tr>
+<td><code>profile_with_stack</code></td>
+<td>通过 override 参数控制，默认值为 <code>false</code>。</td>
+</tr>
+<tr>
+<td><code>enable_online_parse</code></td>
+<td>通过 override 参数控制，默认值为 <code>true</code>。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_7">离线解析</h4>
+<p>当 <code>enable_online_parse=False</code> 时，性能分析仅将原始数据转储到
+<code>save_traces_folder</code> 指定的目录，不进行在线解析。
+训练结束后，在 <code>save_traces_folder/profiling_data/</code> 目录下会生成以 <code>{hostname}_{pid}_{timestamp}_ascend_pt</code> 命名的子目录，包含原始 profiling 数据。多 rank 场景下，每个 rank 会生成独立的 <code>*_ascend_pt</code> 子目录。使用 <code>scripts/parse_profiling_data.py</code> 对其进行离线解析：</p>
+<pre><code class="language-bash"># 解析单个 *_ascend_pt 目录
+python3 scripts/parse_profiling_data.py path/to/xxx_ascend_pt
+
+# 解析父目录下所有 *_ascend_pt（支持多 rank 场景）
+python3 scripts/parse_profiling_data.py path/to/save_traces_folder
+</code></pre>
+<p>脚本接受单个 <code>*_ascend_pt</code> 目录或其父目录（自动扫描 <code>profiling_data/*_ascend_pt</code> 和 <code>*_ascend_pt</code> 两种布局）。解析完成后，会在每个 <code>*_ascend_pt/ASCEND_PROFILER_OUTPUT/</code> 子目录下生成以下文件：</p>
+<ul>
+<li><code>kernel_details.csv</code>：NPU kernel 级别的耗时统计</li>
+<li><code>api_statistic.csv</code>：PyTorch API 调用统计</li>
+<li><code>ascend_pytorch_profiler_0.db</code>：可用 MindStudio Insight 或 Chrome Tracing 打开的 SQLite 格式 trace</li>
+<li><code>trace_view.json</code>：完整的 trace 视图数据</li>
+</ul>
+<h3 id="_8">配置示例</h3>
+<p>使用 CLI 启用 CANN profiler，并配置原生的周期采集模式：</p>
+<pre><code class="language-bash">torchrun --nproc_per_node=2 -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_debugmodel \
+  --profiler.enable-profiling \
+  --profiler.save-traces-folder profiling/traces \
+  --profiler.profile-freq 10 \
+  --profiler.profiler-warmup 3 \
+  --profiler.profiler-active 1 \
+  --override.imports \
+  torchtitan_npu.override.common.profiler.cann
+</code></pre>
+<p>按绝对步数和 rank 采集时，原生配置仍使用 CLI 参数，CANN 扩展选项作为
+<code>cann</code> override 的 JSON 参数传入：</p>
+<pre><code class="language-bash">torchrun --nproc_per_node=2 -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_debugmodel \
+  --profiler.enable-profiling \
+  --profiler.save-traces-folder profile_traces \
+  --profiler.profile-freq 4 \
+  --profiler.profiler-warmup 3 \
+  --profiler.profiler-active 1 \
+  --profiler.profiler-repeat 1 \
+  --profiler.profiler-skip-first 1 \
+  --override.imports \
+  'torchtitan_npu.override.common.profiler.cann={&quot;profile_ranks&quot;:[0],&quot;profile_with_memory&quot;:true,&quot;profile_with_stack&quot;:false,&quot;enable_online_parse&quot;:true}'
+</code></pre>
+<p>上述配置只在 rank 0 采集第 5 步。若使用
+<code>scripts/run_train.sh</code>，应将 profiler override 与脚本中已有的 override 统一放入
+同一个 <code>--override.imports</code> CLI 参数中；不要重复传入该参数，因为它只保留最后一次
+出现的值。</p>
+<p>使用仓库脚本时，性能分析默认关闭：脚本默认传入 <code>--profiler.no-enable-profiling</code>，
+需要手动设置环境变量 <code>ENABLE_PROFILING=1</code> 开启（此时脚本自动传入
+<code>--profiler.enable-profiling</code>）。开启后可以通过环境变量让脚本自动把绝对步数转换
+为原生 profiler 参数，并将 CANN 配置追加到现有 override 列表：</p>
+<pre><code class="language-bash"># 默认关闭（脚本传入 --profiler.no-enable-profiling），无需额外参数：
+NGPU=2 ./scripts/run_train.sh
+
+# 手动开启并按绝对步数与 rank 采集：
+ENABLE_PROFILING=1 PROFILE_START=5 PROFILE_END=6 PROFILE_WARMUP=3 \
+PROFILER_OVERRIDE='torchtitan_npu.override.common.profiler.cann={&quot;profile_ranks&quot;:[0],&quot;profile_with_memory&quot;:true,&quot;profile_with_stack&quot;:false,&quot;enable_online_parse&quot;:true}' \
+NGPU=2 ./scripts/run_train.sh \
+  --profiler.save-traces-folder profile_traces
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../low-value-ut-principles/" class="btn btn-neutral float-left" title="低价值 UT 原则"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../unit-test-architecture/" class="btn btn-neutral float-right" title="Unit Test 架构与迁移方案">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../low-value-ut-principles/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../unit-test-architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

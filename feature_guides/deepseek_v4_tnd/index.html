@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 TND 适配 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 TND \u9002\u914d";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_tnd.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 TND 适配</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">启用方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">数据流</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#compressedvarlenmetadata">压缩布局：CompressedVarlenMetadata</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">压缩与索引规则</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#golden">参考路径（默认内核与 golden）</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ascendc">AscendC 融合路径</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">当前边界</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 TND 适配</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-tnd">DeepSeek-V4 TND 适配</h1>
+<p>DeepSeek-V4（DSV4）在模型层使用文档打包（varlen）的 <code>[B, S, ...]</code> 接口；压缩 KV 以容器网格 <code>[B, S//r, D]</code> 表达，仅在进入 AscendC 融合内核时转换为 TND。本文说明当前实现、启用方式和已知边界。</p>
+<h2 id="_1">启用方式</h2>
+<p>融合路径要求完整的 Ascend NPU 运行环境，以及与 CANN 版本匹配的 <code>cann_ops_transformer</code>。推荐使用仓内脚本：</p>
+<pre><code class="language-bash">bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh
+</code></pre>
+<p>DeepSeek-V4 的示例 wrapper 有两种可切换的 recipe（<code>USE_GOLDEN</code> 选择；<code>--override.imports</code> 是显式覆盖入口）。<code>scripts/run_train.sh</code> 只负责通用启动和参数透传，不定义这些 recipe：</p>
+<pre><code class="language-text">USE_GOLDEN=1  # wrapper 里的 Golden 组合：
+              #   override.common.rope.workaround
+              #   override.deepseek_v4.sparse_attn.golden
+              #   (the MoE is the normal clamped bf16 path on both sides)
+USE_GOLDEN=0  # wrapper 里的默认测试组合：
+              #   override.common.rms_norm.asc
+              #   override.common.rope.asc_complex
+              #   override.deepseek_v4.sparse_attn.asc_metadata
+              #   override.deepseek_v4.sparse_attn.asc
+</code></pre>
+<p>Golden DSA 参考（eager 逐文档、FP32、与 <code>dsv4-infer-npu</code> 比特一致）用于双层数值校验：
+golden 与 patched transformers 比特一致，AscendC 融合内核与 golden 在容差内一致
+这些组合定义在 <code>examples/deepseek_v4/*.sh</code> 中；通用 launcher <code>scripts/run_train.sh</code> 只接收并透传 <code>--override.imports</code>，不会自动注入 DeepSeek-V4 override 组。</p>
+<h2 id="_2">数据流</h2>
+<pre><code class="language-text">模型张量 [B, S, ...]
+        │
+        ├─ positions + VarlenMetadata
+        │      └─ CompressedVarlenMetadata（build_compressed_varlen_metadata 一次性构建公共契约；
+        │         参考 tier 与 AscendC 内核张量经 metadata_extension 注入）
+        │
+        ├─ Compressor：按统一契约（gather_indices/block_positions/first_indices）压缩 → 池化键流；CP 下 Compressor 内部 borrow 原始行（borrow_x），调用侧按 plan 的 kept_indices/out_width 装入容器网格（pack_container）
+        │
+        ├─ 参考内核（golden/默认）
+        │     kv = [swa_k | cmp_k 容器 | sink]，文档感知 BlockMask + dense mask top-k
+        │
+        └─ AscendC 融合内核（AscCompressedSparseInnerAttention）
+             q/swa_k flatten → [T, N, D] / [T, 1, D]
+             cmp_k 容器 → TND：container_flat[:n_blocks]（B=1 下等价于恒等映射）
+             LI / SMLA / SMLAG / SLIG
+             output [T, N, D] → [B, S, N, D]
+</code></pre>
+<p>TND 只存在于 NPU 融合内核的局部计算中，不会成为模型公共布局。</p>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>B</code></td>
+<td>模型输入的 batch size</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>模型输入的序列长度</td>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>TND 下的 token 总数，等于 <code>B * S</code></td>
+</tr>
+<tr>
+<td><code>T_cmp</code></td>
+<td>某个压缩比下的完整压缩块总数</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>注意力头数</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>单头维度</td>
+</tr>
+<tr>
+<td><code>r</code></td>
+<td>压缩比；当前 DSV4 配置使用 1、4 和 128</td>
+</tr>
+</tbody>
+</table>
+<h2 id="compressedvarlenmetadata">压缩布局：CompressedVarlenMetadata</h2>
+<p><a href="../../torchtitan_npu/models/deepseek_v4/metadata.py"><code>metadata.py</code></a> 定义唯一的注意力契约 <code>CompressedVarlenMetadata</code>，由同文件中的 <code>CompressedBlockMaskHandler</code>（模型目录默认 handler）每个 batch 构建一次，供所有 DSA 层复用：</p>
+<ul>
+<li><code>varlen</code>：<code>VarlenMetadata</code>，<code>cu_seq_q</code> 是序列边界的唯一权威来源。模型目录的参考 tier 要求 <code>cu_seq_q == cu_seq_k</code>（连续文档，non-CP）；统一 kernel contract（<code>build_kernel_layout</code>）无此限制，CP 流由 AscendC 融合路径消费。</li>
+<li><code>batch_size</code> / <code>seq_len</code>：容器网格形状。DSV4 打包场景使用 <code>local_batch_size == 1</code>，因此 <code>batch_size == 1</code>、<code>seq_len</code> 等于总 token 数（<code>cu_seq_q[-1]</code>），元数据完全由 varlen 流推导，不依赖 positions。</li>
+<li><code>plans[ratio]</code>：每个模型实际使用的压缩比（1、4、128）对应一个 <code>CompressedBlockLayout</code>：</li>
+<li><code>cu_seqlens_cmp_k</code>、<code>block_remainder</code>：打包压缩块流边界与每文档尾部余数，直接喂给 AscendC 算子；</li>
+<li><code>gather_indices</code>、<code>block_positions</code>、<code>first_indices</code>：统一的 Compressor 契约（块 token gather、文档内块起点 RoPE、文档/段首块位置——重叠 borrow 掩码），CP 与非 CP 以同一字段名提供（CP 下 <code>plans[ratio]</code> 即 CP ratio plan——part 1 由 <code>build_kernel_layout</code> 在虚拟增强流上推导，<code>block_positions</code> 经 <code>+A</code> 文档锚定；<code>first_indices</code> 为 plan-block 序的段首位置；非 CP 下为 <code>cu_seqlens_cmp_k[:-1]</code>）；</li>
+<li><code>dense_mask</code> / <code>doc_of_block</code> / <code>block_local</code> / <code>static_blocks</code>：参考 tier（<code>reference.py</code>），<code>window_size</code>/<code>block_size</code> 为模型配置常量，经 <code>ReferenceMetadataExtension</code> 一次性预计算；</li>
+<li>AscendC <code>*_metadata</code> 张量不进入模型目录元数据；AscendC override handler 返回携带 <code>asc_plans</code> 的 <code>AscCompressedVarlenMetadata</code> 包装。</li>
+</ul>
+<p>一个 batch 里可以打包多条序列，所以 <code>B</code> 与序列条数无关。例如：</p>
+<pre><code class="language-text">positions  = [[0, 1, 2, 0, 1]]
+B          = 1
+cu_seqlens = [0, 3, 5]   # 一行里打包了 2 条序列
+</code></pre>
+<p>每条序列必须从位置 0 开始并连续递增。该约束保证压缩、因果 mask 和稀疏索引不会跨越序列边界。</p>
+<h2 id="_3">压缩与索引规则</h2>
+<p><a href="../../torchtitan_npu/models/deepseek_v4/compressor.py"><code>compressor.py</code></a> 只处理完整压缩块，且<strong>绝不跨文档压缩</strong>。对长度为 <code>L</code> 的序列：</p>
+<pre><code class="language-text">compressed_len = floor(L / r)
+residual       = L - r * compressed_len
+</code></pre>
+<p>不足一个完整块的尾部不生成压缩 KV，而是通过 <code>residual</code> 传给 AscendC metadata。例如 <code>cu_seq_q = [0, 10, 27]</code>（两条序列 10 与 17），<code>r = 4</code>：</p>
+<pre><code class="language-text">cu_seqlens_cmp_k = [0, 2, 6]   # 压缩块：2 + 4
+block_remainder = [2, 1]
+gather_indices   = [A0..A3], [A4..A7], ..., [B12..B15]  # [6, 4]
+block_positions  = [0, 4, 0, 4, 8, 12]
+overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
+</code></pre>
+<ul>
+<li><code>r=1</code>：不生成压缩 KV，仅执行原始 KV 的滑窗注意力（plan 只含 AscendC metadata，<code>has_cmp_kv=False</code>）。</li>
+<li><code>r=4</code>（CSA）：启用重叠压缩和 LightningIndexer；前驱块必须属于同一文档（<code>overlap_valid</code>）。</li>
+<li><code>r=128</code>（HCA）：生成连续压缩 KV，不执行 LightningIndexer TopK。</li>
+</ul>
+<h2 id="golden">参考路径（默认内核与 golden）</h2>
+<p>模型目录默认内核是 varlen 化的 <code>CompressedSparseInnerAttention</code>（上游 port）：在 <code>[swa_k | cmp_k | sink]</code> 拼接的容器 KV 上构建文档感知的两级 <code>BlockMask</code>（块列表超集 + token 级 <code>mask_mod</code>），CSA 的 top-k 由 <code>Indexer.select</code> 在 dense mask 上选择。块列表的静态部分（滑窗、sink、HCA 压缩区）由 handler 预计算进 <code>static_blocks</code>，每层只做 CSA top-k scatter 与 mask_mod 过滤。golden override 用 eager 逐文档 FP32 实现（gather-matmul + 逐文档 indexer top-k）作为比特级数值参考。</p>
+<h2 id="ascendc">AscendC 融合路径</h2>
+<p><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn/ascendc.py"><code>sparse_attn/ascendc.py</code></a> 中的 <code>AscCompressedSparseInnerAttention</code> 执行以下步骤：</p>
+<ol>
+<li>校验模型输入与 <code>CompressedVarlenMetadata</code> 一致，按 <code>self.compress_ratio</code> 取 plan。</li>
+<li>把 query、原始 KV 转成 TND；压缩 KV 与 Indexer key 取容器网格头部 <code>n_blocks</code> 槽位转成打包流。</li>
+<li>调用 LightningIndexer 生成序列内局部 TopK（使用 <code>asc_plans[ratio].li_metadata</code>）。</li>
+<li>调用 SparseFlashMLA；<code>_SparseFlashMLATND</code> 在反向中调用 SMLAG 与 SLIG（使用 <code>asc_plans[ratio].smla_grad_metadata</code>、<code>asc_plans[ratio].slig_metadata</code>）。SLIG 的 Indexer KL 梯度按 <code>indexer_loss_coeff</code>（NPU 内核配置，默认 0.0）缩放，LI 损失值累积到 <code>_indexer_loss_acc</code> 缓冲；Indexer auxiliary loss 已从模型目录移除，随上游机制落地后另行设计。</li>
+</ol>
+<p><code>cann_ops_transformer</code> 包负责内核的算子注册（schema、meta/fake 实现），本仓只在融合路径内做前反向桥接，不再自建 <code>torch.library</code> 封装。</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cu_seqlens_q</code> / <code>cu_seqlens_ori_kv</code></td>
+<td><code>varlen.cu_seq_q</code>（无 CP 时相同）</td>
+</tr>
+<tr>
+<td><code>cu_seqlens_cmp_kv</code></td>
+<td><code>plan.cu_seqlens_cmp_k</code></td>
+</tr>
+<tr>
+<td><code>cmp_residual_kv</code></td>
+<td><code>plan.block_remainder</code></td>
+</tr>
+<tr>
+<td><code>layout_q</code> / <code>layout_kv</code></td>
+<td>固定为 <code>TND</code></td>
+</tr>
+<tr>
+<td>四个 <code>*_metadata</code> 张量</td>
+<td><code>plan</code>（NPU handler 预计算）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">当前边界</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>当前状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>positions</code></td>
+<td>必须提供 <code>[B, S]</code>，且每条序列从 0 连续递增</td>
+</tr>
+<tr>
+<td>Padding</td>
+<td>varlen 流必须覆盖本 rank 的全部 <code>B * S</code> 个 token，metadata 不表达 padding token</td>
+</tr>
+<tr>
+<td>Context Parallel</td>
+<td>支持（AscendC 融合路径，CLI 指定 <code>NGPU=2 bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh --parallelism.context-parallel-degree 2 --parallelism.spmd-backend spmd_types</code>）；CP 与非 CP 共用统一的 <code>plans[ratio]</code>（两部分：统一契约 + dispatcher 字段），CP 全部逻辑在 <code>token_dispatcher.py</code>（纯全局上下文 plan + <code>BaseEPTokenDispatcher</code> 形态的 dispatcher），<code>cp_plan</code> 只提供 <code>borrow_swa</code>/<code>borrow_x</code>/<code>pack_container</code></td>
+</tr>
+<tr>
+<td>Tensor Parallel</td>
+<td>DSA 路径固定 TP=1（indexer score 对 head 维求和），TP 方案待 CP 之后另行设计</td>
+</tr>
+<tr>
+<td>空压缩流</td>
+<td>doc-packing 场景要求每条序列至少产生一个完整压缩块；NPU handler 对 <code>T_cmp=0</code> 直接报错（AscendC CSA/HCA 不接受空 <code>cmp_kv</code>）</td>
+</tr>
+<tr>
+<td>运行环境</td>
+<td>需要 <code>torch_npu</code>、CANN、HCCL、Ascend NPU，以及匹配的 <code>cann_ops_transformer</code></td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v4_graph_trainer/" class="btn btn-neutral float-left" title="DeepSeek-V4 GraphTrainer 编译路径适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../ep_process_group/" class="btn btn-neutral float-right" title="EP 通信域分离">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v4_graph_trainer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../ep_process_group/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

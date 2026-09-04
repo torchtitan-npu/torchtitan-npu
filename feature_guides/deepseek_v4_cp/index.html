@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 上下文并行（CP） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 \u4e0a\u4e0b\u6587\u5e76\u884c\uff08CP\uff09";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_cp.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 上下文并行（CP）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">启用方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">设计要点</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">关键设计决策</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">每层数据流</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cp">压缩器在 CP 下的工作方式</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_5">为什么需要借入</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">交换与组装</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_7">数学与借入源剥离</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_8">容器与每段前缀组装</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_9">内核契约要点</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_10">组件与文件</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_11">已知数值边界</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_12">验证方式与接手流程</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_13">精度定位相关单测</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 上下文并行（CP）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-cp">DeepSeek-V4 上下文并行（CP）</h1>
+<p>DeepSeek-V4（DSV4）在文档打包序列上训练时，压缩注意力（CSA/HCA）的 KV 块按压缩比 <code>r</code> 对齐文档前缀：块可能跨越相邻 CP 卡的边界，各 rank 可压缩的块数随文档分布不均，查询可见的滑窗行与压缩块是文档相对范围。本仓为 DSV4 的 AscendC 融合路径实现了上下文并行：每个 batch 由 <code>build_cp_plan</code> 从切分前的全局文档结构纯本地推导出「计划」，<code>CPTokenDispatcher</code> 按计划完成窗口行与压缩块的 gather，以及压缩容器的声明式 all-gather。context parallel 由 CLI 参数 <code>--parallelism.context-parallel-degree</code> 激活（配合 <code>--parallelism.spmd-backend=spmd_types</code>）。参考内核与 golden 数值基线不启用 CP。</p>
+<p>本文是 CP 功能的<strong>实施交接文档</strong>，目标读者是接手 DSV4 CP 开发的后续开发者：先看「启用方式」「设计要点」「关键设计决策」掌握整体方案与取舍依据，再看「每层数据流」「压缩器在 CP 下的工作方式」（含图示）与「组件与文件」定位代码，最后按「验证方式」执行回归。已知限制与内核契约均记录在案。</p>
+<h2 id="_1">启用方式</h2>
+<pre><code class="language-bash">NGPU=2 \
+  bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh \
+  --parallelism.context-parallel-degree 2 \
+  --parallelism.spmd-backend spmd_types \
+  --training.steps 2
+</code></pre>
+<ul>
+<li><code>--parallelism.context-parallel-degree &gt; 1</code> 时即启用 CP；必须配合 <code>--parallelism.spmd-backend spmd_types</code>（<code>spmd_types</code> 后端是压缩容器 <code>S(1) -&gt; R</code> 声明式 all-gather 的前提）。</li>
+<li><code>--parallelism.context-parallel-load-balancer</code> 支持 <code>headtail</code>（默认）与 <code>None</code>（plain 顺序切分）。headtail 要求 <code>seq_len</code> 整除 <code>2 * context_parallel_degree</code>，plain 要求整除 <code>context_parallel_degree</code>，不满足时 <code>_build_cp_metadata</code> 直接报错。</li>
+<li>需要完整 NPU 环境：<code>torch_npu</code>、CANN、HCCL 与匹配的 <code>cann_ops_transformer</code>。CP 只在融合路径生效，参考 tier 与 golden 限定无 CP（对 <code>cu_seq_q != cu_seq_k</code> 报错）。</li>
+<li><code>local_batch_size == 1</code> 是当前文档打包约定（增大批数据应提高 <code>seq_len</code>）；DSA 路径 TP 固定为 1。</li>
+</ul>
+<h2 id="_2">设计要点</h2>
+<p>通用 CP（切分 + 全部 KV all-gather）对 DSV4 不适用的三个原因：</p>
+<ol>
+<li>压缩块跨 rank：<code>r</code> 个连续 token 成一块，块可能跨越相邻 rank 的边界，单个 rank 无法独立完成边界块。</li>
+<li>各 rank 压缩数量不均：文档独立压缩（每文档 <code>len // r</code> 块），各 rank 块数随文档分布变化，通信规模不固定。</li>
+<li>注意力可见区是文档前缀：查询可见的压缩块是所在文档的前缀块，滑窗行是文档相对范围，均需跨 rank 取行。</li>
+</ol>
+<p>方案的整体原则是「<strong>计划吸收全部不规则性，数据路径保持单一</strong>」：</p>
+<ul>
+<li><strong>纯本地推导</strong>：<a href="../../torchtitan_npu/models/deepseek_v4/token_dispatcher.py"><code>build_cp_plan</code></a> 从切分前的全局文档结构（<code>get_attention_masks</code> 的 varlen）加负载均衡置换，在 frame 内推导每个 rank 的 rank-local varlen（复用 <code>CPVarlenMetadata.from_global</code>）与全部计划，计划阶段零通信。</li>
+<li><strong>文档切片</strong>：全部计划行都是 <code>docs[doc]</code> 的切片（文档按置换后坐标存储，键为置换后的文档起点）。负载均衡的置换被切片完全吸收，无需访问置换本身。</li>
+<li><strong>双计划</strong>：ratio 无关的 <code>WindowPlan</code>（窗口交换路由、ori 流 <code>gather_indices</code>、<code>cu_seqlens_ori_kv</code>）与每 ratio 一份的块计划 <code>CompressedBlockLayout</code>（内核与压缩器契约 + 块交换路由 + 容器打包 + <code>cmp_k_global_gather_indices</code>），分别挂于 <code>CompressedVarlenMetadata</code> 的 <code>window</code> 与 <code>plans[ratio]</code>。非 CP 时块计划的 <code>gather_indices</code> 即文档序本地 gather，其余 dispatcher 字段为空，前向路径不区分 CP。</li>
+<li><strong>块区间</strong>：每段的计划块区间 <code>[A, B)</code> 覆盖本段完整块加借入源（段首前驱块、段尾跨块、case-C 前驱头），<code>strip</code> 记借入源块数；段尾不足一块的文档余数不产生压缩条目。</li>
+</ul>
+<h2 id="_3">关键设计决策</h2>
+<p>以下决策是当前方案的设计依据，接手开发时应保持，不做反向重构。</p>
+<ol>
+<li>
+<p><strong>单一 metadata 接缝</strong>。模型以 <code>build_attention_masks(inputs, labels, extra_kwargs, *, cp_mesh, load_balancer_type)</code> 统一构建每 batch 的 metadata：CP 时在其中完成输入切分与计划推导，vendor 内核张量由配置解析的 <code>metadata_extension</code>（<code>AscMetadataExtension</code>）在最后一步填充。接缝只有一处，dsv3.2 走同一机制。</p>
+</li>
+<li>
+<p><strong>纯本地计划</strong>。<code>build_cp_plan</code> 输入 <code>(global_varlen, load_balancer, rank, cp_size, shard_len, window_size, ratios)</code>，用 <code>_RankMesh</code> 垫片逐 rank 调用 <code>CPVarlenMetadata.from_global</code>，返回 <code>(rank-local varlen, plans, window)</code>。全局上下文（切分前的文档结构 + 置换）在 <code>build_attention_masks</code> 帧内即可获得，因此计划阶段零通信，且推导出的 rank-local varlen 与 shard 路径的产物一致。</p>
+</li>
+<li>
+<p><strong>文档切片表达</strong>。<code>build_cp_plan</code> 构建一个 <code>docs: dict[doc, list[pos]]</code>（键为置换后的文档起点，值为该文档全部 token 的置换后坐标）。基于恒等式 <code>kg[k_start + p] == docs[doc][p]</code>，所有计划行都是文档切片：窗口行 <code>docs[doc][win_start : win_start + win_len]</code>，块行 <code>docs[doc][A : block_end]</code>。压缩器契约由块区间直接推导：<code>block_positions</code> = 每段 <code>arange(A, block_end, ratio)</code>，<code>first_indices</code> = 每段池化起点。</p>
+</li>
+<li>
+<p><strong>统一 gather 接口</strong>。窗口与块共用 <code>dispatcher.gather(x, plan)</code>：无交换时为本地 gather（<code>plan.gather_indices</code> 直接索引本地流），有交换时为远端 gather + 重排（同一 <code>gather_indices</code> 索引 <code>cat([x_local, recv])</code>），始终返回 <code>[1, N, D]</code>。重排结果本身就是池化流，数据路径上无多余拷贝。</p>
+</li>
+<li>
+<p><strong>交换内容按需投影</strong>。窗口交换 RoPE 后的 <code>swa_k</code>（<code>head_dim</code> 宽），块交换投影后的 kv/score（<code>coff·head_dim</code> 宽；<code>coff</code> 为 r4 重叠时 2、其余 1）。Compressor 内部以 <code>dispatcher.gather(self.wkv(x), plan)</code>、<code>dispatcher.gather(self.wgate(x), plan)</code> 各执行一次交换。<code>wkv</code>/<code>wgate</code>/RMSNorm/RoPE 都是逐 token 运算，与交换可交换，因此数值逐位一致，通信量远小于交换原始 <code>x</code>。</p>
+</li>
+<li>
+<p><strong>压缩级 gather 声明式</strong>。各 rank 用 <code>dispatcher.select</code> 将保留块装入等宽填充容器 <code>[1, out_width, D]</code>（<code>out_width</code> 为跨 rank 最大保留块数，使容器成为合法的 <code>S(1)</code> 分片）；<code>sharding.py</code> 把容器声明为 <code>cp: S(1) -&gt; R</code>，框架在内核边界自动发出 all-gather；<code>cmp_k_global_gather_indices</code>（<code>slot = owner × out_width + 容器内偏移</code>）在 <code>ascendc.py::_assemble_tnd</code> 内组装每段前缀流。</p>
+</li>
+<li>
+<p><strong>借入先压缩、借入源键剥离</strong>。<code>_block_range</code> 的四种 case（段首前驱 / case-C 前驱头 / 首块跨块 / 空）给出每段区间 <code>[A, B)</code> 与 <code>strip</code>；借入源块用于补全本段块的投影与重叠链，其自身池化键经 <code>compressed_rows</code> 从输出中剥离；段首块的借入行经 <code>first_indices</code> 掩码（分数置 <code>-inf</code>，softmax 权重精确为 0）。打包流只包含重叠链完整的键。图示见「压缩器在 CP 下的工作方式」。</p>
+</li>
+<li>
+<p><strong>每 Compressor 自带 dispatcher</strong>。<code>Compressor.Config</code> 自带 <code>token_dispatcher</code> 字段，<code>Compressor.parallelize</code> 经框架的 <code>Module.parallelize</code> 递归自行接线；<code>Attention</code> 另有自己的 dispatcher（窗口）。每个压缩器（注意力与索引器各自的）独立执行块交换，组件自包含；ratio-4 层因此有 5 次 alltoallv。</p>
+</li>
+<li>
+<p><strong>内核契约是方案的前提</strong>。窗口打包依赖内核「窗口范围由属性决定而非区间长度」（端对齐坐标），CP 与参考的可见范围一致依赖内核的 p0 通道（<code>limit(pos) = floor((p0 + pos + 1) / r)</code>）。计划据此构造 <code>cu_seqlens_cmp_k</code> / <code>block_remainder</code>（文档相对块数与余数）与 <code>cu_seqlens_ori_kv</code>（窗口长度前缀和），修改计划必须保持这两个内核语义不变。</p>
+</li>
+<li>
+<p><strong>参考实现与 golden 不启用 CP</strong>。两者按连续文档（<code>cu_seq_q == cu_seq_k</code>）构建，对 CP 形状流显式报错；数值验收以融合路径自身的三配置一致性为准。</p>
+</li>
+</ol>
+<h2 id="_4">每层数据流</h2>
+<p><code>Attention.forward</code> 在本地流上完成 Q 侧投影与 <code>swa_k</code> 的投影 + RoPE（按文档相对位置），随后：</p>
+<ol>
+<li><strong>窗口 gather</strong>：<code>dispatcher.gather(swa_k, metadata.window)</code> 交换 RoPE 后的 <code>swa_k</code> 行，组装为打包 ori 流（每段窗口行，<code>cu_seqlens_ori_kv</code> 给出边界）。</li>
+<li><strong>块 gather</strong>：每个 <code>Compressor</code> 内部对投影后的 kv/score 执行 <code>dispatcher.gather(·, plans[ratio])</code>，得到池化块流；<code>dispatcher.select</code> 将保留块装入等宽填充容器。ratio-4 层的索引器 Compressor 走同一机制。</li>
+<li><strong>压缩级 all-gather</strong>：容器按 <code>cp: S(1) -&gt; R</code> 声明式 all-gather（<code>sharding.py</code>），AscendC 内核内用 <code>cmp_k_global_gather_indices</code> 组装每段前缀压缩流，再调用 LI/SMLA。</li>
+</ol>
+<p>每层 alltoallv 次数：ratio-1 层 1 次（窗口）；ratio-128 层 3 次（窗口 + kv + score）；ratio-4 层 5 次（再加索引器 Compressor 的 kv/score）。反向梯度沿同一路由回传。</p>
+<h2 id="cp">压缩器在 CP 下的工作方式</h2>
+<p>CP 方案中复杂度最高的是压缩器的借入与组装。以 <code>r = 4</code> 为例，按「为什么需要借入 → 交换与组装 → 数学与剥离 → 容器组装」展开；<code>r = 128</code> 除无重叠外机制相同。</p>
+<h3 id="_5">为什么需要借入</h3>
+<p>一个文档被 CP 切成片段后，片段边界通常不会正好落在块的边界上：块可能跨两个 rank，r=4 的池化还需要前一块的行做重叠。以 16 token 的文档、r=4、rank k+1 的片段只有 8..9 为例：</p>
+<pre><code class="language-text">0               4               8               12              16
+└───── b0 ─────┘└───── b1 ─────┘└───── b2 ─────┘└───── b3 ─────┘
+
+┌──────────────────────────────┐  rank k 段：持有 0..7（块 b0、b1 完整）
+└──────────────────────────────┘
+                                ┌──────┐  rank k+1 段：持有 8..9（块 b2 的前一半）
+                                └──────┘
+                                ↑ 还差：
+                                  · token 10..11 在片段外（跨块尾，凑不齐块 b2）
+                                  · 前一块 b1 的行（r=4 池化的重叠前驱）
+
+                计划区间 [A, B) = [4, 12)
+                ┌──────────────────────────────┐
+                └──────────────────────────────┘
+                A = 4：借入源块 b1（strip = 1，池化键剥离）
+                B = 12：跨块终点；无跨块时退化为片段尾
+</code></pre>
+<p>把 <code>b1</code>（重叠前驱）和 <code>10..11</code>（跨块尾）一起纳入计划区间后，本段就能独立完成块 b2 的池化；借入源块 b1 的池化键在 <code>select</code> 时被剥离，不会混入本段的压缩 KV。借入源块（A 处）与跨块尾（B 处）是同一套行交换的两类来源——段首块自身的重叠前驱正是借入源块。</p>
+<h3 id="_6">交换与组装</h3>
+<p>投影是逐 token 运算，先投影后交换与先交换后投影逐位一致，因此交换的是窄的投影行：</p>
+<pre><code class="language-text">① 本地投影:  kv/score 行 [S_local, coff·hd]（逐 token，先算好再交换）
+② 交换:      alltoallv，发送行按接收方分组
+③ 组装:      cat([x_local, recv])，再按 gather_indices 重排为池化序
+④ 池化行流:  [n_blocks, r, coff·hd]（借入源块在内，池化序）
+</code></pre>
+<p><code>gather_indices</code> 把「本地行 + 借入行」重排为池化序；无 CP 时它退化为文档序本地索引。</p>
+<h3 id="_7">数学与借入源剥离</h3>
+<pre><code class="language-text">① 池化块行流:  [n_blocks, r, coff·hd]（每块 r 个 token 一行）
+② 池化:        reshape → 重叠（r=4）→ softmax pool → norm → RoPE
+                （重叠：块内拼接前一块的行；段首块的借入行被 -inf/0 掩码）
+                → pooled keys [n_blocks, D]
+③ 剥离:        select 按 compressed_rows 去掉借入源块的键
+                （借入源块的重叠链不完整，不能当压缩 KV 用）
+④ 容器:        保留块零填充为等宽容器 [1, out_width, D]
+                （各 rank 等宽，才是合法的 S(1) 分片）
+</code></pre>
+<h3 id="_8">容器与每段前缀组装</h3>
+<pre><code class="language-text">① 容器:      每 rank 一个 [1, out_width, D]（保留块靠前，尾部零填充）
+② all-gather: 声明式——ShardingConfig 把容器标为 cp: S(1) -&gt; R，
+              框架在内核边界自动发出全量聚合
+③ 网格:      [cp × out_width, D]（按 rank 顺序拼接的容器）
+④ 组装:      cmp_k_global_gather_indices 逐段挑出前缀块：
+              slot = owner × out_width + 容器内偏移
+⑤ 前缀流:    每段 TND 流，块 0 .. seqlen_k // r − 1
+⑥ 内核:      LI（r=4 选择）→ SMLA
+</code></pre>
+<p><strong>剥离不变式</strong>：打包流只包含重叠链完整的键——每段前缀块取自 owner（块起点所在段）的计算结果；借入源块在本 rank 的池化键被剥离，只供相邻块的重叠投影使用。<code>r = 128</code> 无重叠时剥离是去重，<code>r = 4</code> 时剥离是正确性必需。</p>
+<h2 id="_9">内核契约要点</h2>
+<p>CP 方案依赖 AscendC <code>sparse_flash_mla</code> 家族的以下语义（均从内核行为验证得出）：</p>
+<ul>
+<li><strong>TND 布局</strong>：每段一个 batch；<code>cu_seqlens_q</code>、<code>cu_seqlens_ori_kv</code>、<code>cu_seqlens_cmp_kv</code>、<code>cmp_residual_kv</code> 为前缀和/每段余数；<code>kvHeadNum = 1</code>；<code>ori_win_left = window − 1</code>、<code>ori_win_right = 0</code>；<code>ori_mask_mode</code> / <code>cmp_mask_mode</code> 固定为 4 / 3。</li>
+<li><strong>端对齐</strong>：ori token <code>k</code> 被读作文档 token <code>(s1Size − oriLen) + k</code>，掩码以端对齐坐标计算，窗口范围由属性（<code>ori_win_left/right</code>）决定而非区间长度。因此 <code>cu_seqlens_ori_kv</code> 不必是因果前缀，窗口打包得以成立。</li>
+<li><strong>压缩因果上限</strong>：<code>limit(pos) = floor((p0 + pos + 1) / r)</code>。计划按文档相对块数与余数构造 <code>cu_seqlens_cmp_k</code> / <code>block_remainder</code>，使 CP 形式与参考调用的可见范围一致（内核的 p0 通道）。</li>
+<li><strong>sink</strong>：1-D fp32 <code>[N1]</code>，softmax 初值 <code>max = sink</code>、<code>sum = 1</code>；LSE 为 <code>log(sum) + max</code>。</li>
+</ul>
+<h2 id="_10">组件与文件</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/token_dispatcher.py</code></td>
+<td>CP 的全部逻辑：<code>build_cp_plan</code> 纯推导（文档切片、窗口与块区间、交换路由）、<code>WindowPlan</code> / <code>ExchangePlan</code>、<code>CPTokenDispatcher</code>（<code>gather</code> / <code>select</code>）</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/metadata.py</code></td>
+<td>公共契约：<code>CompressedBlockLayout</code>（内核与压缩器契约 + dispatcher 字段）、<code>CompressedVarlenMetadata</code>（<code>varlen</code> / <code>plans</code> / <code>window</code>）、非 CP 的 <code>build_kernel_layout</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/model.py</code></td>
+<td><code>build_attention_masks</code> 单入口；<code>_build_cp_metadata</code> 切分输入并调用 <code>build_cp_plan</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/attention.py</code>、<code>compressor.py</code></td>
+<td>前向数据路径：窗口 gather、Compressor 内部块 gather、<code>select</code> 容器打包</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/sharding.py</code></td>
+<td>容器的 <code>cp: S(1) -&gt; R</code> 声明（内核边界 all-gather 由此发出）</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/override/deepseek_v4/sparse_attn/ascendc.py</code></td>
+<td><code>AscMetadataExtension</code>（按窗口打包的 <code>cu_seqlens_ori_kv</code> 填充 <code>*_metadata</code> 内核）、<code>_assemble_tnd</code>（<code>cmp_k_global_gather_indices</code> 组装）</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/patches/torchtitan/distributed/varlen_cp.py</code></td>
+<td><code>CPVarlenMetadata</code>（上游 PR 的本地回传）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_11">已知数值边界</h2>
+<p>CP 与参考实现之间已知的数值差异有三个来源，全部位于 AscendC 内核内部；CP 数据路径本身与参考逐位一致（由 CPU 单测固定）。</p>
+<ol>
+<li>
+<p><strong>SMLA 的批次布局敏感（几何来源）</strong>。flash-softmax 的行求和按 fp32 部分和分组执行；packed 调用与参考调用的批次布局不同，同一查询窗口的值落入不同的部分和分组，fp32 非结合性带来 bf16 ulp 级的输出差异。该差异与值相关，与 CP 无关——任何改变调用几何的方式（批量大小、段结构）都会触发同类差异。</p>
+</li>
+<li>
+<p><strong>LightningIndexer-V2 的并列 tie（选择来源）</strong>。indexer 分数经 ReLU 后大量块得分为精确 0，top-k 边界常落在 0 分池内，此时入选块由调用的核切分几何决定。后果是结构不同的两次调用（CP 与参考、plain 与 headtail）可能为同一查询选中<strong>完全不同的块集合</strong>。需要注意：indexer 的相关性分数相近（甚至同为 0）并不意味着这些块在 SMLA 的 query/key 相关性也相近——在初始权重（随机初始化）阶段尤其如此，被 tie 换掉的块在 SMLA 中的权重可能差异明显，单块的替换会放大到整行输出与损失。这是 r4 层 CP 与参考发散的主导来源，修复依赖 AscendC 提供值无关的规范 tie-break；修复前，发散量级随 r4 层数与权重触发情况增长。</p>
+</li>
+<li>
+<p><strong>SMLAG 的 kv 侧求和（梯度来源）</strong>。一个 kv token 同时出现在多个段的 kv 流中，各内核调用各自产生 bf16 舍入的梯度部分，CP 梯度为这些部分的 fp32 求和，与参考的逐位结果存在部分舍入量级的差异；查询侧梯度（dq、l1、SLIG）逐位一致。</p>
+</li>
+</ol>
+<p>验收口径：以上差异在「三配置一致性」验收中表现为打印精度内的逐 step 损失差。出现超出预期量级的发散时，先按上述三条归类（几何、选择、梯度），再按「精度定位相关单测」的定位路径检查 CP 数据路径——其逐位性已由 CPU 单测固定。</p>
+<h2 id="_12">验证方式与接手流程</h2>
+<p>CPU（无 NPU 依赖）：</p>
+<pre><code class="language-bash">pytest tests/unit_tests
+</code></pre>
+<p>包含 plan 对 oracle 的逐张量比对与真实双进程 gloo 用例；需要 <code>TORCHTITAN_DIR</code> 指向本地 torchtitan checkout。</p>
+<h3 id="_13">精度定位相关单测</h3>
+<p>出现 CP 与参考的数值发散时，以下用例按层级排除问题：</p>
+<table>
+<thead>
+<tr>
+<th>用例</th>
+<th>定位对象</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_cp_dispatch.py::test_plan_matches_experiment</code></td>
+<td>计划张量（内核契约、保留块、窗口边界）对实验的独立推导逐张量比对；排除计划本身的推导错误</td>
+</tr>
+<tr>
+<td><code>test_cp_dispatch.py::test_dispatcher_vs_oracle</code></td>
+<td>窗口与块 gather 的往返结果对全局流 oracle 逐段比对；排除交换路由与组装（<code>gather_indices</code>）的错误</td>
+</tr>
+<tr>
+<td><code>test_cp_dispatch.py::test_compressor_cp_branch</code></td>
+<td>压缩器在 CP 计划（借入流 + 剥离）下的池化键对 oracle 比对；排除压缩数学在借入流上的错误</td>
+</tr>
+<tr>
+<td><code>test_cp_dispatch.py::test_asc_extension_cp_metadata</code></td>
+<td>AscendC metadata 内核的填充参数（窗口打包的 <code>cu_seqlens_ori_kv</code>）</td>
+</tr>
+<tr>
+<td><code>test_cp_dispatch.py::test_cp_attention_flow</code></td>
+<td>前向全流程的形状契约与容器内容（保留块 vs oracle）</td>
+</tr>
+<tr>
+<td><code>test_cp_dispatch.py::test_multiprocess_gloo</code></td>
+<td>真实双进程集合通信（不均衡 alltoallv、压缩级 all-gather）的分组与偏移语义</td>
+</tr>
+<tr>
+<td><code>tests/unit_tests/models/deepseek_v4/test_cp_compressor.py</code>（矩阵）</td>
+<td>压缩数学本身：plain/headtail、cp 1~8、ratio 4/128，f32/f64 双精度矩阵；f64 预算在浮点噪声底（逐位量级），f32 在单精度舍入量级</td>
+</tr>
+<tr>
+<td><code>tests/unit_tests/models/deepseek_v4/test_cp_compressor.py::test_degeneracy</code></td>
+<td>计划推导的无漂移护栏：cp=1 的 <code>build_cp_plan</code> 与非 CP <code>build_kernel_layout</code> 五个契约字段逐位一致</td>
+</tr>
+<tr>
+<td><code>tests/unit_tests/models/deepseek_v4/test_dsv4.py</code>（数值系列）</td>
+<td>非 CP 基线：压缩器对独立逐文档参考、重叠掩码逐位、索引器选择、参考内核对 golden 的舍入底比对</td>
+</tr>
+</tbody>
+</table>
+<p>定位路径与「已知数值边界」对应：上述用例全部通过时，组装的数据与键对 oracle 一致，发散必然位于内核层（几何 / 选择 / 梯度三类来源）；任一失败则说明 CP 数据路径本身被改坏，按失败用例定位。</p>
+<p>NPU 一致性验收（改动数据路径后建议执行）：加载同一固定初始权重 checkpoint，CP=1 / CP=2 plain / CP=2 headtail 各跑相同步数，期望三种配置的逐 step 损失与 grad_norm 在打印精度内一致；发散量级见「已知数值边界」。每次运行必须使用全新 <code>--checkpoint.folder</code>。</p>
+<p>接手开发的默认路径：</p>
+<ol>
+<li>只改计划推导（<code>token_dispatcher.py</code>）时，<code>build_cp_plan</code> 必须保持纯函数与零通信，传入的 ratios 需去重（<code>sorted(set(ratios))</code>）；以 CPU 单测的 plan-vs-oracle 比对为逐张量护栏。</li>
+<li>改动数据路径（<code>attention.py</code> / <code>compressor.py</code> / <code>ascendc.py</code>）时，非计算性改动必须保持逐位一致（CPU 单测 + 三配置验收）；计算性改动需在验收之外记录数值证据。</li>
+<li>新增或调整配置（<code>config_registry.py</code> / <code>run_train.sh</code>）时，同步检查本指南的启用方式与相邻的 <a href="../deepseek_v4_tnd/">TND 指南</a>。</li>
+<li>修改实现后，同步更新本指南中受影响的「设计要点」「关键设计决策」条目，避免文档与代码漂移。</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../developer_guides/unit-test-architecture/" class="btn btn-neutral float-left" title="Unit Test 架构与迁移方案"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_graph_trainer/" class="btn btn-neutral float-right" title="DeepSeek-V4 GraphTrainer 编译路径适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../developer_guides/unit-test-architecture/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_graph_trainer/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

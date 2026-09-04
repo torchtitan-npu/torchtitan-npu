@@ -36,45 +36,46 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
-                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiF8）</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../model_custom/">Model Custom框架介绍</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">Muon 优化器特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Virtual Optimizer - 优化器显存虚拟化特性</a>
     <ul class="current">
@@ -85,42 +86,26 @@
     <li class="toctree-l2"><a class="reference internal" href="#_3">解决方案</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_4">核心实现原理</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">启用方式</a>
         <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#adamw">标准 AdamW 的做法</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#virtual-optimizer">Virtual Optimizer 的做法</a>
+    <li class="toctree-l3"><a class="reference internal" href="#_6">命令行示例</a>
     </li>
         </ul>
     </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#virtual-optimizer-checkpoint">Virtual Optimizer 与 Checkpoint</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_5">配置选项</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_6">配置示例</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">适用范围与限制</a>
     </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">常见问题</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_9">验证状态</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_10">相关链接</a>
     </li>
     </ul>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../vlm/">VLM NPU 支持</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
-                </li>
-    </ul>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Recipe</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Test guides</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -156,87 +141,159 @@
               
                 <h1 id="virtual-optimizer-">Virtual Optimizer - 优化器显存虚拟化特性</h1>
 <h2 id="_1">背景与挑战</h2>
-<p>在大集群训练中，PP的增大会对前些个stage造成较大的显存压力；同时我们观察到，在增大梯度累积的情况下，优化器部分的一二阶动量显存swap的开销可忽略不计，因此可通过将优化器部分的显存swap到cpu上来节省整网显存，而当前分布式优化器逻辑复杂，并且与各种通信并行相互耦合，因此实现一套Swap优化器显存的系统较为复杂。</p>
+<p>在大规模分布式训练中，模型参数、梯度和优化器状态都会占用大量 NPU 显存。对于 Adam/AdamW，<code>exp_avg</code> 和 <code>exp_avg_sq</code> 两组 moments 通常与模型参数规模相当，并且在前向和反向计算期间仍会长期驻留在显存中。</p>
+<p>随着模型规模、流水线并行 stage 数量或梯度累积步数增加，optimizer moments 可能成为显存瓶颈。与此同时，这些状态主要在 optimizer step 阶段使用，因此可以利用 Ascend NPU 的 swap memory 能力，将它们存储在 Host 内存中，同时保留可供 NPU 算子访问的地址，从而降低 optimizer state 对 NPU HBM 的长期占用。</p>
 <h2 id="_2">特性概述</h2>
-<p>Virtual Optimizer 是一套基于 Ascend NPU 虚拟内存能力的优化器显存优化方案。通过将 AdamW 优化器的一阶和二阶动量（exp_avg、exp_avg_sq）存储在 Host 内存中，而非 NPU 显存中，可以<strong>在不修改任何训练代码的前提下，节省 NPU 显存占用</strong>。</p>
-<p><strong>核心思想</strong>：充分利用 Ascend 驱动原生的虚拟内存映射能力，申请一个实际内存在 Host 侧但地址可被映射到 Device 上的张量，使其可参与大多数 NPU 算子计算。</p>
+<p>Virtual Optimizer 是一套基于 Ascend NPU 虚拟内存能力的优化器显存优化方案。它将 Adam/AdamW 的一阶和二阶 moments（<code>exp_avg</code>、<code>exp_avg_sq</code>）创建为 Host-backed、NPU 可访问的 tensor，在不修改训练循环的前提下减少 NPU 显存占用。</p>
+<p><strong>核心思想</strong>：使用 Ascend NPU 提供的 <code>torch_npu.empty_with_swapped_memory()</code> 申请实际存储位于 Host、但地址可由 NPU 访问的 tensor，并让 optimizer 直接使用这些 tensor 更新 moments。</p>
 <p align="center">
 <img src="../../assets/virtual_optimizer.png" width="80%" >
 </p>
 
 <h2 id="_3">解决方案</h2>
 <h3 id="_4">核心实现原理</h3>
-<p>参考<a href="https://gitcode.com/Ascend/MindSpeed/blob/master/docs/zh/features/virtual-optimizer.md">MindSpeed框架设计的VirtualOptimizer特性</a>通过修改优化器状态的分配方式，利用虚拟内存特性替代 NPU 内存分配(当前NPU驱动支持25.5.2及以上版本)：</p>
-<h4 id="adamw">标准 AdamW 的做法</h4>
-<pre><code class="language-python"># torch.optim.AdamW (标准实现)
-state = self.state[p]
-# 直接在 NPU 显存中分配
-state['exp_avg'] = torch.zeros_like(p, memory_format=torch.preserve_format)
-state['exp_avg_sq'] = torch.zeros_like(p, memory_format=torch.preserve_format)
+<p>标准 Adam/AdamW 会在第一次 optimizer step 时按照参数创建 state：</p>
+<pre><code class="language-python">state = optimizer.state[p]
+state[&quot;step&quot;] = torch.zeros((), dtype=torch.float32, device=p.device)
+state[&quot;exp_avg&quot;] = torch.zeros_like(p)
+state[&quot;exp_avg_sq&quot;] = torch.zeros_like(p)
 </code></pre>
-<h4 id="virtual-optimizer">Virtual Optimizer 的做法</h4>
-<pre><code class="language-python"># virtual_optimizer.py (改进实现)
-state = self.state[p]
-# 通过虚拟内存分配，实际内存在 Host，地址映射到 Device
-state['exp_avg'] = torch_npu.empty_with_swapped_memory(
-    p.size(),
-    device=p.device
-)
-state['exp_avg_sq'] = torch_npu.empty_with_swapped_memory(
-    p.size(),
-    device=p.device
-)
+<p>Virtual Optimizer 为每个底层 optimizer 注册 step pre-hook，在 Adam/AdamW 创建普通 moments 之前改用 swap memory：</p>
+<pre><code class="language-python">state = optimizer.state[p]
+state[&quot;step&quot;] = torch.zeros((), dtype=torch.float32, device=p.device)
+state[&quot;exp_avg&quot;] = torch_npu.empty_with_swapped_memory(
+    p.size(), dtype=p.dtype, device=p.device
+).zero_()
+state[&quot;exp_avg_sq&quot;] = torch_npu.empty_with_swapped_memory(
+    p.size(), dtype=p.dtype, device=p.device
+).zero_()
 </code></pre>
-<h2 id="_5">配置选项</h2>
-<p>Virtual Optimizer 在模型的 <code>config_registry.py</code> 中配置，由
-<code>torchtitan_npu.config.configs.OptimizerConfig</code> 相关字段进行配置：</p>
+<p>Hook 只处理已有 gradient 且 state 尚未初始化的参数，不会覆盖已经存在的 optimizer state。</p>
+<p>对于 DTensor 参数，Virtual Optimizer 仅按照当前 rank 的 local shard 分配 moments，并保留原有 device mesh、placements、全局 shape 和 stride。部分 rank 可能持有 zero-sized local shard，而 swap allocator 不接受空 tensor，因此该情况使用普通的 <code>torch.empty_like()</code>。</p>
+<h2 id="_5">启用方式</h2>
+<p>Virtual Optimizer 通过 TorchTitan 的配置级 override 启用，不增加 <code>virtual_optimizer_size</code>、<code>swap_optimizer_times</code> 等配置字段。</p>
+<h3 id="_6">命令行示例</h3>
+<pre><code class="language-bash">python -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_debugmodel \
+  --override.imports &quot;torchtitan_npu.override.common.optimizer.virtual,torchtitan_npu.override.common.optimizer.checkpoint_virtual&quot; \
+  --checkpoint.enable \
+  --checkpoint.async-mode disabled
+</code></pre>
+<p>如果 recipe 已经启用了 attention、RoPE、RMSNorm 等 override，应将以上两个入口追加到现有 <code>override.imports</code> 列表，不要覆盖模型原有入口。</p>
+<p>也可以在 Python 配置中添加：</p>
+<pre><code class="language-python">cfg.override.imports.extend(
+    [
+        &quot;torchtitan_npu.override.common.optimizer.virtual&quot;,
+        &quot;torchtitan_npu.override.common.optimizer.checkpoint_virtual&quot;,
+    ]
+)
+cfg.checkpoint.enable = True
+cfg.checkpoint.async_mode = &quot;disabled&quot;
+</code></pre>
+<p>两个入口分别替换不同的 TorchTitan 配置节点：</p>
 <table>
 <thead>
 <tr>
-<th>配置项</th>
-<th>类型</th>
-<th>默认值</th>
-<th>说明</th>
+<th>Override</th>
+<th>配置节点</th>
+<th>作用</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>virtual_optimizer</code></td>
-<td>bool</td>
-<td>false</td>
-<td>是否启用 Virtual Optimizer 特性以进行显存卸载。</td>
+<td><code>optimizer.virtual</code></td>
+<td><code>OptimizersContainer.Config</code></td>
+<td>创建 swap-backed <code>exp_avg</code> 和 <code>exp_avg_sq</code></td>
 </tr>
 <tr>
-<td><code>virtual_optimizer_size</code></td>
-<td>float/list[float]/str</td>
-<td>None</td>
-<td>申请的虚拟内存空间大小。如果希望 swap 掉所有一二阶动量，可以设置为 <code>all</code>。</td>
+<td><code>optimizer.checkpoint_virtual</code></td>
+<td><code>CheckpointManager.Config</code></td>
+<td>兼容同步 native DCP 保存 live swap tensors</td>
 </tr>
 </tbody>
 </table>
-<h3 id="_6">配置示例</h3>
-<p>在 <code>torchtitan_npu/models/&lt;model&gt;/config_registry.py</code> 的配置函数中设置：</p>
-<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
-
-optimizer = OptimizerConfig(
-    name=&quot;AdamW&quot;,
-    lr=3e-4,
-    weight_decay=0.01,
-    virtual_optimizer=True,
-    virtual_optimizer_size=&quot;all&quot;,
+<p>只需要使用 Virtual Optimizer、但不保存 checkpoint 时，可以只启用 <code>optimizer.virtual</code>。需要同步保存并恢复完整训练状态时，应同时启用两个入口。</p>
+<p>如果还需要 checkpoint SHA-256 manifest 校验，应使用单一的组合 checkpoint replacement
+替换 <code>optimizer.checkpoint_virtual</code>，避免两个 override 同时声明 <code>config.checkpoint</code>：</p>
+<pre><code class="language-bash">--override.imports \
+  torchtitan_npu.override.common.optimizer.virtual,\
+  'torchtitan_npu.override.checkpoint.npu_virtual={&quot;verify_hash_manifest&quot;:true}' \
+--checkpoint.enable \
+--checkpoint.async-mode disabled
+</code></pre>
+<p><code>torchtitan_npu.override.checkpoint.npu_virtual</code> 同时保留同步 native DCP 的
+<code>per_thread_copy_ahead=0</code> writer 和 manifest 生成、加载校验行为。不要再追加
+<code>torchtitan_npu.override.common.optimizer.checkpoint_virtual</code> 或
+<code>torchtitan_npu.override.checkpoint.npu</code>。该组合入口与原 Virtual Optimizer writer 一样，
+只支持同步、本地 native DCP 保存。</p>
+<h2 id="virtual-optimizer-checkpoint">Virtual Optimizer 与 Checkpoint</h2>
+<p>TorchTitan 在保存 optimizer checkpoint 前会初始化尚未创建的 optimizer state，因此即使保存发生在第一次真实 optimizer step 之前，也能先建立形状和分片正确的 swap-backed moments。</p>
+<p>PyTorch DCP 默认 <code>FileSystemWriter</code> 的 copy-ahead 路径与当前 NPU swap storage 不兼容。<code>optimizer.checkpoint_virtual</code> 因此只对同步 native DCP 本地保存使用以下 writer：</p>
+<pre><code class="language-python">dcp.FileSystemWriter(
+    checkpoint_id,
+    per_thread_copy_ahead=0,
 )
 </code></pre>
-<p>启动时也可以通过命令行覆盖同名字段：</p>
-<pre><code class="language-bash">bash scripts/run_train.sh \
-  --optimizer.virtual_optimizer \
-  --optimizer.virtual_optimizer_size all
-</code></pre>
+<p>该 checkpoint 修改只用于解决 Virtual Optimizer state 的保存兼容问题，不是独立的 checkpoint 特性。DCP 加载不需要单独改写：fresh optimizer 会先创建 swap-backed load targets，再由 DCP 将 checkpoint 数据写入这些 targets；已有 state 和 repeated load 会复用当前 state。</p>
+<h2 id="_7">适用范围与限制</h2>
+<ul>
+<li>当前支持由 TorchTitan <code>OptimizersContainer</code> 构建的 Adam 和 AdamW。</li>
+<li>当前只接管 <code>exp_avg</code> 和 <code>exp_avg_sq</code>，<code>step</code> 仍为参数 device 上的普通 FP32 scalar。</li>
+<li>不包含 AMSGrad 的 <code>max_exp_avg_sq</code>，也不是通用 optimizer-state offload 实现。</li>
+<li>不提供 CPU cache、分块 Load/Update/Offload、多 stream 更新流水线或可配置 swap 容量。</li>
+<li>checkpoint writer 特化仅覆盖同步 native DCP 的本地文件系统保存。</li>
+<li>async、async-with-pinned-memory 和 Hugging Face 保存继续使用 TorchTitan 上游路径，不经过当前 writer 特化。</li>
+<li>多卡组合、async 和 Hugging Face 路径尚未在本特性中完成完整验证。</li>
+<li>本文不声明未经独立验证的最低驱动版本、性能提升或 HBM 节省比例。</li>
+</ul>
+<h2 id="_8">常见问题</h2>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>检查项</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Virtual Optimizer 未生效</td>
+<td>确认 <code>override.imports</code> 使用完整的 <code>module.function</code> 路径，并检查启动日志中的 override 应用记录</td>
+</tr>
+<tr>
+<td>只启用 <code>checkpoint_virtual</code> 后没有 swap state</td>
+<td><code>checkpoint_virtual</code> 只处理保存兼容；还需启用 <code>optimizer.virtual</code></td>
+</tr>
+<tr>
+<td>同步保存仍使用默认 writer</td>
+<td>确认使用 native DCP、<code>async_mode="disabled"</code>，且不是 Hugging Face 保存</td>
+</tr>
+<tr>
+<td>模型原有 override 丢失</td>
+<td>将两个入口追加到现有列表，不要用新列表覆盖原配置</td>
+</tr>
+<tr>
+<td>zero-sized shard 分配失败</td>
+<td>检查当前 rank 的 local shard 是否进入普通 <code>empty_like</code> 分支</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">验证状态</h2>
+<p>CPU 单元测试覆盖 swap allocation、zero-sized fallback、lazy state 初始化、同步 checkpoint writer 以及 async/Hugging Face 上游委托。此前的 Ascend NPU 单卡验证覆盖同步 save/load、fresh/existing/repeated load 和 load 后继续执行 optimizer step；多卡、async 和 Hugging Face 路径不在当前完整验证范围内。</p>
+<h2 id="_10">相关链接</h2>
+<ul>
+<li><a href="../../torchtitan_npu/override/common/optimizer.py">Virtual Optimizer override</a></li>
+<li><a href="../../tests/unit_tests/override/common/test_optimizer.py">Virtual Optimizer 单元测试</a></li>
+<li><a href="../../torchtitan_npu/override/README.md">Override 机制与入口</a></li>
+<li><a href="../../user-guides/installation/">软件安装</a></li>
+<li><a href="../../user-guides/quickstart/">快速上手</a></li>
+</ul>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../torch_compile/" class="btn btn-neutral float-left" title="torch.compile 支持"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../vlm/" class="btn btn-neutral float-right" title="VLM NPU 支持">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../muon_optimizer/" class="btn btn-neutral float-left" title="DeepSeek-V4 Muon 优化器"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../user-guides/installation/" class="btn btn-neutral float-right" title="软件安装">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -259,10 +316,10 @@ optimizer = OptimizerConfig(
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../torch_compile/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../vlm/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../../user-guides/installation/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

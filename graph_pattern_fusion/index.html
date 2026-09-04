@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>片段融合算子接入 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u7247\u6bb5\u878d\u5408\u7b97\u5b50\u63a5\u5165";
+        var mkdocs_page_input_path = "graph_pattern_fusion.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">片段融合算子接入</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">什么时候使用</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">怎么接入</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">启用和验证</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">片段融合算子接入</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">片段融合算子接入</h1>
+<p>当融合算子只替换 <code>forward()</code> 中的一段连续计算时，使用 pre-AOT pattern 可以避免复制
+整个 Module 或修改模型代码。</p>
+<h2 id="_2">什么时候使用</h2>
+<p>适合：原始片段结构稳定、可被 <code>torch.compile</code> 捕获，融合算子位于 Module 内部。</p>
+<p>不适合：需要替换完整 Module、包含数据依赖控制流，或融合算子没有 Fake/Meta 实现。训练
+算子还必须支持 Autograd。</p>
+<h2 id="_3">怎么接入</h2>
+<p>以 DeepSeek-V4 的 <code>split -&gt; complex RoPE -&gt; cat</code> 替换为
+<code>inplace_partial_rotary_mul</code> 为例，核心结构如下。<code>original_rope_fragment</code> 和
+<code>fused_partial_rope</code> 分别表示原始计算片段和融合算子调用：</p>
+<pre><code class="language-python">from torchtitan_npu.compile import PatternReplacement, register_pre_aot_patterns
+
+
+def make_pattern(*, inverse):
+    def search_fn(x, cos, sin):
+        return original_rope_fragment(x, cos, sin, inverse=inverse)
+
+    def replacement_fn(x, cos, sin):
+        return fused_partial_rope(x, cos, sin, inverse=inverse)
+
+    return PatternReplacement(
+        search_fn=search_fn,
+        replacement_fn=replacement_fn,
+        ignore_literals=True,
+    )
+
+
+register_pre_aot_patterns(
+    {
+        &quot;dsv4_parent_rope_inverse&quot;: make_pattern(inverse=True),
+        &quot;dsv4_parent_rope_forward&quot;: make_pattern(inverse=False),
+    }
+)
+</code></pre>
+<p>将接入代码放在独立模块中，并在模块导入时完成注册。启动训练前显式设置模块路径：</p>
+<pre><code class="language-bash">export TORCHTITAN_NPU_PATTERN_IMPORTS=\
+torchtitan_npu.compile.patterns.deepseek_v4.inplace_partial_rope
+</code></pre>
+<p>多个模块使用逗号分隔。该入口只注册编译图 pattern，不占用 <code>override.imports</code> 中的
+<code>Config</code> 节点。</p>
+<p>接入时只需注意：</p>
+<ul>
+<li><code>search_fn</code> 必须与模型中的原始片段一致；</li>
+<li>仅当字面量（如 <code>split</code> 尺寸）应作为通配符时设置 <code>ignore_literals=True</code>；</li>
+<li><code>replacement_fn</code> 必须保持相同的输出、dtype、layout 和 alias 语义；</li>
+<li>可复用的 cache 前处理应在 cache 初始化时完成，避免每步重复计算；</li>
+<li>不希望 FX 展开的算子调用可以使用 <code>torch.fx.wrap</code> 包装；</li>
+<li>算子已注册 Autograd 时直接调用，不要在 override 中重复实现正反向；</li>
+<li>多个结构变体用一个 factory 生成多个 <code>PatternReplacement</code>，然后一次注册。</li>
+</ul>
+<p>完整实现参考
+<code>torchtitan_npu/compile/patterns/deepseek_v4/inplace_partial_rope.py</code>。</p>
+<h2 id="_4">启用和验证</h2>
+<pre><code class="language-bash"># 只开启快速调试，不注册 pattern
+TORCHINDUCTOR_NPU_EXT_DEBUG=allfallback \
+COMPILE_BACKEND=inductor ./scripts/run_train.sh
+
+# 开启快速调试，并注册 inplace partial RoPE pattern
+TORCHINDUCTOR_NPU_EXT_DEBUG=allfallback \
+PATTERN_IMPORTS=torchtitan_npu.compile.patterns.deepseek_v4.inplace_partial_rope \
+COMPILE_BACKEND=inductor ./scripts/run_train.sh
+</code></pre>
+<p>验证时确认 pattern 匹配数量、正反向数值、loss/grad norm，并通过 profiling 检查融合算子
+是否生效以及是否新增 clone、copy 或 TensorMove。性能验证时不设置
+<code>TORCHINDUCTOR_NPU_EXT_DEBUG=allfallback</code>。</p>
+<blockquote>
+<p>注：当前 DeepSeek-V4 golden attention 不支持启用 inplace partial RoPE pattern。</p>
+</blockquote>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../MTP/" class="btn btn-neutral float-left" title="DeepSeek-V3.2 / DeepSeek-V4 MTP"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../community/governance/" class="btn btn-neutral float-right" title="社区治理">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../MTP/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../community/governance/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

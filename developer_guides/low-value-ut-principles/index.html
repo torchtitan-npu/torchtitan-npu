@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>低价值 UT 原则 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u4f4e\u4ef7\u503c UT \u539f\u5219";
+        var mkdocs_page_input_path = "developer_guides/low-value-ut-principles.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低价值 UT 原则</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">规则 1：先判断删除后失去什么</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">规则 2：私有不等于低价值，低价值也不等于私有</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">规则 3：防御性校验只保留不可替代的约束</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-python">规则 4：配置测试不要复写 Python 实现</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5">规则 5：性能机制不能用字段存在代替结果</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6">规则 6：测试框架和产品行为分开</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7">规则 7：退化数据会制造低价值测试</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#8">规则 8：实现细节断言要有明确维护理由</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#9">规则 9：隔离成本也是测试成本</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">常见候选</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">处置结果</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">低价值 UT 原则</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="ut">低价值 UT 原则</h1>
+<p>本文只用于判断一条 CPU unit test 是否值得长期保留，不负责定义产品功能覆盖、测试入口或 ST 规则。正向功能、真实入口、producer/consumer 连接和 expected 来源应由 UT review 规则单独审查。</p>
+<h2 id="1">规则 1：先判断删除后失去什么</h2>
+<p>删除候选测试前，必须指出它唯一保护的内容。如果删除后仍有另一条测试保护相同的用户可观察行为、受支持边界或数值语义，这条测试通常是重复的；如果只能说「代码被执行了」「对象存在」或「没有抛异常」，通常不足以证明它有长期价值。</p>
+<h2 id="2">规则 2：私有不等于低价值，低价值也不等于私有</h2>
+<p>判断「私有防御性分支」不能只看函数名是否带下划线。需要确认它没有作为模块或包的公开导出，只负责计算前的非法输入拒绝，不产生业务结果，也没有独立的用户可观察语义。反过来，私有函数如果实现了数值变换或状态映射，仍可能是高价值测试对象；公开 API 也可能包含不值得逐分支测试的实现细节。</p>
+<h2 id="3">规则 3：防御性校验只保留不可替代的约束</h2>
+<p>像 GDN <code>_validate_inputs()</code> 这样的校验，不应为每个 dtype、shape、device 和错误组合建立长期拒绝矩阵。无法证明独立用户语义的重复 defensive branch 应合并、缩小或删除；为验证一个 shape predicate 分配几十 MiB 的真实 tensor 也属于低价值做法。</p>
+<h2 id="4-python">规则 4：配置测试不要复写 Python 实现</h2>
+<p>配置 implementation test 不应把 <code>partial</code> 类型、函数名、<code>keywords</code> 字典、内部 tuple、对象 identity 或当前常量排列当成稳定契约。除非该值本身是公开 recipe 或兼容性约束，否则实现重排不应导致 UT 失败。配置测试的具体入口和行为覆盖由 UT review 规则判断，本文件只判断是否在测试实现表示。</p>
+<h2 id="5">规则 5：性能机制不能用字段存在代替结果</h2>
+<p>host cache、减少 <code>.item()</code> 同步、缓存 metadata 或调整内存布局属于实现机制。只断言 <code>seq_len_host</code>、<code>n_cmp_blocks_host</code> 等字段存在、值被写入，或某个 spy 被调用一次，不能证明用户可观察行为；没有独立行为结果的字段测试通常是低价值 implementation test。</p>
+<h2 id="6">规则 6：测试框架和产品行为分开</h2>
+<p>pytest fixture、runner、golden 读取器、报告渲染器、skill 脚本和 CI 选择逻辑可以有自测，但它们属于 tooling test，不计入产品 UT，也不应以测试名称暗示模型或算子行为已经覆盖。目录和执行入口如何安排由测试架构文档规定，不在本文件扩展成正向功能规则。</p>
+<h2 id="7">规则 7：退化数据会制造低价值测试</h2>
+<p>如果 fixture 使用全零、完全对称或线性参数，使不同公式得到相同结果，测试也只是在重复实现。应改成能区分实现的最小数据；无法改造时删除或降级其结论。expected 的来源和独立性由 UT review 规则审查。</p>
+<h2 id="8">规则 8：实现细节断言要有明确维护理由</h2>
+<p>内部缓存字段、私有命名、函数对象表示、调用次数和导入顺序只有在它们本身是兼容性要求时才值得锁定。若测试的唯一价值是防止一次重构改变 Python 表示，维护成本通常高于收益，应删除、改成行为断言，或迁移到专门的静态检查。</p>
+<h2 id="9">规则 9：隔离成本也是测试成本</h2>
+<p>模块导入时修改全局 RNG、<code>sys.modules</code>、环境变量、custom op 注册或 monkeypatch，会造成顺序依赖和跨测试污染。若一条测试还需要复杂恢复、巨型资源或特定执行顺序，而它只保护实现细节，应优先删除或隔离。</p>
+<h2 id="_1">常见候选</h2>
+<p>GDN defensive validation、配置对象表示性断言和 DSV4 host-cache 字段断言，分别适用规则 2/3、规则 4 和规则 5。这里仅说明低价值判定方法，不给出产品功能覆盖结论；具体测试是否覆盖改动，仍由 UT review 规则决定。</p>
+<h2 id="_2">处置结果</h2>
+<p>候选测试只允许四种处置：保留为有独立价值的产品 UT、缩小为最小边界测试、迁移到 tooling/benchmark/static check，或删除。处置记录必须写明删除后失去的证据和替代证据；不能只写「低价值」而不说明判断依据。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../lint_guide/" class="btn btn-neutral float-left" title="Lint 指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../metrics_and_debugging/" class="btn btn-neutral float-right" title="调试支持特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../lint_guide/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

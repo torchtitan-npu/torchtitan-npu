@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Unit Test 架构与迁移方案 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Unit Test \u67b6\u6784\u4e0e\u8fc1\u79fb\u65b9\u6848";
+        var mkdocs_page_input_path = "developer_guides/unit-test-architecture.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Unit Test 架构与迁移方案</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">目标</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">目录与统计边界</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#patches">patches/ 的职责和边界</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">执行归属</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">Unit Test 架构与迁移方案</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="unit-test">Unit Test 架构与迁移方案</h1>
+<p>本文记录 CPU unit test 的目录、执行和生产代码归属。它是开发约定，不替代 <code>test-review</code> skill 中针对某个 PR 的审查报告。</p>
+<h2 id="_1">目标</h2>
+<p>测试目录要能回答「被保护的对象是谁」，测试入口要能回答「这条测试是否会被执行」。目录归属和执行归属是两个维度，不能因为一个测试不计入产品 UT，就让它从 CI 中静默消失。</p>
+<h2 id="_2">目录与统计边界</h2>
+<p><code>tests/unit_tests/</code> 是 CPU 测试的统一执行根目录。生产语义测试按 <code>torchtitan_npu/</code> 的职责镜像放置：</p>
+<ul>
+<li><code>tests/unit_tests/compile/</code>、<code>config/</code>、<code>models/</code>、<code>ops/</code> 和 <code>override/</code> 分别保护对应的生产模块；</li>
+<li><code>tests/unit_tests/patches/torchtitan/</code> 只镜像有上游依据的临时 patch；<code>tests/unit_tests/patches/torch_npu/</code> 和 <code>tests/unit_tests/patches/workaround/</code> 镜像当前有效的 NPU runtime compatibility patch；</li>
+<li><code>tests/unit_tests/tooling/</code> 放仓库脚本和 skill 的自测，便于沿用现有 unit-test 入口执行，但这类测试不计入产品行为覆盖；</li>
+<li>多进程 worker 与启动它的测试放在同一个语义目录；</li>
+<li><code>tests/integration_tests/</code> 只放进入真实 <code>torchtitan.train</code> 的 NPU 模型 ST，不把 CPU UT、kernel pytest 或 runner 自测计入 ST。</li>
+</ul>
+<p>本次目录调整将以下文件归入统一执行根，但保留其 tooling 属性：</p>
+<pre><code class="language-text">tests/unit_tests/tooling/profiler/test_profiler_tools.py
+tests/unit_tests/tooling/training_log_visualization/test_training_log_visualization.py
+</code></pre>
+<p>它们不再散落在 <code>scripts/tests/</code> 或 <code>.agents/skills/.../tests/</code>，也不因此变成产品 UT。产品 UT 统计和报告必须按语义归属排除 <code>tooling/</code>。</p>
+<h2 id="patches"><code>patches/</code> 的职责和边界</h2>
+<p><code>torchtitan_npu/patches/torchtitan/</code> 只保存当前固定上游版本尚未包含、且已有上游 PR 或 commit 依据的临时 patch。上游版本吸收对应改动后，应删除 patch、导入入口和专用测试。</p>
+<p><code>torchtitan_npu/patches/torch_npu/</code> 与 <code>torchtitan_npu/patches/workaround/</code> 的现有文件不是「上游 torchtitan 临时 patch」：它们改变 PyTorch、Inductor 或 <code>torch_npu</code> 的运行时行为，例如 <code>determinism.py</code> 替换 <code>torch.use_deterministic_algorithms</code>，<code>device_copy.py</code> 修改 Inductor 的 <code>DeviceCopy</code> 和 <code>prims.device_put</code>。这两个目录是当前有效的 runtime compatibility 归属，可以继续维护；本次测试目录整理不移动生产代码，也不要求新增 <code>runtime/compat</code> 层。若未来要迁移，必须另开包含导入时机、兼容别名和真实激活测试的原子架构变更。</p>
+<h2 id="_3">执行归属</h2>
+<p>只要测试放在 <code>tests/unit_tests/</code>，现有 <code>.ci/unit_test.sh</code> 的 <code>pytest tests/unit_tests</code> 就能发现它；报告仍须单独标注 <code>tooling</code>，避免把 tooling 通过数写成产品覆盖。后续若保留其他目录外的测试，必须在对应 CI suite 显式列出执行路径，不能依赖开发者手工运行。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../metrics_and_debugging/" class="btn btn-neutral float-left" title="调试支持特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../feature_guides/deepseek_v4_cp/" class="btn btn-neutral float-right" title="DeepSeek-V4 上下文并行（CP）">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../feature_guides/deepseek_v4_cp/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

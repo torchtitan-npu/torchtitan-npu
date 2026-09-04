@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>EP 通信域分离 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "EP \u901a\u4fe1\u57df\u5206\u79bb";
+        var mkdocs_page_input_path = "feature_guides/ep_process_group.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">EP 通信域分离</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">动机</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">适用范围</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">通信域关系</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#1-sparse-mesh-ep">1. 替换 sparse mesh 的 EP 轴</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#2-dispatcher-wiring">2. 适配 dispatcher wiring</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#3-deepep-group">3. DeepEP 专用 group</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">EP 通信域分离</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="ep">EP 通信域分离</h1>
+<p>本特性为 Ascend NPU 上的 MoE 专家并行（Expert Parallel，EP）创建独立的
+HCCL process group，同时保留 dense、<code>dp_replicate</code> 和 <code>efsdp</code> 使用的原有通信组。
+特性在导入 <code>torchtitan_npu</code> 时自动生效，不增加配置字段；仅对 EP size 大于 1
+且 process group 不是 <code>fake</code> backend 的运行生效。</p>
+<h2 id="_1">动机</h2>
+<p>torchtitan 的 <code>ParallelDims.build_mesh()</code> 在同一个 sparse mesh 构建流程中创建
+<code>dp_replicate</code>、<code>efsdp</code> 和 <code>ep</code> 轴。在部分并行拓扑下，FSDP 与 EP 会复用同一个
+process group。FSDP 的 all-gather 和 reduce-scatter 会阻塞 EP 的 all-to-all，使两类通信无法充分重叠，
+通信争用可能影响整网训练性能。</p>
+<h2 id="_2">适用范围</h2>
+<p><code>build_mesh()</code> 的完整 sparse mesh 轴为
+<code>("pp", "dp_replicate", "efsdp", "ep")</code>。<code>spmd_types</code> 注册时使用其子 mesh
+<code>("dp_replicate", "efsdp", "ep")</code>，<code>pp</code> 由 pipeline parallel 路径单独管理。
+EP 通信域分离只替换 <code>ep</code> 轴对应的 process group，其他轴、mesh layout、rank map
+和 process group 的 ranks 保持不变。</p>
+<table>
+<thead>
+<tr>
+<th>运行路径</th>
+<th>EP size 大于 1</th>
+<th>EP size 为 1 或 <code>fake</code> backend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spmd_types</code></td>
+<td>注册 sparse mesh 时替换 <code>ep</code> 轴；<code>maybe_set_sparse_mesh()</code> 继续使用真实 <code>DeviceMesh</code></td>
+<td>返回原 mesh，不创建新 process group</td>
+</tr>
+<tr>
+<td><code>default</code> / <code>full_dtensor</code></td>
+<td>通过 <code>BaseEPTokenDispatcher.wire_meshes()</code> 将独立 EP mesh 传给 dispatcher</td>
+<td>返回原 mesh，不创建新 process group</td>
+</tr>
+<tr>
+<td>DeepEP</td>
+<td>继承上述 dispatcher wiring；按 <code>ElasticBuffer</code> 容量配置，显式调用 <code>get_deepep_group()</code></td>
+<td>不创建独立 group</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">通信域关系</h2>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>FSDP/EFSDP</th>
+<th>EP</th>
+<th>PG 数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分离前</td>
+<td>原 process group</td>
+<td>与 FSDP/EFSDP 共用</td>
+<td>1</td>
+</tr>
+<tr>
+<td>分离后</td>
+<td>原 process group</td>
+<td>独立 process group</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>独立 EP process group 与原 process group 使用相同 ranks，因此不改变专家分片或 token 路由，
+只改变 EP collective 和通信 buffer 使用的 process group。</p>
+<h2 id="_4">实现原理</h2>
+<h3 id="1-sparse-mesh-ep">1. 替换 sparse mesh 的 EP 轴</h3>
+<p><code>_patch_sparse_mesh_registration()</code> 包装
+<code>torchtitan.distributed.spmd_types.set_spmd_meshes()</code>。注册 sparse mesh 时：</p>
+<ol>
+<li><code>_replace_sparse_ep_mesh()</code> 检查 mesh 是否包含 <code>ep</code> 轴，并取出 <code>sparse_mesh["ep"]</code>。</li>
+<li><code>_separate_ep_mesh()</code> 对 EP size、<code>fake</code> backend 和缓存进行检查。</li>
+<li><code>_create_separate_ep_mesh()</code> 调用 <code>DeviceMesh._unflatten()</code> 创建一维
+   <code>("ep",)</code> mesh，并通过 <code>ProcessGroupHCCL.Options()</code> 指定 HCCL backend。</li>
+<li>浅拷贝原 sparse mesh，仅替换 <code>_dim_group_names</code> 中 <code>ep</code> 轴的 process group 名称。</li>
+<li>通过 <code>_SPARSE_MESHES</code> 缓存替换后的 sparse mesh，通过 <code>_EP_MESHES</code> 缓存独立 EP mesh。</li>
+</ol>
+<p><code>_warm_spmd_mesh_axis()</code> 会对新 process group 调用 <code>spmd.MeshAxis.of()</code>，使它在
+<code>torch.compile</code> 观察到前完成 <code>spmd_types</code> 的 mesh axis 注册。</p>
+<h3 id="2-dispatcher-wiring">2. 适配 dispatcher wiring</h3>
+<p><code>_patch_base_dispatcher_wiring()</code> 包装
+<code>BaseEPTokenDispatcher.wire_meshes()</code>。所有继承该基类并直接读取
+<code>self.ep_mesh</code> 的 dispatcher 都会收到独立 EP mesh，包括标准 all-to-all、DeepEP、
+HybridEP 和 MinimalAsyncEP 路径。</p>
+<p>若 dispatcher 设置 <code>_uses_custom_ep_process_group = True</code>，wrapper 会保留该
+dispatcher 自己的 EP mesh，不再创建通用的独立 mesh。</p>
+<h3 id="3-deepep-group">3. DeepEP 专用 group</h3>
+<p><code>get_deepep_group()</code> 为需要按 buffer 容量配置通信组的 NPU DeepEP 调用方提供显式
+接口：</p>
+<ol>
+<li>使用 <code>ElasticBuffer.get_moe_ep_ccl_buffer_size()</code> 根据 EP world size、
+   <code>num_max_tokens_per_rank</code>、hidden dim、expert 数量和 <code>top_k</code> 计算容量。</li>
+<li>使用 <code>ProcessGroupHCCL.Options()</code> 设置
+   <code>{"hccl_buffer_size": &lt;capacity_mb&gt;}</code>。</li>
+<li>通过 <code>dist.new_group(..., backend="hccl", group_desc="npu_deepep")</code> 创建
+   HCCL process group。</li>
+<li>按源 EP group 的 <code>group_name</code> 缓存 group。后续调用复用同一 group；如果请求的
+   buffer 容量更大，则报错，要求共享同一 EP group 的 dispatcher 使用共同的最大配置。</li>
+</ol>
+<p>当前上游 <code>DeepEPTokenDispatcher</code> 通过 <code>BaseEPTokenDispatcher.wire_meshes()</code> 获取
+独立 EP mesh；<code>get_deepep_group()</code> 是按 <code>ElasticBuffer</code> 需求创建专用 group 的显式
+API，不会额外 patch dispatcher 的底层算子。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v4_tnd/" class="btn btn-neutral float-left" title="DeepSeek-V4 TND 适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../fused_ops/" class="btn btn-neutral float-right" title="融合算子接入指南">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v4_tnd/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../fused_ops/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>Muon 优化器特性 - torchtitan-npu</title>
+    <title>DeepSeek-V4 Muon 优化器 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Muon \u4f18\u5316\u5668\u7279\u6027";
+        var mkdocs_page_name = "DeepSeek-V4 Muon \u4f18\u5316\u5668";
         var mkdocs_page_input_path = "feature_guides/muon_optimizer.md";
         var mkdocs_page_url = null;
       </script>
@@ -36,119 +36,60 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
-                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练特性（MXFP8 / HiF8）</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../model_custom/">Model Custom框架介绍</a>
-                  </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Muon 优化器特性</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 Muon 优化器</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#_1">实现原理</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_2">参数分配策略</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">当前方案</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#newton-schulz">Newton-Schulz 正交化</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#newton-schulzhybrid_ns">混合 Newton-Schulz（hybrid_ns）</a>
+    <li class="toctree-l2"><a class="reference internal" href="#muon">如何使用 Muon</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#newton-schulz_1">编译 Newton-Schulz</a>
+    <li class="toctree-l2"><a class="reference internal" href="#swap">如何开启 swap</a>
     </li>
-        </ul>
+    <li class="toctree-l2"><a class="reference internal" href="#dsv4">DSV4 与上游方案的差异</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_3">学习率调整模式</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#original">original 模式</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#match_rms_adamw">match_rms_adamw 模式</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#_4">模式选择建议</a>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#_5">分布式通信机制</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#swap-optimizer">Swap Optimizer（推荐）</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#swap_merge_buckets">swap_merge_buckets 配置</a>
-    </li>
-        </ul>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_6">配置选项</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#_7">配置示例</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#1match_rms_adamw">示例 1：match_rms_adamw 模式</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#2original">示例 2：original 模式</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#3-swap-optimizer">示例 3：启用 Swap Optimizer</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#4-muon-newton-schulz">示例 4：只编译 Muon Newton-Schulz</a>
-    </li>
-        </ul>
-    </li>
-        </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_8">参考文献</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">能力边界</a>
     </li>
     </ul>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../npu_fused_ops/">NPU 融合算子适配</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../swap_optimizer/">SwapOptimizer 特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 支持</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../vlm/">VLM NPU 支持</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../parallelism/custom_cp/">自定义 Context Parallel 特性</a>
-                </li>
-    </ul>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Recipe</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Test guides</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -173,7 +114,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">Muon 优化器特性</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 Muon 优化器</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -182,291 +123,183 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="muon">Muon 优化器特性</h1>
-<p>在大规模语言模型的训练中，优化器的选择对收敛速度和最终性能有着重要影响。传统的 Adam/AdamW 优化器虽然通用性强，但将参数视为独立的一维向量进行更新，忽略了矩阵参数的结构信息。Muon 优化器通过引入动量正交化（Momentum Orthogonalization）技术，针对 2D/3D 矩阵参数实现了更高效的梯度下降策略，在大模型训练中展现出更快的收敛速度。</p>
-<h2 id="_1">实现原理</h2>
-<p>torchtitan-npu 采用了 <strong>Muon + AdamW 混合优化器</strong>策略，核心代码定义在 <code>torchtitan_npu/patches/optimizer/muon_optimizer.py</code> 。</p>
-<h3 id="_2">参数分配策略</h3>
-<p>模型参数根据维度和语义自动路由到不同的优化器：</p>
+                <h1 id="deepseek-v4-muon">DeepSeek-V4 Muon 优化器</h1>
+<p>本文说明当前 <code>master</code> 分支中的 Muon 方案、使用方法和能力边界。
+实现以 TorchTitan 上游 <code>DistributedMuon</code>/FlexShard 为核心；上游 FlexShard 的
+<code>ComputeLayout</code>、<code>Owned</code>、<code>BlockShard</code>、bucket 和 storage-to-compute 语义，参见
+<a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/distributed/flex_shard/README.md">TorchTitan FlexShard README</a>。</p>
+<h2 id="_1">当前方案</h2>
+<p>DSV4 使用一个混合优化器容器：匹配 Muon 规则的矩阵参数交给
+<code>DistributedMuon</code>，其余参数交给 AdamW。配置入口是
+<code>torchtitan_npu/models/deepseek_v4/config_registry.py</code> 中的
+<code>_dsv4_muon_profile()</code>。该 profile 只承载模型参数匹配、FlexShard compute
+layout 和 bucket 元数据；所有可调优化器标量由 CLI schema 提供。</p>
+<p>Muon 参数主要包括：</p>
 <ul>
-<li><strong>2D 参数</strong>（如 Linear 层的权重矩阵）→ 使用 Muon 优化器</li>
-<li>例外：名称中包含 <code>embed</code>、<code>lm_head</code>、<code>output</code> 的 2D 参数 → 使用 AdamW（此类层不适合正交化更新）</li>
-<li><strong>3D 参数</strong>（如 MoE 专家权重）→ 使用 Muon 优化器</li>
-<li><strong>1D 及其他参数</strong>（如偏置、LayerNorm 参数）→ 使用 AdamW 优化器</li>
+<li>attention 投影、压缩器和 indexer 投影；</li>
+<li>shared experts、routed experts 和 router；</li>
+<li>mHC 的 <code>hc_fn</code> 以及全局 <code>hc_head.hc_fn</code>。</li>
+<li>主干 compressor 与 indexer compressor 的二维 <code>ape</code> 参数。</li>
 </ul>
-<p>两种优化器被统一封装在 <code>MuonHybridOptimizersContainer</code> 中，对外提供与标准优化器一致的 <code>step()</code>、<code>zero_grad()</code>、<code>state_dict()</code> / <code>load_state_dict()</code> 接口。</p>
-<h3 id="newton-schulz">Newton-Schulz 正交化</h3>
-<p>Muon 的核心操作是对动量梯度进行正交化（LMO，Low-orthogonal Matrix Operation），通过 Newton-Schulz 迭代算法实现矩阵的零次幂近似（即投影到正交矩阵流形上）：</p>
-<p>$$X_{k+1} = a \cdot X_k + b \cdot X_k X_k^T X_k + c \cdot (X_k X_k^T)^2 X_k$$</p>
-<p>其中主系数为 $(a, b, c) = (3.4445, -4.7750, 2.0315)$，在零点处具有最大斜率，确保快速收敛。</p>
-<h4 id="newton-schulzhybrid_ns">混合 Newton-Schulz（hybrid_ns）</h4>
-<p>当启用 <code>muon_hybrid_ns = true</code> 时，采用 DeepSeek-V4 提出的混合迭代策略：</p>
-<ul>
-<li><strong>前 8 步</strong>：使用主系数 $(3.4445, -4.7750, 2.0315)$</li>
-<li><strong>后 2 步</strong>：切换到次系数 $(2.0, -1.5, 0.5)$</li>
-</ul>
-<p>此策略在保持收敛速度的同时，提升了正交化结果的数值稳定性。</p>
-<h4 id="newton-schulz_1">编译 Newton-Schulz</h4>
-<p>Muon 支持只对 Newton-Schulz 张量函数启用 <code>torch.compile</code>，编译边界只覆盖 <code>zeropower_via_newtonschulz5()</code>，其余逻辑仍保持 eager 执行。</p>
-<p>启用方式是打开全局 compile，并在 <code>components</code> 中包含 <code>"muon"</code>：</p>
-<pre><code class="language-python">from torchtitan.config import CompileConfig
-
-compile = CompileConfig(
-    enable=True,
-    components=[&quot;muon&quot;],
-)
+<p>未匹配的参数（例如 embedding、输出头、归一化参数和其他 1D 参数）落入 AdamW
+组。Muon 使用上游 Newton-Schulz 实现；DSV4 recipe 的默认 CLI 值为：</p>
+<pre><code class="language-text">momentum=0.95
+weight_decay=0.1
+ns_steps=10
+adjust_lr_fn=&quot;match_rms_adamw&quot;
+foreach=False
 </code></pre>
-<p>启动时也可以通过命令行覆盖：</p>
-<pre><code class="language-bash">bash scripts/run_train.sh \
-  --compile.enable \
-  --compile.components muon
-</code></pre>
-<p>Muon compile 当前使用如下策略：</p>
-<ul>
-<li><code>fullgraph=True</code>：要求 Newton-Schulz 函数完整成图，避免编译边界内出现 graph break</li>
-<li><code>dynamic=True</code>：允许 Newton-Schulz 在不同矩阵尺寸间复用动态图编译结果，减少 shape specialization 导致的重复编译</li>
-<li><code>backend=&lt;compile.backend&gt;</code>：若 <code>CompileConfig.backend</code> 已配置，则透传给 <code>torch.compile</code></li>
-</ul>
-<p>启用 <code>dynamic=True</code> 后，Muon Newton-Schulz 可覆盖 2D 与 3D 输入以及不同矩阵尺寸，避免仅因 batch 或矩阵形状变化触发大量 rank/shape specialization。</p>
-<h3 id="_3">学习率调整模式</h3>
-<p>Muon 优化器支持两种学习率调整模式（通过 <code>muon_adjust_lr_fn</code> 配置），其核心区别在于如何根据矩阵形状调整学习率，以及是否需要独立的超参数调优。</p>
-<table>
-<thead>
-<tr>
-<th>模式</th>
-<th>调整公式</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>original</code></td>
-<td>$\gamma \leftarrow \gamma \cdot \sqrt{\max(1, A/B)}$</td>
-<td>Keller Jordan 原始实现，根据矩阵宽高比调整</td>
-</tr>
-<tr>
-<td><code>match_rms_adamw</code></td>
-<td>$\gamma \leftarrow 0.18 \cdot \gamma \cdot \sqrt{\max(A, B)}$</td>
-<td>Moonshot 实现，直接复用 AdamW 的 lr 和 weight_decay</td>
-</tr>
-</tbody>
-</table>
-<h4 id="original">original 模式</h4>
-<p>该模式源自 Muon 创始人 Keller Jordan 的原始实现。调整公式为：</p>
-<p>$$\gamma_{\text{adjusted}} = \gamma \times \sqrt{\max\left(1, \frac{A}{B}\right)}$$</p>
-<p>其中 $A$ 和 $B$ 是矩阵的两个维度。这个调整的目的是：<strong>让正交化后的梯度更新在不同形状的矩形矩阵上具有一致的 RMS（Root Mean Square）</strong>。</p>
-<ul>
-<li>当 $A \le B$（宽矩阵，如 FFN 中的中间层）时，系数为 1，不做额外调整</li>
-<li>当 $A &gt; B$（高矩阵，如输出层）时，按 $\sqrt{A/B}$ 缩放</li>
-</ul>
-<p>由于调整幅度较大，通常需要单独为 Muon 调优学习率（即配置 <code>muon_lr</code>），一般来说可以将 AdamW 的学习率放大 10 倍来作为 Muon 的学习率。</p>
-<h4 id="match_rms_adamw">match_rms_adamw 模式</h4>
-<p>该模式来自 Moonshot 团队的论文 <a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a>。调整公式为：</p>
-<p>$$\gamma_{\text{adjusted}} = 0.18 \times \gamma \times \sqrt{\max(A, B)}$$</p>
-<blockquote>
-<p>注：当前实现使用系数 0.18（与 DeepSeek-V4 一致），Moonshot 原始论文使用 0.2。</p>
-</blockquote>
-<p>这个模式的设计目标是：<strong>让 Muon 可以直接复用已经为 AdamW 调优好的学习率和权重衰减超参数</strong>，无需额外的超参数搜索。</p>
-<h4 id="_4">模式选择建议</h4>
-<ul>
-<li><strong>使用 <code>match_rms_adamw</code></strong>（默认）：如果你已经为 AdamW 调优好了超参数，希望直接尝试 Muon 而不想重新调参</li>
-<li><strong>使用 <code>original</code></strong>：如果你愿意投入时间单独调优 Muon 的学习率，追求可能的更好收敛效果</li>
-</ul>
-<h3 id="_5">分布式通信机制</h3>
-<p><code>DistributedMuon</code> 优化器针对不同的并行策略实现了三种参数更新路径：</p>
-<table>
-<thead>
-<tr>
-<th>并行策略</th>
-<th>通信方式</th>
-<th>适用场景</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>FSDP</td>
-<td>all_to_all 双向通信</td>
-<td>FSDP 分片的 2D 参数</td>
-</tr>
-<tr>
-<td>DDP</td>
-<td>all_gather 通信</td>
-<td>DDP 复制的 2D 参数</td>
-</tr>
-<tr>
-<td>Expert/MoE</td>
-<td>本地 LMO（无跨卡通信）</td>
-<td>3D 专家权重（已通过 EP 切分）</td>
-</tr>
-</tbody>
-</table>
-<p><strong>FSDP 路径</strong>（<code>step_fsdp</code>）：采用 owner-per-bucket 方案，每个 rank 负责一组参数的完整 LMO 计算。通过两轮 all_to_all 通信：第一轮将各 rank 的梯度分片汇聚到参数 owner，owner 完成正交化后，第二轮将更新分片发回各 rank。</p>
-<p><strong>DDP 路径</strong>（<code>step_ddp</code>）：每个 rank 先对本地负责的参数计算 LMO 更新，然后通过 all_gather 将更新广播给所有 rank。支持与 TP 的联合使用，在 LMO 计算前先通过 all_gather 收集 TP 分片。</p>
-<p><strong>Expert 路径</strong>（<code>step_experts</code>）：专家权重已通过 Expert Parallel 切分到各 rank，每个 rank 独立对本地专家参数执行 LMO，无需跨卡通信。</p>
-<h3 id="swap-optimizer">Swap Optimizer（推荐）</h3>
-<p>对于显存受限的场景，Muon 优化器支持通过 <code>swap_optimizer = true</code> 启用优化器状态 CPU 卸载，将 Muon 的 <code>momentum_buffer</code> 和 AdamW 的 <code>exp_avg</code>、<code>exp_avg_sq</code> 卸载到 CPU，仅在优化器 step 期间按需换入 NPU。</p>
-<p><code>virtual_optimizer</code> 当前不支持与 Muon 联用。若 <code>optimizer.name = "Muon"</code> 且同时设置 <code>virtual_optimizer = true</code>，框架会在 optimizer 构建阶段直接报错。</p>
-<h4 id="swap_merge_buckets">swap_merge_buckets 配置</h4>
-<p><code>swap_merge_buckets</code> 控制 Muon momentum_buffer H2D/D2H 操作的合并粒度。Muon 参数被分成多个 bucket（由 FSDP all_to_all 通信决定），每个 bucket 独立执行一次 H2D（step 前）和 D2H（step 后）。<code>swap_merge_buckets</code> 决定将多少个连续 bucket 的 H2D/D2H 合并为一次 stream 操作。</p>
-<h2 id="_6">配置选项</h2>
-<p>Muon 优化器在模型的 <code>config_registry.py</code> 中配置，由 <code>torchtitan_npu.config.configs.OptimizerConfig</code> 相关字段进行配置：</p>
-<table>
-<thead>
-<tr>
-<th>配置项</th>
-<th>类型</th>
-<th>默认值</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>name</code></td>
-<td>str</td>
-<td>"AdamW"</td>
-<td>优化器类型，设置为 <code>"Muon"</code> 启用本特性</td>
-</tr>
-<tr>
-<td><code>lr</code></td>
-<td>float</td>
-<td>—</td>
-<td>基础学习率，AdamW 部分直接使用；Muon 部分取决于 <code>muon_adjust_lr_fn</code></td>
-</tr>
-<tr>
-<td><code>muon_lr</code></td>
-<td>float</td>
-<td>None</td>
-<td>Muon 专用学习率。仅当 <code>muon_adjust_lr_fn = "original"</code> 时生效；若不设置则回退到 <code>lr</code>；当 <code>muon_adjust_lr_fn = "match_rms_adamw"</code> 时此值被忽略</td>
-</tr>
-<tr>
-<td><code>muon_momentum</code></td>
-<td>float</td>
-<td>0.95</td>
-<td>Muon 的动量因子</td>
-</tr>
-<tr>
-<td><code>muon_enable_nesterov</code></td>
-<td>bool</td>
-<td>True</td>
-<td>是否启用 Nesterov 动量</td>
-</tr>
-<tr>
-<td><code>muon_ns_steps</code></td>
-<td>int</td>
-<td>5</td>
-<td>Newton-Schulz 正交化迭代步数，影响正交化精度与计算开销。值越大正交化越精确，但计算量也越大</td>
-</tr>
-<tr>
-<td><code>muon_adjust_lr_fn</code></td>
-<td>str</td>
-<td>"match_rms_adamw"</td>
-<td>学习率调整模式：<code>"original"</code> 或 <code>"match_rms_adamw"</code></td>
-</tr>
-<tr>
-<td><code>muon_hybrid_ns</code></td>
-<td>bool</td>
-<td>False</td>
-<td>是否启用混合 Newton-Schulz 迭代（前 8 步用主系数，后续步用次系数）</td>
-</tr>
-<tr>
-<td><code>swap_optimizer</code></td>
-<td>bool</td>
-<td>False</td>
-<td>是否启用 Swap Optimizer，将优化器状态卸载到 CPU 并异步换入换出以节省显存</td>
-</tr>
-<tr>
-<td><code>swap_merge_buckets</code></td>
-<td>int</td>
-<td>1</td>
-<td>Swap H2D/D2H 合并桶数。值越大 stream 同步开销越低但峰值显存略增。推荐 4~16</td>
-</tr>
-</tbody>
-</table>
-<h3 id="_7">配置示例</h3>
-<h4 id="1match_rms_adamw">示例 1：match_rms_adamw 模式</h4>
-<p>最简配置，直接复用 AdamW 超参，无需额外调参即可使用 Muon：</p>
-<p>在 <code>torchtitan_npu/models/&lt;model&gt;/config_registry.py</code> 的配置函数中设置：</p>
-<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
-
-optimizer = OptimizerConfig(
-    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
-    lr=2.2e-4,                            # 基础学习率（Muon 和 AdamW 共用）
-    weight_decay=0.1,
-    muon_momentum=0.95,                   # Muon 动量因子
-    muon_enable_nesterov=True,            # 启用 Nesterov 动量
-    muon_ns_steps=10,                     # 正交化步数
-    muon_adjust_lr_fn=&quot;match_rms_adamw&quot;,  # 复用 AdamW 超参（默认值，可省略）
-    muon_hybrid_ns=True,                  # 启用混合 NS
-)
-</code></pre>
-<p>启动时也可以通过命令行覆盖同名字段：</p>
-<pre><code class="language-bash">bash scripts/run_train.sh \
+<p><code>match_rms_adamw</code> 使 Muon 更新幅度与 AdamW 超参数处于相近尺度；当前实现没有在
+DSV4 配置中暴露独立的 <code>muon_lr</code> 或 <code>hybrid_ns</code> 开关。</p>
+<h2 id="muon">如何使用 Muon</h2>
+<p>使用常规 DSV4 配方，并显式选择 Muon。例如 8 卡 DSV4 Flash（43 层、16
+experts）：</p>
+<pre><code class="language-bash">MODULE=torchtitan_npu.models.deepseek_v4 \
+CONFIG=deepseek_v4_flash_43layers_16experts \
+NGPU=8 \
+bash scripts/run_train.sh \
+  --hf-assets-path tests/assets/deepseek_v3 \
+  --dataloader.dataset c4_test \
+  --dataloader.dataset-path tests/assets/c4_test \
+  --parallelism.spmd-backend spmd_types \
+  --parallelism.data-parallel-shard-degree 8 \
+  --parallelism.data-parallel-replicate-degree 1 \
+  --parallelism.expert-parallel-degree 8 \
+  --parallelism.tensor-parallel-degree 1 \
+  --parallelism.context-parallel-degree 1 \
+  --parallelism.pipeline-parallel-degree 1 \
+  --training.local-batch-size 1 \
+  --training.global-batch-size -1 \
+  --training.seq-len 4096 \
+  --training.steps 100 \
   --optimizer.name Muon \
   --optimizer.lr 2.2e-4 \
+  --optimizer.weight_decay 0.1 \
   --optimizer.muon_momentum 0.95 \
-  --optimizer.muon_ns_steps 10
+  --optimizer.muon_enable_nesterov \
+  --optimizer.muon_ns_steps 10 \
+  --optimizer.muon_adjust_lr_fn match_rms_adamw \
+  --debug.no-moe-force-load-balance \
+  --checkpoint.no-enable \
+  --override.imports \
+    torchtitan_npu.override.common.rms_norm.asc \
+    torchtitan_npu.override.common.rope.asc_complex \
+    torchtitan_npu.override.deepseek_v4.sparse_attn.asc_metadata \
+    torchtitan_npu.override.deepseek_v4.sparse_attn.asc \
+    torchtitan_npu.override.deepseek_v4.mhc.asc_hc_post \
+    torchtitan_npu.override.common.token_dispatcher.npu_all_to_all_token_dispatcher
 </code></pre>
-<h4 id="2original">示例 2：original 模式</h4>
-<p>需要为 Muon 单独设置学习率，适合愿意投入调参资源的场景：</p>
-<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
-
-optimizer = OptimizerConfig(
-    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
-    lr=3e-4,                              # AdamW 部分的学习率
-    muon_lr=3e-3,                         # Muon 专用学习率（通常为 AdamW lr 的 10 倍）
-    weight_decay=0.01,
-    muon_momentum=0.95,                   # Muon 动量因子
-    muon_enable_nesterov=True,            # 启用 Nesterov 动量
-    muon_ns_steps=5,                      # 正交化步数
-    muon_adjust_lr_fn=&quot;original&quot;,         # 使用独立的 lr 调度器
-)
-</code></pre>
-<h4 id="3-swap-optimizer">示例 3：启用 Swap Optimizer</h4>
-<p>在显存受限的场景下，将优化器状态卸载到 CPU，通过异步 H2D/D2H 流水线减少性能损失：</p>
-<pre><code class="language-python">from torchtitan_npu.config.configs import OptimizerConfig
-
-optimizer = OptimizerConfig(
-    name=&quot;Muon&quot;,                          # 使用 Muon 混合优化器
-    lr=2.2e-4,
-    weight_decay=0.1,
-    muon_momentum=0.95,
-    muon_enable_nesterov=True,
-    muon_ns_steps=10,
-    muon_adjust_lr_fn=&quot;match_rms_adamw&quot;,
-    muon_hybrid_ns=True,
-    swap_optimizer=True,                  # 启用 Swap Optimizer，优化器状态卸载到 CPU
-    swap_merge_buckets=4,                 # 每 4 个 bucket 合并一次 H2D/D2H，平衡性能与显存
-)
-</code></pre>
-<p>如果同时开启 <code>virtual_optimizer=True</code>，当前实现会直接拒绝构建，因为 Muon 尚未适配 Virtual Optimizer 的状态分片和 step 路径。</p>
-<h4 id="4-muon-newton-schulz">示例 4：只编译 Muon Newton-Schulz</h4>
-<p>该配置适合验证 optimizer 侧 compile，不影响 model/loss 的 eager 或原有 compile 策略：</p>
-<pre><code class="language-python">from torchtitan.config import CompileConfig
-
-compile = CompileConfig(
-    enable=True,
-    components=[&quot;muon&quot;],
-)
-</code></pre>
-<p>启动时也可以通过命令行覆盖同名字段：</p>
-<pre><code class="language-bash">bash scripts/run_train.sh \
-  --compile.enable \
-  --compile.components muon
-</code></pre>
-<p>Muon compile 默认使用 <code>dynamic=True</code>，通常不需要额外提高 <code>torch._dynamo.config.recompile_limit</code>。</p>
-<h2 id="_8">参考文献</h2>
+<p><code>--optimizer.name</code> 默认为 <code>native</code>，保持常规 recipe 原有的 AdamW 行为；设为
+<code>Muon</code> 时才生成 DistributedMuon 与 AdamW fallback 两组。不存在 <code>_muon</code> 专用
+recipe。DSV4 Muon 当前要求：</p>
 <ul>
-<li><a href="https://arxiv.org/pdf/2606.19348">DeepSeek-V4 Technical Report</a></li>
-<li><a href="https://arxiv.org/pdf/2502.16982">Muon is Scalable for LLM Training</a></li>
-<li><a href="https://kexue.fm/archives/11416">Muon 优化器指南：快速上手与关键细节</a></li>
-<li><a href="https://www.spaces.ac.cn/archives/10592">Muon 优化器赏析：从向量到矩阵的本质跨越</a></li>
+<li><code>tensor_parallel_degree=1</code>；</li>
+<li><code>pipeline_parallel_degree=1</code>；</li>
+<li>optimizer 使用 <code>DistributedMuon</code> 的 FlexShard compute layout；</li>
+<li>routed experts 的布局同时声明 DP shard、EFSDP 和 EP，以覆盖当前 EP=8/EP=1
+  的存储 mesh；</li>
+<li>AdamW 组保持 <code>foreach=False</code>。Ascend 上 <code>foreach=True</code> 可能触发
+  <code>aclnnForeachLerpScalar</code> 不支持错误。</li>
 </ul>
+<h2 id="swap">如何开启 swap</h2>
+<p>swap 是显式 opt-in 的 override，不是当前 recipe 中的 <code>swap_optimizer=true</code> 字段。
+在同一条命令的 <code>--override.imports</code> 末尾增加：</p>
+<pre><code class="language-text">torchtitan_npu.override.common.muon_state_swap.muon_state_swap
+torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
+</code></pre>
+<p>完整示例（省略与上例相同的模型、数据和并行参数）：</p>
+<pre><code class="language-bash">--override.imports \
+  ... \
+  torchtitan_npu.override.common.muon_state_swap.muon_state_swap \
+  torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
+</code></pre>
+<p>启用后：</p>
+<ul>
+<li>Muon 的 <code>momentum_buffer</code> 在首次创建后注册为 NovaSwap tensor，并在 step 前
+  H2D、step 后 D2H；</li>
+<li>AdamW 的 <code>exp_avg</code> 和 <code>exp_avg_sq</code> 在 step 前换入、step 后换出；</li>
+<li>optimizer state 仍由 PyTorch optimizer 懒创建，swap 不会在模型初始化阶段提前
+  生成完整 state storage；</li>
+<li>AdamW 和 Muon 使用不同的唯一 swap name，避免多个 optimizer 实例互相覆盖；</li>
+<li>Muon 使用 FlexShard 的 compute layout 和 per-layer bucket，swap 只包裹 state
+  tensor 的生命周期，不改变参数 storage layout。</li>
+</ul>
+<p>推荐同时关闭 checkpoint：</p>
+<pre><code class="language-bash">--checkpoint.no-enable
+</code></pre>
+<p>当前 <code>muon_state_swap_checkpoint</code> 会拒绝 checkpoint save/load，以及
+<code>checkpoint.initial_load_path</code>。因此当前 swap 方案不能用于带 optimizer state 的
+断点续训；需要 checkpoint 互操作时，应先关闭该 swap override 并使用普通 optimizer
+路径。</p>
+<h2 id="dsv4">DSV4 与上游方案的差异</h2>
+<p>上游 FlexShard README 描述的是通用 optimizer-compute 基础设施和 Kimi 集成：
+<code>ComputeLayout</code> 可以表达 <code>Owned</code>、<code>BlockShard</code>、多 mesh axis 的 storage-to-compute
+重分布，<code>BucketConfig</code> 用于打包通信并与 optimizer compute 重叠。当前 DSV4 复用这些
+上游 API，但配置和运行边界更窄：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>上游 FlexShard / DistMuon</th>
+<th>当前 DSV4 适配</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>参数选择</td>
+<td>由具体模型 registry 定义</td>
+<td>固定 DSV4 attention、experts、router、mHC 参数正则</td>
+</tr>
+<tr>
+<td>compute layout</td>
+<td>支持 <code>Owned</code>、<code>BlockShard</code>、per-head 等通用布局</td>
+<td>主要使用 <code>Owned</code>，attention <code>wq_b/wo_a</code> 使用 per-head <code>Shard(0)</code>，routed experts 使用 DP/EFSDP/EP <code>Shard(0)</code></td>
+</tr>
+<tr>
+<td>bucket</td>
+<td>通用 bucket API</td>
+<td>每层一个 bucket，<code>hc_head</code> 单独一个 bucket</td>
+</tr>
+<tr>
+<td>TP/PP</td>
+<td>由上游集成决定</td>
+<td>当前明确拒绝 TP&gt;1 或 PP&gt;1</td>
+</tr>
+<tr>
+<td>swap</td>
+<td>上游 FlexShard 不提供 NPU state offload</td>
+<td>由 <code>muon_state_swap</code> + <code>extension/novaswap</code> 额外提供，且暂不支持 optimizer checkpoint</td>
+</tr>
+<tr>
+<td>AdamW</td>
+<td>上游 Muon 集成通常只描述参数路由</td>
+<td>当前同时对混合容器中的 AdamW moments 做 whole-step swap</td>
+</tr>
+<tr>
+<td>迭代步数</td>
+<td>由上游 recipe 决定</td>
+<td>DSV4 默认 <code>ns_steps=10</code>，可用 CLI 覆盖</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">能力边界</h2>
+<p>当前方案适合 DSV4 单机 8 卡、TP/PP=1、EP/DP-shard 并行的实验和训练。以下能力
+尚未由当前实现证明：</p>
+<ul>
+<li>TP&gt;1 或 PP&gt;1 的 DistributedMuon；</li>
+<li>swap 开启时的 optimizer checkpoint 保存、加载和断点续训；</li>
+<li>长程收敛与无 swap 基线的数值等价；</li>
+<li>all-rank profiling skew 和多机 HCCL 场景；</li>
+<li>Muon 独立学习率或 bucket 合并策略。</li>
+</ul>
+<p>关闭 swap 时，仍可使用同一 DSV4 recipe 的 Muon CLI 选择，移除上述两个
+<code>muon_state_swap.*</code> override 即可。</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../model_custom/" class="btn btn-neutral float-left" title="Model Custom框架介绍"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../npu_fused_ops/" class="btn btn-neutral float-right" title="NPU 融合算子适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../fused_ops/" class="btn btn-neutral float-left" title="融合算子接入指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../virtual_optimizer/" class="btn btn-neutral float-right" title="Virtual Optimizer - 优化器显存虚拟化特性">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -489,10 +322,10 @@ compile = CompileConfig(
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../model_custom/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../npu_fused_ops/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../virtual_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

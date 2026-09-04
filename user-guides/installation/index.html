@@ -36,67 +36,48 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../lint_guide/">Lint 指南</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/contributors/">提交者与贡献者（Committers and Contributors）</a>
-                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../community/versioning_policy/">版本策略</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/checkpoint/">Checkpoint 使用指南</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v32_mtp/">多Token预测特性(Multi Token Prediction, MTP)</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fsdp_parameter_precision/">Fsdp parameter precision</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练特性（MXFP8 / HiF8）</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/metrics_and_debugging/">调试支持特性</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/model_custom/">Model Custom框架介绍</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">Muon 优化器特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_fused_ops/">NPU 融合算子适配</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/npu_tnd_attention/">TND Attention (Per-Document Causal Attention)</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/swap_optimizer/">SwapOptimizer 特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 支持</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/vlm/">VLM NPU 支持</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" >Parallelism</a>
-    <ul>
-                <li class="toctree-l2"><a class="reference internal" href="../../feature_guides/parallelism/custom_cp/">自定义 Context Parallel 特性</a>
-                </li>
-    </ul>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Recipe</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../recipe/sft/">SFT 指令微调</a>
-                  </li>
-              </ul>
-              <p class="caption"><span class="caption-text">Test guides</span></p>
-              <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_design/">测试设计</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../test_guides/test_guide/">测试使用指南</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">User guides</span></p>
@@ -107,17 +88,17 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_3">源码安装</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#1">1.安装依赖的软件</a>
+    <li class="toctree-l3"><a class="reference internal" href="#1">1. 安装依赖的软件</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#2-torchtitan-npumaster">2. 下载torchtitan-npu源码master分支（请注意下列命令的大小写）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#2-torchtitan-npu">2. 下载 torchtitan-npu 源码</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#3-torchtitan-npu">3. 安装torchtitan-npu</a>
+    <li class="toctree-l3"><a class="reference internal" href="#3-torchtitan-npu">3. 安装 torchtitan-npu</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#4-torchcompile">4. 配置torch.compile（可选）</a>
+    <li class="toctree-l3"><a class="reference internal" href="#4-torchao-npu">4. 安装 torchao-npu（可选）</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#pypi">PyPI安装</a>
+    <li class="toctree-l2"><a class="reference internal" href="#pypi">PyPI 安装</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_4">卸载</a>
     </li>
@@ -152,43 +133,47 @@
               
                 <h1 id="_1">软件安装</h1>
 <h2 id="_2">版本配套表</h2>
-<p>torchtitan-npu支持Atlas 800T A3等昇腾训练硬件形态。软件版本配套表如下：</p>
+<p>torchtitan-npu 支持 Atlas 800T A3 等昇腾训练硬件。软件版本配套表如下：</p>
 <table>
 <thead>
 <tr>
-<th>torchtitan-npu版本</th>
-<th>torchtitan版本</th>
-<th>PyTorch版本</th>
-<th>torch_npu版本</th>
-<th>CANN版本</th>
-<th>Python版本</th>
+<th>torchtitan-npu 版本</th>
+<th>torchtitan 分支</th>
+<th>PyTorch 版本</th>
+<th>torch_npu 版本</th>
+<th>CANN 版本</th>
+<th>Python 版本</th>
 <th>Triton Ascend</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>master</td>
-<td>main <code>ac13e536c84e7f6647b14fa9375c3c8a8a2b8578</code></td>
-<td>2.12.0</td>
-<td>2.12 daily版本（详见requirements.txt文件）</td>
-<td><a href="https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/legacy/20260805101249091/">9.2.0_daily0805</a></td>
-<td>Python3.11.x</td>
+<td>main</td>
+<td>2.14.0(daily)</td>
+<td>2.14.0(daily)</td>
+<td>9.2.0</td>
+<td>Python 3.12.x</td>
 <td>3.2.1</td>
 </tr>
 <tr>
 <td>v0.2.2-dev</td>
-<td>v0.2.2 <code>73a0e6979dd10b6b1904098eb3c8f62c18ab87ce</code></td>
+<td>v0.2.2</td>
 <td>2.10.0</td>
 <td>2.10.0</td>
 <td>9.0.0</td>
-<td>Python3.11.x</td>
+<td>Python 3.11.x</td>
 <td>3.2.1</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p>[!NOTE]
+安装所需的 Python 包依赖及版本见 <a href="../../requirements.txt">requirements.txt</a></p>
+</blockquote>
 <h2 id="_3">源码安装</h2>
-<h3 id="1">1.安装依赖的软件</h3>
-<p>在安装torchtitan-npu之前，请参考版本配套表，安装配套的昇腾软件栈，软件列表如下：</p>
+<h3 id="1">1. 安装依赖的软件</h3>
+<p>在安装 torchtitan-npu 之前，请参考版本配套表，安装配套的昇腾软件栈，软件列表如下：</p>
 <table>
   <thead>
     <tr>
@@ -198,11 +183,11 @@
   </thead>
   <tbody>
     <tr>
-      <td>昇腾NPU驱动</td>
+      <td>昇腾 NPU 驱动</td>
       <td rowspan="2">《<a href="https://www.hiascend.com/document/detail/zh/canncommercial/82RC1/softwareinst/instg/instg_0005.html?Mode=PmIns&InstallType=local&OS=Debian&Software=cannToolKit">驱动固件安装指南</a>》</td>
     </tr>
     <tr>
-      <td>昇腾NPU固件</td>
+      <td>昇腾 NPU 固件</td>
     </tr>
     <tr>
       <td>Toolkit（开发套件）</td>
@@ -212,39 +197,47 @@
       <td>Kernel（算子包）</td>
     </tr>
     <tr>
-      <td>NNAL（Ascend Transformer Boost加速库）</td>
+      <td>NNAL（Ascend Transformer Boost 加速库）</td>
     </tr>
     <tr>
       <td>PyTorch</td>
       <td rowspan="2">《<a href="https://www.hiascend.com/document/detail/zh/Pytorch/710/configandinstg/instg/insg_0001.html">Ascend Extension for PyTorch 配置与安装</a>》</td>
     </tr>
     <tr>
-      <td>torch_npu插件</td>
+      <td>torch_npu 插件</td>
     </tr>
   </tbody>
 </table>
 
 <blockquote>
-<p>注：安装 NNAL（Ascend Transformer Boost加速库）前，请先执行 <code>source /usr/local/Ascend/cann/set_env.sh</code> 配置 CANN 环境变量。</p>
+<p>注：安装 NNAL（Ascend Transformer Boost 加速库）前，请先执行 <code>source /usr/local/Ascend/cann/set_env.sh</code> 配置 CANN 环境变量。</p>
 </blockquote>
-<h3 id="2-torchtitan-npumaster">2. 下载torchtitan-npu源码master分支（请注意下列命令的大小写）</h3>
+<h3 id="2-torchtitan-npu">2. 下载 torchtitan-npu 源码</h3>
 <p><code>shell
 git clone https://gitcode.com/cann/torchtitan-npu.git</code></p>
-<h3 id="3-torchtitan-npu">3. 安装torchtitan-npu</h3>
+<h3 id="3-torchtitan-npu">3. 安装 torchtitan-npu</h3>
 <pre><code class="language-shell">cd torchtitan-npu
 python3 -m pip install -r requirements.txt
 python3 -m pip install -e .
 </code></pre>
+<h3 id="4-torchao-npu">4. 安装 torchao-npu（可选）</h3>
+<p>仓库已在 <code>experiments/torchao-npu/torchao_npu</code> 中内置 TorchAO-NPU 适配代码，
+默认无需单独克隆 <code>torchao-npu</code> 仓库。从 torchtitan-npu 仓库根目录执行：</p>
+<pre><code class="language-shell">python3 -m pip install -e ./experiments/torchao-npu
+</code></pre>
+<p>该命令以 editable 模式安装仓内 <code>torchao_npu</code> 包，并安装其声明的
+<code>torchao==0.17.0</code> 依赖。</p>
+<p>不安装适配包时，也可以将源码的父目录加入 <code>PYTHONPATH</code>：</p>
+<pre><code class="language-shell">python3 -m pip install torchao==0.17.0
+export PYTHONPATH=&quot;/path/to/custom/parent${PYTHONPATH:+:${PYTHONPATH}}&quot;
+</code></pre>
+<p><code>/path/to/custom/parent</code> 必须直接包含 <code>torchao_npu/__init__.py</code>。使用仓内源码时，可将其
+替换为 <code>&lt;torchtitan-npu&gt;/experiments/torchao-npu</code>。通用训练脚本只透传量化 CLI，
+不会自动修改可选依赖路径。具体命令见
+<a href="../quickstart/#deepseek-v4-torchao-npu-低精度训练">快速上手</a>。</p>
+<h2 id="pypi">PyPI 安装</h2>
 <blockquote>
-<p>注：如有旧版本torchtitan-npu，请先<a href="#卸载">卸载</a>，再进行安装</p>
-<p>注：<code>requirements.txt</code> 已为 <code>triton-ascend==3.2.1</code> 配置 <code>--extra-index-url https://triton-ascend.osinfra.cn/pypi/simple</code>；默认 PyPI 源当前不提供该版本，单独安装时请使用 <code>pip install --extra-index-url https://triton-ascend.osinfra.cn/pypi/simple triton-ascend==3.2.1</code>。<code>triton-ascend</code> 是安装包名，实际 Python 模块名为 <code>triton</code>，代码中请使用 <code>import triton</code>，不要使用 <code>import triton_ascend</code>。</p>
-</blockquote>
-<h3 id="4-torchcompile">4. 配置torch.compile（可选）</h3>
-<p>AscendC Codegen 后端已随兼容版本的 <code>torch_npu</code> 打包在 <code>torch_npu/_inductor/ascendc</code> 中，无需单独安装。通过 <code>torchtitan_npu.entry</code> 启动训练并开启 <code>torch.compile</code> 时，本仓会自动选择该后端。</p>
-<p>具体配置和启动方式请参考 <a href="../../feature_guides/torch_compile/">torch.compile 说明文档</a>。</p>
-<h2 id="pypi">PyPI安装</h2>
-<blockquote>
-<p>主线暂未提供此安装方式，待torchtitan发布稳定版本后提供</p>
+<p>主线暂未提供此安装方式，待 torchtitan 发布稳定版本后提供</p>
 </blockquote>
 <h2 id="_4">卸载</h2>
 <pre><code class="language-shell">pip uninstall torchtitan_npu
@@ -253,7 +246,7 @@ python3 -m pip install -e .
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../../test_guides/test_guide/" class="btn btn-neutral float-left" title="测试使用指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../feature_guides/virtual_optimizer/" class="btn btn-neutral float-left" title="Virtual Optimizer - 优化器显存虚拟化特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../quickstart/" class="btn btn-neutral float-right" title="快速上手">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -277,7 +270,7 @@ python3 -m pip install -e .
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../../test_guides/test_guide/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../feature_guides/virtual_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../quickstart/" style="color: #fcfcfc">Next &raquo;</a></span>

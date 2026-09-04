@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Checkpoint 使用指南 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Checkpoint \u4f7f\u7528\u6307\u5357";
+        var mkdocs_page_input_path = "developer_guides/checkpoint.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Checkpoint 使用指南</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">当前配置入口</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#checkpoint_1">checkpoint 格式与目录</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#dcp">DCP</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hugging-face-safetensors">Hugging Face safetensors</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">常用配置项</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dcp-checkpoint">保存 DCP checkpoint</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dcp-checkpoint_1">加载 DCP checkpoint</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#checkpoint_2">自动加载最新 checkpoint</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">指定加载步数</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">从其他目录初始化</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hugging-face">加载 Hugging Face 权重</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hugging-face_1">保存 Hugging Face 权重</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#seed-checkpoint">创建 seed checkpoint</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">常见限制与验证范围</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">相关文档</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">Checkpoint 使用指南</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="checkpoint">Checkpoint 使用指南</h1>
+<p>本文说明如何使用 TorchTitan 的 checkpoint 机制保存、加载
+<code>torchtitan-npu</code> 训练状态，以及如何加载或保存 Hugging Face safetensors 权重。</p>
+<p>当前实现基于上游 <code>torchtitan.components.checkpoint.CheckpointManager</code>：</p>
+<ul>
+<li>DCP（Distributed Checkpoint）用于保存和加载分布式训练状态。</li>
+<li>Hugging Face safetensors 只用于模型权重的加载或保存，不能加载优化器和训练步数。</li>
+</ul>
+<p>本文不覆盖权重转换工具。需要转换 Hugging Face 权重时，使用上游仓库提供的转换工具。</p>
+<h2 id="_1">当前配置入口</h2>
+<p>训练配置由以下注册表提供：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>配置入口</th>
+<th>checkpoint 默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu.models.deepseek_v4.config_registry</code></td>
+<td><code>deepseek_v4_debugmodel</code>、<code>deepseek_v4_flash</code>、<code>deepseek_v4_pro</code></td>
+<td><code>enable=False</code>，<code>interval=100</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu.models.deepseek_v3_2.config_registry</code></td>
+<td><code>deepseek_v3_2_debugmodel</code></td>
+<td><code>enable=False</code>，<code>interval=10</code>，<code>last_save_model_only=False</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>enable=False</code> 时既不会保存 checkpoint，也不会执行 checkpoint 加载。训练命令需要显式
+传入 <code>--checkpoint.enable</code>，或在 Python 配置中设置 <code>checkpoint.enable = True</code>。</p>
+<h2 id="checkpoint_1">checkpoint 格式与目录</h2>
+<h3 id="dcp">DCP</h3>
+<p>DCP 是 PyTorch Distributed Checkpoint 格式，可以保存模型、优化器、学习率调度器、
+dataloader 和训练状态，适合断点续训以及改变并行切分后的加载。</p>
+<p>启用 <code>checkpoint.folder=checkpoint</code> 时，目录结构通常为：</p>
+<pre><code class="language-text">&lt;dump_folder&gt;/checkpoint/step-&lt;step&gt;/
+├── .metadata
+└── *.distcp
+</code></pre>
+<p>其中 <code>&lt;dump_folder&gt;</code> 来自 <code>--dump-folder</code>，<code>step-&lt;step&gt;</code> 是训练步数。DCP 加载会检查
+<code>.metadata</code>，并按 <code>--checkpoint.load-step</code> 选择指定步数；默认值 <code>-1</code> 表示选择最新步数。</p>
+<h3 id="hugging-face-safetensors">Hugging Face safetensors</h3>
+<p>Hugging Face 权重通常包含 <code>model.safetensors</code> 或
+<code>model.safetensors.index.json</code>，也应准备对应的 tokenizer 和 <code>config.json</code> 等配置文件。
+该格式只表示模型权重，不包含优化器、学习率调度器和训练步数。</p>
+<h2 id="_2">常用配置项</h2>
+<p>配置类型来自上游 <code>torchtitan.config.Checkpoint</code>，Python 配置使用下划线命名，命令行
+使用 tyro 的连字符命名：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable</code></td>
+<td>启用 checkpoint 保存和加载。默认 <code>False</code>。</td>
+</tr>
+<tr>
+<td><code>folder</code></td>
+<td>checkpoint 子目录名，默认 <code>checkpoint</code>；最终路径为 <code>{dump_folder}/{folder}</code>。</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td>保存 DCP checkpoint 的步数间隔。</td>
+</tr>
+<tr>
+<td><code>load_step</code></td>
+<td>要加载的步数；<code>-1</code> 表示最新 checkpoint。</td>
+</tr>
+<tr>
+<td><code>initial_load_path</code></td>
+<td>当前输出目录没有 checkpoint 时使用的初始 checkpoint 路径，必须是绝对路径或远程 URI。</td>
+</tr>
+<tr>
+<td><code>initial_load_model_only</code></td>
+<td>初始加载是否只加载模型权重，默认 <code>True</code>。设为 <code>False</code> 才会尝试加载完整训练状态。</td>
+</tr>
+<tr>
+<td><code>initial_load_in_hf</code></td>
+<td>将初始路径按 Hugging Face safetensors 读取。HF 加载只能加载模型权重。</td>
+</tr>
+<tr>
+<td><code>initial_load_in_hf_quantized</code></td>
+<td>从 HF 量化权重加载；使用前必须启用 <code>initial_load_in_hf</code>。</td>
+</tr>
+<tr>
+<td><code>last_save_model_only</code></td>
+<td>最后一步是否只保存模型权重，默认 <code>True</code>。设为 <code>False</code> 才保存完整训练状态。</td>
+</tr>
+<tr>
+<td><code>last_save_in_hf</code></td>
+<td>最后一步是否以 Hugging Face safetensors 格式保存。必须同时使用模型权重保存模式。</td>
+</tr>
+<tr>
+<td><code>export_dtype</code></td>
+<td>保存时模型权重导出的 dtype，可用 <code>float16</code>、<code>bfloat16</code>、<code>float32</code>。</td>
+</tr>
+<tr>
+<td><code>async_mode</code></td>
+<td>保存方式：<code>disabled</code>、<code>async</code> 或 <code>async_with_pinned_mem</code>。</td>
+</tr>
+<tr>
+<td><code>keep_latest_k</code></td>
+<td>保留最近的 checkpoint 数量；<code>0</code> 表示全部保留，不能设置为 <code>1</code>。</td>
+</tr>
+<tr>
+<td><code>exclude_from_loading</code></td>
+<td>从 DCP 加载时排除状态，例如 <code>optimizer,lr_scheduler,dataloader</code>。</td>
+</tr>
+<tr>
+<td><code>enable_first_step_checkpoint</code></td>
+<td>是否在第一个训练 step 后立即保存一次 checkpoint。</td>
+</tr>
+<tr>
+<td><code>create_seed_checkpoint</code></td>
+<td>不应用并行切分，创建可供后续任务重分片加载的 seed checkpoint。</td>
+</tr>
+<tr>
+<td><code>load_only</code></td>
+<td>只加载、不保存 checkpoint，适合验证或调试。</td>
+</tr>
+<tr>
+<td>命令行布尔字段使用反向选项关闭，例如 <code>--checkpoint.no-enable</code>；不要写成</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--checkpoint.enable false</code>。列表字段使用英文逗号分隔，不要用空格拆成多个 token。</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="dcp-checkpoint">保存 DCP checkpoint</h2>
+<p>以下命令使用当前脚本默认的 <code>deepseek_v3_debugmodel</code> 配置。运行前准备 Ascend/CANN 环境：</p>
+<pre><code class="language-bash">NGPU=1 \
+bash scripts/run_train.sh \
+  --hf-assets-path tests/assets/deepseek_v3 \
+  --dump-folder ./outputs/dsv3_checkpoint \
+  --checkpoint.enable \
+  --checkpoint.folder checkpoint \
+  --checkpoint.interval 100 \
+  --training.steps 200
+</code></pre>
+<p>训练过程中会生成：</p>
+<pre><code class="language-text">./outputs/dsv3_checkpoint/checkpoint/step-100/
+./outputs/dsv3_checkpoint/checkpoint/step-200/
+</code></pre>
+<p>也可以在配置注册表中设置：</p>
+<pre><code class="language-python">from torchtitan.components.checkpoint import CheckpointManager
+
+checkpoint = CheckpointManager.Config(
+    enable=True,
+    folder=&quot;checkpoint&quot;,
+    interval=100,
+    keep_latest_k=5,
+    async_mode=&quot;disabled&quot;,
+)
+</code></pre>
+<h2 id="dcp-checkpoint_1">加载 DCP checkpoint</h2>
+<h3 id="checkpoint_2">自动加载最新 checkpoint</h3>
+<p>使用相同的 <code>--dump-folder</code> 和 <code>--checkpoint.folder</code> 重新启动，并启用 checkpoint：</p>
+<pre><code class="language-bash">NGPU=1 \
+HF_ASSETS_PATH=/path/to/dsv4_tokenizer \
+bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_checkpoint \
+  --checkpoint.enable \
+  --checkpoint.folder checkpoint
+</code></pre>
+<p>当输出目录中存在可用的 <code>step-*</code> checkpoint 时，框架会默认加载最新一步。</p>
+<h3 id="_3">指定加载步数</h3>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_checkpoint \
+  --checkpoint.enable \
+  --checkpoint.load-step 100
+</code></pre>
+<h3 id="_4">从其他目录初始化</h3>
+<p>使用新的输出目录，并通过 <code>--checkpoint.initial-load-path</code> 指向旧 checkpoint 的完整
+step 目录。该参数必须使用绝对路径或远程 URI；相对路径会触发上游的 <code>ValueError</code>：</p>
+<pre><code class="language-bash">NGPU=1 \
+HF_ASSETS_PATH=/path/to/dsv4_tokenizer \
+bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_new_job \
+  --checkpoint.enable \
+  --checkpoint.initial-load-path /absolute/path/to/dsv4_checkpoint/checkpoint/step-100
+</code></pre>
+<p>默认只加载模型权重。若要加载优化器、学习率调度器和训练状态，应显式关闭
+<code>initial_load_model_only</code>：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_new_job \
+  --checkpoint.enable \
+  --checkpoint.initial-load-path /absolute/path/to/dsv4_checkpoint/checkpoint/step-100 \
+  --checkpoint.no-initial-load-model-only
+</code></pre>
+<p>如果 <code>{dump_folder}/{checkpoint.folder}</code> 已经存在可用 checkpoint，框架会优先从该目录
+优先从该目录加载，并忽略 <code>initial_load_path</code>。从新权重启动实验时，应使用新的 <code>dump-folder</code> 或
+清理旧的 checkpoint 目录。</p>
+<p>如只需要模型和部分训练状态，可以排除不需要的键：</p>
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_model_only \
+  --checkpoint.enable \
+  --checkpoint.initial-load-path /absolute/path/to/dsv4_checkpoint/checkpoint/step-100 \
+  --checkpoint.exclude-from-loading optimizer,lr_scheduler,dataloader
+</code></pre>
+<h2 id="hugging-face">加载 Hugging Face 权重</h2>
+<p>从 HF safetensors 初始化时，需要启用 checkpoint、设置
+<code>--checkpoint.initial-load-in-hf</code>，并确保 <code>--checkpoint.initial-load-model-only</code> 保持
+为 <code>True</code>：</p>
+<pre><code class="language-bash">NGPU=1 \
+HF_ASSETS_PATH=/path/to/dsv4_tokenizer \
+bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_from_hf \
+  --checkpoint.enable \
+  --checkpoint.initial-load-in-hf \
+  --checkpoint.initial-load-path /absolute/path/to/checkpoint/DeepSeek-V4
+</code></pre>
+<p>如果不传 <code>--checkpoint.initial-load-path</code>，checkpoint 管理器会尝试使用模型配置中的
+<code>hf_assets_path</code>。<code>initial_load_path</code> 优先级高于 <code>hf_assets_path</code>。HF 权重不能加载
+优化器或训练步数。</p>
+<h2 id="hugging-face_1">保存 Hugging Face 权重</h2>
+<p>训练最后一步可以直接保存 HF safetensors。该模式只保存模型权重，不能作为完整训练
+断点使用：</p>
+<pre><code class="language-bash">NGPU=1 \
+HF_ASSETS_PATH=/path/to/dsv4_tokenizer \
+bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_hf \
+  --checkpoint.enable \
+  --checkpoint.last-save-in-hf \
+  --checkpoint.export-dtype bfloat16 \
+  --training.steps 100
+</code></pre>
+<p><code>last_save_in_hf</code> 需要模型提供 state-dict adapter，并且必须保持
+<code>last_save_model_only=True</code>。<code>deepseek_v3_2</code> 和 <code>deepseek_v4</code> 模型均提供
+对应的 state-dict adapter；具体可用性仍取决于模型配置和权重格式。</p>
+<h2 id="seed-checkpoint">创建 seed checkpoint</h2>
+<p>seed checkpoint 用于先创建未应用并行切分的模型状态，再由多卡任务通过 DCP 重分片加载。
+创建时使用单卡，并将各并行度设为 <code>1</code>：</p>
+<pre><code class="language-bash">NGPU=1 \
+HF_ASSETS_PATH=/path/to/dsv4_tokenizer \
+bash scripts/run_train.sh \
+  --dump-folder ./outputs/dsv4_seed \
+  --checkpoint.enable \
+  --checkpoint.create-seed-checkpoint \
+  --parallelism.data-parallel-replicate-degree 1 \
+  --parallelism.data-parallel-shard-degree 1 \
+  --parallelism.tensor-parallel-degree 1 \
+  --parallelism.pipeline-parallel-degree 1 \
+  --parallelism.context-parallel-degree 1 \
+  --parallelism.expert-parallel-degree 1
+</code></pre>
+<p>生成的 <code>step-0</code> 目录可以作为后续任务的 <code>checkpoint.initial_load_path</code>。</p>
+<h2 id="_5">常见限制与验证范围</h2>
+<ul>
+<li>需要可用的 <code>torch</code>、<code>torch_npu</code>、TorchTitan、CANN 和 Ascend NPU 环境；本文命令未在当前
+  Windows 环境执行。</li>
+<li>DCP 适用于完整训练状态加载；HF safetensors 只适用于模型权重。</li>
+<li>文档中的模型入口、配置字段和命令来自源码与脚本的静态核对；多卡训练、权重格式兼容性
+  和 NPU 性能未在本次文档修改中重新实测。</li>
+</ul>
+<h2 id="_6">相关文档</h2>
+<ul>
+<li><a href="../../user-guides/quickstart/">快速上手</a></li>
+<li><a href="../../user-guides/installation/">安装指南</a></li>
+<li><a href="../../scripts/run_train.sh">训练启动脚本</a></li>
+<li><a href="../../torchtitan_npu/models/deepseek_v4/config_registry.py">DeepSeek-V4 checkpoint 配置</a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../community/governance/" class="btn btn-neutral float-left" title="社区治理"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../config_extensions/" class="btn btn-neutral float-right" title="NPU 配置扩展指南">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../community/governance/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../config_extensions/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
