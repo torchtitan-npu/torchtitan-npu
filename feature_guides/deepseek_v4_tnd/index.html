@@ -246,7 +246,7 @@ overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
 <li>校验模型输入与 <code>CompressedVarlenMetadata</code> 一致，按 <code>self.compress_ratio</code> 取 plan。</li>
 <li>把 query、原始 KV 转成 TND；压缩 KV 与 Indexer key 取容器网格头部 <code>n_blocks</code> 槽位转成打包流。</li>
 <li>调用 LightningIndexer 生成序列内局部 TopK（使用 <code>asc_plans[ratio].li_metadata</code>）。</li>
-<li>调用 SparseFlashMLA；<code>_SparseFlashMLATND</code> 在反向中调用 SMLAG 与 SLIG（使用 <code>asc_plans[ratio].smla_grad_metadata</code>、<code>asc_plans[ratio].slig_metadata</code>）。SLIG 的 Indexer KL 梯度按 <code>indexer_loss_coeff</code>（NPU 内核配置，默认 0.0）缩放，LI 损失值累积到 <code>_indexer_loss_acc</code> 缓冲；Indexer auxiliary loss 已从模型目录移除，随上游机制落地后另行设计。</li>
+<li>调用 SparseFlashMLA；<code>_SparseFlashMLATND</code> 在反向中调用 SMLAG 与 SLIG（使用 <code>asc_plans[ratio].smla_grad_metadata</code>、<code>asc_plans[ratio].slig_metadata</code>）。SLIG 的 Indexer KL 梯度按 <code>indexer_loss_coeff</code> 缩放；<code>sparse_attn.asc</code> 和 <code>sparse_attn.pypto</code> 公开 override 入口的有效默认值均为 <code>1.0</code>，显式传入 <code>{"indexer_loss_coeff": 0.0}</code> 可关闭该梯度。LI 损失值累积到 <code>_indexer_loss_acc</code> 缓冲；Indexer auxiliary loss 已从模型目录移除，随上游机制落地后另行设计。</li>
 </ol>
 <p><code>cann_ops_transformer</code> 包负责内核的算子注册（schema、meta/fake 实现），本仓只在融合路径内做前反向桥接，不再自建 <code>torch.library</code> 封装。</p>
 <table>
