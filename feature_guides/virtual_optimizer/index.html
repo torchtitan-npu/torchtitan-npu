@@ -77,6 +77,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Virtual Optimizer - 优化器显存虚拟化特性</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">背景与挑战</a>
@@ -176,73 +178,43 @@ state[&quot;exp_avg_sq&quot;] = torch_npu.empty_with_swapped_memory(
 <pre><code class="language-bash">python -m torchtitan_npu.train \
   --module torchtitan_npu.models.deepseek_v4 \
   --config deepseek_v4_debugmodel \
-  --override.imports &quot;torchtitan_npu.override.common.optimizer.virtual,torchtitan_npu.override.common.optimizer.checkpoint_virtual&quot; \
+  --override.imports torchtitan_npu.override.common.optimizer.virtual \
   --checkpoint.enable \
   --checkpoint.async-mode disabled
 </code></pre>
-<p>如果 recipe 已经启用了 attention、RoPE、RMSNorm 等 override，应将以上两个入口追加到现有 <code>override.imports</code> 列表，不要覆盖模型原有入口。</p>
+<p>如果 recipe 已经启用了 attention、RoPE、RMSNorm 等 override，应将该入口追加到现有 <code>override.imports</code> 列表，不要覆盖模型原有入口。</p>
 <p>也可以在 Python 配置中添加：</p>
-<pre><code class="language-python">cfg.override.imports.extend(
-    [
-        &quot;torchtitan_npu.override.common.optimizer.virtual&quot;,
-        &quot;torchtitan_npu.override.common.optimizer.checkpoint_virtual&quot;,
-    ]
+<pre><code class="language-python">cfg.override.imports.append(
+    &quot;torchtitan_npu.override.common.optimizer.virtual&quot;
 )
 cfg.checkpoint.enable = True
 cfg.checkpoint.async_mode = &quot;disabled&quot;
 </code></pre>
-<p>两个入口分别替换不同的 TorchTitan 配置节点：</p>
-<table>
-<thead>
-<tr>
-<th>Override</th>
-<th>配置节点</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>optimizer.virtual</code></td>
-<td><code>OptimizersContainer.Config</code></td>
-<td>创建 swap-backed <code>exp_avg</code> 和 <code>exp_avg_sq</code></td>
-</tr>
-<tr>
-<td><code>optimizer.checkpoint_virtual</code></td>
-<td><code>CheckpointManager.Config</code></td>
-<td>兼容同步 native DCP 保存 live swap tensors</td>
-</tr>
-</tbody>
-</table>
-<p>只需要使用 Virtual Optimizer、但不保存 checkpoint 时，可以只启用 <code>optimizer.virtual</code>。需要同步保存并恢复完整训练状态时，应同时启用两个入口。</p>
-<p>如果还需要 checkpoint SHA-256 manifest 校验，应使用单一的组合 checkpoint replacement
-替换 <code>optimizer.checkpoint_virtual</code>，避免两个 override 同时声明 <code>config.checkpoint</code>：</p>
-<pre><code class="language-bash">--override.imports \
-  torchtitan_npu.override.common.optimizer.virtual,\
-  'torchtitan_npu.override.checkpoint.npu_virtual={&quot;verify_hash_manifest&quot;:true}' \
---checkpoint.enable \
---checkpoint.async-mode disabled
+<p>Virtual Optimizer override 只替换 <code>OptimizersContainer.Config</code>，负责创建 swap-backed
+<code>exp_avg</code> 和 <code>exp_avg_sq</code>。Checkpoint 保存兼容已由 extension <code>CheckpointManager</code> 提供，
+无需额外 checkpoint override。</p>
+<p>如果还需要 checkpoint SHA-256 manifest 校验，增加：</p>
+<pre><code class="language-bash">--checkpoint.extensions.verify-hash-manifest
 </code></pre>
-<p><code>torchtitan_npu.override.checkpoint.npu_virtual</code> 同时保留同步 native DCP 的
-<code>per_thread_copy_ahead=0</code> writer 和 manifest 生成、加载校验行为。不要再追加
-<code>torchtitan_npu.override.common.optimizer.checkpoint_virtual</code> 或
-<code>torchtitan_npu.override.checkpoint.npu</code>。该组合入口与原 Virtual Optimizer writer 一样，
-只支持同步、本地 native DCP 保存。</p>
 <h2 id="virtual-optimizer-checkpoint">Virtual Optimizer 与 Checkpoint</h2>
 <p>TorchTitan 在保存 optimizer checkpoint 前会初始化尚未创建的 optimizer state，因此即使保存发生在第一次真实 optimizer step 之前，也能先建立形状和分片正确的 swap-backed moments。</p>
-<p>PyTorch DCP 默认 <code>FileSystemWriter</code> 的 copy-ahead 路径与当前 NPU swap storage 不兼容。<code>optimizer.checkpoint_virtual</code> 因此只对同步 native DCP 本地保存使用以下 writer：</p>
+<p>PyTorch DCP 默认 <code>FileSystemWriter</code> 的 copy-ahead 路径与当前 NPU swap storage 不兼容。
+Extension <code>CheckpointManager</code> 因此对同步 native DCP 保存使用以下 writer：</p>
 <pre><code class="language-python">dcp.FileSystemWriter(
     checkpoint_id,
     per_thread_copy_ahead=0,
 )
 </code></pre>
-<p>该 checkpoint 修改只用于解决 Virtual Optimizer state 的保存兼容问题，不是独立的 checkpoint 特性。DCP 加载不需要单独改写：fresh optimizer 会先创建 swap-backed load targets，再由 DCP 将 checkpoint 数据写入这些 targets；已有 state 和 repeated load 会复用当前 state。</p>
+<p>该 writer 配置只用于解决 Virtual Optimizer state 的保存兼容问题。DCP 加载不需要单独
+改写：fresh optimizer 会先创建 swap-backed load targets，再由 DCP 将 checkpoint 数据
+写入这些 targets；已有 state 和 repeated load 会复用当前 state。</p>
 <h2 id="_7">适用范围与限制</h2>
 <ul>
 <li>当前支持由 TorchTitan <code>OptimizersContainer</code> 构建的 Adam 和 AdamW。</li>
 <li>当前只接管 <code>exp_avg</code> 和 <code>exp_avg_sq</code>，<code>step</code> 仍为参数 device 上的普通 FP32 scalar。</li>
 <li>不包含 AMSGrad 的 <code>max_exp_avg_sq</code>，也不是通用 optimizer-state offload 实现。</li>
 <li>不提供 CPU cache、分块 Load/Update/Offload、多 stream 更新流水线或可配置 swap 容量。</li>
-<li>checkpoint writer 特化仅覆盖同步 native DCP 的本地文件系统保存。</li>
+<li>checkpoint writer 特化覆盖同步 native DCP 保存；路径能力沿用 TorchTitan DCP 支持的本地或远程文件系统。</li>
 <li>async、async-with-pinned-memory 和 Hugging Face 保存继续使用 TorchTitan 上游路径，不经过当前 writer 特化。</li>
 <li>多卡组合、async 和 Hugging Face 路径尚未在本特性中完成完整验证。</li>
 <li>本文不声明未经独立验证的最低驱动版本、性能提升或 HBM 节省比例。</li>
@@ -261,16 +233,12 @@ cfg.checkpoint.async_mode = &quot;disabled&quot;
 <td>确认 <code>override.imports</code> 使用完整的 <code>module.function</code> 路径，并检查启动日志中的 override 应用记录</td>
 </tr>
 <tr>
-<td>只启用 <code>checkpoint_virtual</code> 后没有 swap state</td>
-<td><code>checkpoint_virtual</code> 只处理保存兼容；还需启用 <code>optimizer.virtual</code></td>
-</tr>
-<tr>
 <td>同步保存仍使用默认 writer</td>
-<td>确认使用 native DCP、<code>async_mode="disabled"</code>，且不是 Hugging Face 保存</td>
+<td>确认使用 extension <code>CheckpointManager</code>、native DCP、<code>async_mode="disabled"</code>，且不是 Hugging Face 保存</td>
 </tr>
 <tr>
 <td>模型原有 override 丢失</td>
-<td>将两个入口追加到现有列表，不要用新列表覆盖原配置</td>
+<td>将 <code>optimizer.virtual</code> 追加到现有 <code>override.imports</code>，不要用新列表覆盖原配置</td>
 </tr>
 <tr>
 <td>zero-sized shard 分配失败</td>
@@ -292,7 +260,7 @@ cfg.checkpoint.async_mode = &quot;disabled&quot;
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../muon_optimizer/" class="btn btn-neutral float-left" title="DeepSeek-V4 Muon 优化器"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../torch_compile/" class="btn btn-neutral float-left" title="torch.compile 与 AscendC AutoFuse 特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../../user-guides/installation/" class="btn btn-neutral float-right" title="软件安装">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -316,7 +284,7 @@ cfg.checkpoint.async_mode = &quot;disabled&quot;
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../muon_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../torch_compile/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../../user-guides/installation/" style="color: #fcfcfc">Next &raquo;</a></span>

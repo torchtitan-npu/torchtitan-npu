@@ -77,6 +77,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
               </ul>
@@ -186,8 +188,9 @@ bash scripts/run_train.sh \
 - 脚本后的其他参数会原样传给 <code>torchtitan_npu.train</code>，可用于覆盖配置函数中的训练和并行参数。</p>
 </blockquote>
 <h3 id="8-ep8">单机 8 卡 EP8 训练任务</h3>
-<p>直接复用 DeepSeek-V4 单机 8 卡示例脚本。该脚本默认使用 8 卡、EP8/DP8 并行配置和 <code>deepseek_v4_flash_43layers_16experts</code> 模型配置：</p>
-<pre><code class="language-bash">bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3.sh \
+<p>直接复用 DeepSeek-V4 单机 8 卡示例脚本。该脚本默认使用 8 卡、EP8/DP8 并行配置和 <code>deepseek_v4_flash_43layers_16experts</code> 模型配置。运行前需准备与 DeepSeek-V4 配套的 Tokenizer，并将下面的 <code>HF_ASSETS_PATH</code> 替换为其实际目录：</p>
+<pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeekV4_tokenizer \
+bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3.sh \
   --training.steps 5
 </code></pre>
 <p>DeepSeek-V4 的 SMLA 融合路径和 TND 数据约定见 <a href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>。</p>

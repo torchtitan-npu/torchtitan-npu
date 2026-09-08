@@ -113,6 +113,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
               </ul>
@@ -150,7 +152,8 @@
                 <h1 id="checkpoint">Checkpoint 使用指南</h1>
 <p>本文说明如何使用 TorchTitan 的 checkpoint 机制保存、加载
 <code>torchtitan-npu</code> 训练状态，以及如何加载或保存 Hugging Face safetensors 权重。</p>
-<p>当前实现基于上游 <code>torchtitan.components.checkpoint.CheckpointManager</code>：</p>
+<p>当前实现基于上游 <code>torchtitan.components.checkpointer.CheckpointManager</code>
+（torchtitan v0.3.0 起 <code>torchtitan.components.checkpoint</code> 仅为兼容再导出）：</p>
 <ul>
 <li>DCP（Distributed Checkpoint）用于保存和加载分布式训练状态。</li>
 <li>Hugging Face safetensors 只用于模型权重的加载或保存，不能加载优化器和训练步数。</li>
@@ -301,7 +304,7 @@ bash scripts/run_train.sh \
 ./outputs/dsv3_checkpoint/checkpoint/step-200/
 </code></pre>
 <p>也可以在配置注册表中设置：</p>
-<pre><code class="language-python">from torchtitan.components.checkpoint import CheckpointManager
+<pre><code class="language-python">from torchtitan.components.checkpointer import CheckpointManager
 
 checkpoint = CheckpointManager.Config(
     enable=True,

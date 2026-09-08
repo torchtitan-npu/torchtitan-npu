@@ -111,6 +111,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
               </ul>
@@ -271,7 +273,7 @@
 <h2 id="_9">内核契约要点</h2>
 <p>CP 方案依赖 AscendC <code>sparse_flash_mla</code> 家族的以下语义（均从内核行为验证得出）：</p>
 <ul>
-<li><strong>TND 布局</strong>：每段一个 batch；<code>cu_seqlens_q</code>、<code>cu_seqlens_ori_kv</code>、<code>cu_seqlens_cmp_kv</code>、<code>cmp_residual_kv</code> 为前缀和/每段余数；<code>kvHeadNum = 1</code>；<code>ori_win_left = window − 1</code>、<code>ori_win_right = 0</code>；<code>ori_mask_mode</code> / <code>cmp_mask_mode</code> 固定为 4 / 3。</li>
+<li><strong>TND 布局</strong>：每段一个 batch；<code>cu_seqlens_q</code>、<code>cu_seqlens_ori_kv</code>、<code>cu_seqlens_cmp_kv</code>、<code>cmp_residual_kv</code> 为前缀和/每段余数；<code>kvHeadNum = 1</code>；<code>ori_win_left = window − 1</code>、<code>ori_win_right = 0</code>。<code>sparse_flash_mla</code> 后端的 <code>ori_mask_mode</code> 固定为 <code>4</code>，<code>cmp_mask_mode</code> 通常为 <code>3</code>，但在 A5 且无压缩 KV（<code>ratio=1</code>）时为 <code>0</code>；这一契约在 metadata 生成、正向 <code>sparse_flash_mla</code> 和反向 <code>sparse_flash_mla_grad</code> 三处调用中保持一致。</li>
 <li><strong>端对齐</strong>：ori token <code>k</code> 被读作文档 token <code>(s1Size − oriLen) + k</code>，掩码以端对齐坐标计算，窗口范围由属性（<code>ori_win_left/right</code>）决定而非区间长度。因此 <code>cu_seqlens_ori_kv</code> 不必是因果前缀，窗口打包得以成立。</li>
 <li><strong>压缩因果上限</strong>：<code>limit(pos) = floor((p0 + pos + 1) / r)</code>。计划按文档相对块数与余数构造 <code>cu_seqlens_cmp_k</code> / <code>block_remainder</code>，使 CP 形式与参考调用的可见范围一致（内核的 p0 通道）。</li>
 <li><strong>sink</strong>：1-D fp32 <code>[N1]</code>，softmax 初值 <code>max = sink</code>、<code>sum = 1</code>；LSE 为 <code>log(sum) + max</code>。</li>

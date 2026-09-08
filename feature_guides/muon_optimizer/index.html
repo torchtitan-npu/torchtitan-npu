@@ -89,6 +89,8 @@
     </li>
     </ul>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
               </ul>
@@ -125,12 +127,12 @@
               
                 <h1 id="deepseek-v4-muon">DeepSeek-V4 Muon 优化器</h1>
 <p>本文说明当前 <code>master</code> 分支中的 Muon 方案、使用方法和能力边界。
-实现以 TorchTitan 上游 <code>DistributedMuon</code>/FlexShard 为核心；上游 FlexShard 的
+实现以 TorchTitan 上游 <code>DistMuon</code>/FlexShard 为核心；上游 FlexShard 的
 <code>ComputeLayout</code>、<code>Owned</code>、<code>BlockShard</code>、bucket 和 storage-to-compute 语义，参见
 <a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/distributed/flex_shard/README.md">TorchTitan FlexShard README</a>。</p>
 <h2 id="_1">当前方案</h2>
 <p>DSV4 使用一个混合优化器容器：匹配 Muon 规则的矩阵参数交给
-<code>DistributedMuon</code>，其余参数交给 AdamW。配置入口是
+<code>DistMuon</code>，其余参数交给 AdamW。配置入口是
 <code>torchtitan_npu/models/deepseek_v4/config_registry.py</code> 中的
 <code>_dsv4_muon_profile()</code>。该 profile 只承载模型参数匹配、FlexShard compute
 layout 和 bucket 元数据；所有可调优化器标量由 CLI schema 提供。</p>
@@ -190,12 +192,12 @@ bash scripts/run_train.sh \
     torchtitan_npu.override.common.token_dispatcher.asc
 </code></pre>
 <p><code>--optimizer.name</code> 默认为 <code>native</code>，保持常规 recipe 原有的 AdamW 行为；设为
-<code>Muon</code> 时才生成 DistributedMuon 与 AdamW fallback 两组。不存在 <code>_muon</code> 专用
+<code>Muon</code> 时才生成 DistMuon 与 AdamW fallback 两组。不存在 <code>_muon</code> 专用
 recipe。DSV4 Muon 当前要求：</p>
 <ul>
 <li><code>tensor_parallel_degree=1</code>；</li>
 <li><code>pipeline_parallel_degree=1</code>；</li>
-<li>optimizer 使用 <code>DistributedMuon</code> 的 FlexShard compute layout；</li>
+<li>optimizer 使用 <code>DistMuon</code> 的 FlexShard compute layout；</li>
 <li>routed experts 的布局同时声明 DP shard、EFSDP 和 EP，以覆盖当前 EP=8/EP=1
   的存储 mesh；</li>
 <li>AdamW 组保持 <code>foreach=False</code>。Ascend 上 <code>foreach=True</code> 可能触发
@@ -286,7 +288,7 @@ torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
 <p>当前方案适合 DSV4 单机 8 卡、TP/PP=1、EP/DP-shard 并行的实验和训练。以下能力
 尚未由当前实现证明：</p>
 <ul>
-<li>TP&gt;1 或 PP&gt;1 的 DistributedMuon；</li>
+<li>TP&gt;1 或 PP&gt;1 的 DistMuon；</li>
 <li>swap 开启时的 optimizer checkpoint 保存、加载和断点续训；</li>
 <li>长程收敛与无 swap 基线的数值等价；</li>
 <li>all-rank profiling skew 和多机 HCCL 场景；</li>
@@ -299,7 +301,7 @@ torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../fused_ops/" class="btn btn-neutral float-left" title="融合算子接入指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../virtual_optimizer/" class="btn btn-neutral float-right" title="Virtual Optimizer - 优化器显存虚拟化特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../torch_compile/" class="btn btn-neutral float-right" title="torch.compile 与 AscendC AutoFuse 特性">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -325,7 +327,7 @@ torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
       <span><a href="../fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../virtual_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../torch_compile/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

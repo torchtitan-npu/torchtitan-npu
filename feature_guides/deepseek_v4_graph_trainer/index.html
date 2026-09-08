@@ -101,6 +101,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
                   </li>
               </ul>
@@ -208,8 +210,7 @@
     torchtitan_npu.override.deepseek_v4.mhc.asc_hc_pre \
     torchtitan_npu.override.deepseek_v4.mhc.asc_hc_post \
     torchtitan_npu.override.common.token_dispatcher.asc \
-    torchtitan_npu.override.common.optimizer.virtual \
-    torchtitan_npu.override.common.optimizer.checkpoint_virtual
+    torchtitan_npu.override.common.optimizer.virtual
 </code></pre>
 <p>编译配置（<code>aot_fx_trace</code>、禁用 <code>cudagraph_pass</code>）由配置工厂内置，无需 CLI 传入；<code>--compile.disable_passes cudagraph_pass</code> 仅对 eager 配置的默认编译路径必需。</p>
 <h2 id="_6">支持范围与限制</h2>
