@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 GraphTrainer 激活重计算 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 GraphTrainer \u6fc0\u6d3b\u91cd\u8ba1\u7b97";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_graph_trainer_recompute.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 GraphTrainer 激活重计算</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">1. 特性概述</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">2. 配置接口</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#21">2.1 默认配置</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#22-dsv4">2.2 切换 DSV4 专用策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#23">2.3 配置类型要求</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">3. 执行流程</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4">4. 重计算实现</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#41-full">4.1 上游 full 策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#42-npu">4.2 NPU 策略框架</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#43-dsv4-mhc">4.3 dsv4-mhc 策略</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5">5. 支持边界与风险</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6">6. 关键文件</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7">7. 结论</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 GraphTrainer 激活重计算</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-graphtrainer">DeepSeek-V4 GraphTrainer 激活重计算</h1>
+<p>本文说明 <code>torchtitan-npu</code> 中 DeepSeek-V4 GraphTrainer 的激活重计算设计，包括默认 <code>full</code> 策略、可选 <code>dsv4-mhc</code> 策略、使用方式和已知限制。</p>
+<h2 id="1">1. 特性概述</h2>
+<p>DeepSeek-V4 同时包含 attention、压缩 attention、MoE、SimpleFSDP 通信和 Ascend 融合算子。若前向激活全部保存，显存峰值较高；若只在 module 边界统一 checkpoint，又会重算昂贵的 attention/MoE 子图。GraphTrainer 先将前向、loss 和 <code>torch.autograd.grad</code> 反向捕获为联合 FX 图，再按节点决定保存或重算，从而用计算换取显存。</p>
+<p>当前重计算只作用于联合前向/反向图，<code>optimizer.step()</code>、梯度裁剪和 scheduler 仍在图外执行。</p>
+<p>核心原则：</p>
+<ul>
+<li>在 joint FX graph 上做节点级决策，而不是重新包 eager checkpoint hook；</li>
+<li>随机数状态、反向必需值和 FSDP 强制节点优先保存；</li>
+<li>可重算子图保持函数式、无隐式状态；</li>
+<li>通用策略由上游提供，NPU 仓只扩展 DSV4 所需规则。</li>
+</ul>
+<h2 id="2">2. 配置接口</h2>
+<h3 id="21">2.1 默认配置</h3>
+<p>DSV4 GraphTrainer 工厂默认配置如下：</p>
+<pre><code class="language-text">enable = true
+mode = &quot;aot_fx_trace&quot;
+memory_policy = &quot;full&quot;
+disable_passes = [&quot;cudagraph_pass&quot;]
+</code></pre>
+<p>配置位置：</p>
+<pre><code class="language-text">torchtitan_npu/models/deepseek_v4/config_registry.py
+</code></pre>
+<p>五个 GraphTrainer recipe 均使用 <code>num_mtp_layers=0</code> 和 <code>memory_policy="full"</code>。</p>
+<h3 id="22-dsv4">2.2 切换 DSV4 专用策略</h3>
+<pre><code class="language-bash">--compile.memory-policy dsv4-mhc
+</code></pre>
+<p><code>dsv4-mhc</code> 不是默认策略。建议先用 <code>full</code> 完成数值和编译验证，再在相同模型、batch、并行度和 step 数下对比显存与吞吐。</p>
+<h3 id="23">2.3 配置类型要求</h3>
+<p>NPU ConfigManager 会跳过 <code>GraphTrainer.Config</code> 的普通包装，相关代码位于：</p>
+<pre><code class="language-text">torchtitan_npu/config/manager.py
+</code></pre>
+<p>如果误转成普通 <code>TrainerConfig</code>，训练会退回 <code>TrainerEx</code>，GraphTrainer 的联合图和重计算策略不会生效。</p>
+<h2 id="3">3. 执行流程</h2>
+<pre><code class="language-mermaid">flowchart LR
+    A[&quot;DSV4 recipe&quot;] --&gt; B[&quot;TP / EP&quot;] --&gt; C[&quot;SimpleFSDP&quot;] --&gt; D[&quot;首个 batch make_fx&quot;]
+    D --&gt; E[&quot;joint forward/backward FX graph&quot;] --&gt; F[&quot;FQN/FSDP annotation&quot;]
+    F --&gt; G[&quot;memory policy&quot;] --&gt; H[&quot;save/recompute partition&quot;]
+    H --&gt; I[&quot;AOTAutograd + Inductor&quot;] --&gt; J[&quot;后续 batch replay&quot;]
+    J --&gt; K[&quot;图外 optimizer.step&quot;]
+</code></pre>
+<p>首个 batch 完成 trace、重计算分区和编译后，GraphTrainer 会缓存 TracedResult。后续 batch 复用已捕获的图和重计算策略，只更新实时输入、参数和 metadata。
+后续 batch 必须满足首次捕获时的输入契约：
+- pytree/input 结构保持不变；
+- dtype、device 和未标记的静态 shape 保持不变；
+- ratio 集合、metadata 字段结构和模块结构保持不变；
+- 只有预先标记为 dynamic 且满足约束的维度可以变化。
+当前 replay 路径不会因为输入契约变化而自动重新 trace。契约变化会导致 guard/replay 失效，必须显式重新捕获和编译；</p>
+<h2 id="4">4. 重计算实现</h2>
+<h3 id="41-full">4.1 上游 <code>full</code> 策略</h3>
+<p>上游 full policy 默认使用一层一保存输出的策略，其余节点默认使用重计算方式。</p>
+<p>代码位置：</p>
+<pre><code class="language-text">torchtitan/experiments/graph_trainer/memory_policy.py
+</code></pre>
+<h3 id="42-npu">4.2 NPU 策略框架</h3>
+<pre><code class="language-text">torchtitan_npu/patches/torchtitan/graph_trainer/memory_policy.py
+</code></pre>
+<p>NPU 扩展使用 <code>NodePolicyKey</code> 按 FX target、模块 FQN 和 occurrence 定位节点，并提供 layer boundary、<code>MUST_SAVE</code>、反向节点跳过、<code>lm_head/loss</code> 跳过和 SymInt 保存等规则。</p>
+<h3 id="43-dsv4-mhc">4.3 <code>dsv4-mhc</code> 策略</h3>
+<pre><code class="language-text">torchtitan_npu/models/deepseek_v4/memory_policy.py
+</code></pre>
+<p>该策略以 <code>full</code> 为基线，主要做四件事：</p>
+<ol>
+<li>保存 <code>layers.*.attention.wo_b</code> 中第一次出现的 <code>aten.matmul.default</code>，避免重算昂贵的 attention 出口；</li>
+<li>保存 <code>layers.*.moe</code> 中第一次出现的 <code>aten.add.Tensor</code>，避免重算 MoE 输出合并；</li>
+<li>保留 <code>reshard_after_forward=False</code> 时的 FSDP 强制节点；</li>
+<li>每 4 层设置一个边界，让较便宜的 MHC 路径处于可重算分区中。</li>
+</ol>
+<p>整体来说，除了保存跨层输出，还同步保存了每个mhc的post模块的输入，保障前面的gmm2等不会进入重计算，以此提升性能</p>
+<pre><code class="language-mermaid">flowchart TD
+    A[&quot;FX node&quot;] --&gt; B{&quot;FSDP 强制保存?&quot;}
+    B -- &quot;是&quot; --&gt; S[&quot;MUST_SAVE&quot;]
+    B -- &quot;否&quot; --&gt; C{&quot;命中 attention/MoE 出口?&quot;}
+    C -- &quot;是&quot; --&gt; S
+    C -- &quot;否&quot; --&gt; D{&quot;到达 4 层边界?&quot;}
+    D -- &quot;是&quot; --&gt; R[&quot;建立重算边界&quot;]
+    D -- &quot;否&quot; --&gt; F[&quot;沿用 full 决策&quot;]
+</code></pre>
+<p>它的权衡是保存少量高成本出口，重算低成本节点，以降低显存并控制反向计算开销。规则依赖 FQN、算子 target 和 occurrence，模型重构后可能静默失配。</p>
+<h2 id="5">5. 支持边界与风险</h2>
+<ul>
+<li><code>dsv4-mhc</code> 依赖 FQN、FX target 和 occurrence，模型或编译器升级后必须检查规则命中数。</li>
+<li>重计算链路依赖 FX tracer、AOTAutograd、Dynamo dynamic annotation 和 Inductor 私有 API，升级 PyTorch、torch-npu 或 TorchTitan 后需重新回归。</li>
+</ul>
+<h2 id="6">6. 关键文件</h2>
+<table>
+<thead>
+<tr>
+<th>功能</th>
+<th>文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DSV4 GraphTrainer 配置</td>
+<td><code>torchtitan_npu/models/deepseek_v4/config_registry.py</code></td>
+</tr>
+<tr>
+<td>通用 full policy</td>
+<td><code>torchtitan/experiments/graph_trainer/memory_policy.py</code></td>
+</tr>
+<tr>
+<td>NPU policy 框架</td>
+<td><code>torchtitan_npu/patches/torchtitan/graph_trainer/memory_policy.py</code></td>
+</tr>
+<tr>
+<td><code>dsv4-mhc</code> 策略</td>
+<td><code>torchtitan_npu/models/deepseek_v4/memory_policy.py</code></td>
+</tr>
+<tr>
+<td>FX tracer/replay</td>
+<td><code>torchtitan/experiments/graph_trainer/make_fx_tracer.py</code>、<code>torchtitan/experiments/graph_trainer/trainer.py</code></td>
+</tr>
+<tr>
+<td>SimpleFSDP</td>
+<td><code>torchtitan/experiments/graph_trainer/simple_fsdp.py</code></td>
+</tr>
+<tr>
+<td>函数式 compressor</td>
+<td><code>torchtitan_npu/models/deepseek_v4/compressor.py</code></td>
+</tr>
+<tr>
+<td>RoPE compiler pattern</td>
+<td><code>torchtitan_npu/compile/patterns/deepseek_v4/inplace_partial_rope.py</code></td>
+</tr>
+<tr>
+<td>重算单测</td>
+<td><code>tests/unit_tests/compile/patterns/deepseek_v4/test_recompute_policy.py</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="7">7. 结论</h2>
+<p>DeepSeek-V4 GraphTrainer 重计算是在联合 FX 图上进行节点级 save/recompute 决策，并与 SimpleFSDP 参数通信协同。<code>full</code> 是显存优先的通用基线，<code>dsv4-mhc</code> 保存 attention/MoE 高成本出口以减少部分重算。实际启用前应同时验证数值、峰值显存、重编译次数和稳态吞吐；不能只以训练成功启动作为结论。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v4_graph_trainer/" class="btn btn-neutral float-left" title="DeepSeek-V4 GraphTrainer 编译路径适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_tnd/" class="btn btn-neutral float-right" title="DeepSeek-V4 TND 适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v4_graph_trainer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_tnd/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

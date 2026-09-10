@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>静默数据损坏检测（SDC） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u9759\u9ed8\u6570\u636e\u635f\u574f\u68c0\u6d4b\uff08SDC\uff09";
+        var mkdocs_page_input_path = "feature_guides/sdc.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">静默数据损坏检测（SDC）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">启动入口</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">环境变量</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#eager">Eager</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#compile">Compile</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">生命周期</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">模块职责</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">验证范围</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">静默数据损坏检测（SDC）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="sdc">静默数据损坏检测（SDC）</h1>
+<p>SDC（Silent Data Corruption，静默数据损坏）用于检测 Ascend NPU 编译训练中的 gradient、
+HCCL 和 matmul checksum 异常，适用于使用 <code>torch.compile</code> 与 Inductor 编译模型的标准 NPU Trainer。
+该能力默认关闭，通过 <code>TrainerEx.Config.sdc</code> 对应的 CLI 参数按需启用。</p>
+<h2 id="_1">启动入口</h2>
+<p>所有模式都通过 <code>torchrun -m torchtitan_npu.train</code> 启动。该入口会在上游配置加载前安装
+NPU 配置转换，使标准配置构造
+<code>TrainerEx</code>。直接使用 <code>torchrun -m torchtitan.train</code> 可能构造上游 <code>Trainer</code>，不支持作为
+NPU SDC 入口。</p>
+<p><code>scripts/run_train.sh</code> 和 <code>scripts/run_train_multinodes.sh</code> 默认使用
+<code>torchtitan_npu.train</code>，无需把 <code>scripts/</code> 加入 <code>PYTHONPATH</code>。</p>
+<h2 id="_2">环境变量</h2>
+<h3 id="eager">Eager</h3>
+<p>Eager 模式使用 torch-npu 原生控制：</p>
+<pre><code class="language-bash">NPU_ASD_CONFIG='enable:true,with_checksum:false' \
+torchrun --nproc_per_node=8 -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_flash_43layers_16experts
+</code></pre>
+<p><code>NPU_ASD_CONFIG</code> 和 <code>NPU_ASD_ENABLE</code> 在 Python 进程导入 torch-npu 前生效，可能安装
+torch-npu 的 <code>torch.nn.Module.__call__</code> wrapper。仅设置原生变量时，<code>TrainerEx</code> 不安装
+compiled gradient、checksum 或 typed HCCL 控制。</p>
+<p>这两个环境变量由 torch-npu 原生实现负责解释；compiled SDC 仅接受 typed CLI/config。</p>
+<h3 id="compile">Compile</h3>
+<p>编译模型使用 typed SDC 参数：</p>
+<pre><code class="language-bash">torchrun --nproc_per_node=8 -m torchtitan_npu.train \
+  --module torchtitan_npu.models.deepseek_v4 \
+  --config deepseek_v4_flash_43layers_16experts \
+  --sdc.gradient-enabled \
+  --sdc.with-checksum \
+  --sdc.hccl-mode 2 \
+  --compile.enable \
+  --compile.components model \
+  --compile.backend inductor
+</code></pre>
+<p>typed SDC 参数如下：</p>
+<table>
+<thead>
+<tr>
+<th>CLI 参数</th>
+<th style="text-align: right;">默认值</th>
+<th>约束与作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--sdc.gradient-enabled</code></td>
+<td style="text-align: right;"><code>false</code></td>
+<td>启用 gradient detection。</td>
+</tr>
+<tr>
+<td><code>--sdc.with-checksum</code></td>
+<td style="text-align: right;"><code>false</code></td>
+<td>启用 matmul checksum，依赖 gradient detection。</td>
+</tr>
+<tr>
+<td><code>--sdc.hccl-mode</code></td>
+<td style="text-align: right;"><code>0</code></td>
+<td>HCCL 检测模式，可取 <code>0</code>、<code>1</code>、<code>2</code>、<code>3</code>，<code>0</code> 表示关闭。</td>
+</tr>
+<tr>
+<td><code>--sdc.cooldown</code></td>
+<td style="text-align: right;"><code>5</code></td>
+<td>异常检测冷却时间，单位为分钟，必须大于 <code>0</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.strikes-num</code></td>
+<td style="text-align: right;"><code>3</code></td>
+<td>窗口内触发检测的异常次数，必须大于 <code>0</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.strikes-window</code></td>
+<td style="text-align: right;"><code>480</code></td>
+<td>异常计数窗口，单位为分钟，必须大于 <code>0</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.checksum-cooldown</code></td>
+<td style="text-align: right;"><code>180</code></td>
+<td>checksum 冷却时间，单位为分钟，必须大于 <code>0</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.upper-thresh1</code></td>
+<td style="text-align: right;"><code>1000000</code></td>
+<td>native gradient 检测阈值，必须大于或等于 <code>3</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.upper-thresh2</code></td>
+<td style="text-align: right;"><code>100</code></td>
+<td>native gradient 检测阈值，必须大于或等于 <code>3</code>。</td>
+</tr>
+<tr>
+<td><code>--sdc.grad-sample-interval</code></td>
+<td style="text-align: right;"><code>3</code></td>
+<td>每隔多少个候选参数选择一个检测目标，必须大于 <code>0</code>。</td>
+</tr>
+</tbody>
+</table>
+<p>有效开启条件是 <code>gradient_enabled or hccl_mode != 0</code>。全部使用默认值时，SDC 不导入
+torch-npu，也不校验编译兼容性。任一 gradient tuning 参数偏离默认值时，必须启用
+<code>--sdc.gradient-enabled</code>；上述 7 个 tuning 参数都按整数解析，非法值直接报错。</p>
+<p>typed compiled SDC 开启时，允许未设置原生变量，或使用关闭配置
+<code>NPU_ASD_CONFIG=enable:false</code>、<code>NPU_ASD_ENABLE=0</code>。<code>NPU_ASD_CONFIG</code> 的 <code>enable</code>
+按原生语法解析，缺省为 <code>false</code>；仅检查开关，不重新校验其他原生调参。
+任一原生开关启用或取值非法均报错，不因另一个开关关闭而忽略它。
+CLI 指定非零 HCCL 模式时，在导入 torch-npu 后覆盖原生关闭值 <code>0</code>。
+这不支持导入时已启用 Eager 后再修改环境来切换模式。typed SDC 关闭时不会读取或修改
+这两个变量，原生 eager SDC 仍完全由 torch-npu 管理。</p>
+<p><code>SDC</code> 直接配置 torch-npu 原生 checker，并调用其 <code>_startup</code>、<code>_detect_grad</code> 和私有 HCCL
+状态接口，不增加 Adapter 或仅转发调用的管理层。本仓库不重实现检测算法；checksum
+pass/custom op 调用 <code>torch_npu.matmul_checksum</code>，把 native checksum 调用插入 compiled graph。</p>
+<p>compiled SDC 要求：</p>
+<ul>
+<li><code>compile.enable=true</code>，且 <code>compile.components</code> 包含 <code>model</code>。</li>
+<li><code>compile.backend=inductor</code>。</li>
+<li><code>parallelism.pipeline_parallel_degree=1</code>，不支持流水线并行。</li>
+<li>HCCL 检测在模型构建完成后一次性启用，覆盖此后的 forward、backward 和训练步骤间
+  collective，不覆盖 Trainer 构造期间的初始化通信。启用 HCCL SDC 可能带来额外性能损耗。</li>
+</ul>
+<h2 id="_3">生命周期</h2>
+<p><code>TrainerEx</code> 按以下顺序编排 SDC：</p>
+<pre><code class="language-text">Trainer.__init__
+-&gt; distributed initialization and model wrapping
+-&gt; config.sdc.build(
+       trainer_config=config,
+       model_parts=self.model_parts,
+       gradient_accumulation_steps=self.gradient_accumulation_steps,
+   )
+   -&gt; inactive: return
+   -&gt; validate compile compatibility and native environment
+   -&gt; import torch-npu before setting the HCCL environment
+   -&gt; configure HCCL, install checksum pass and initialize gradient checker
+
+Trainer.forward_backward_step()
+-&gt; SDC.finalize_sdc_step()
+</code></pre>
+<p>模型和梯度累积步数是 SDC 构造参数，不再另设后置初始化接口。<code>torch.compile</code> 包装本身不捕获
+训练图，因此可在模型包装后、首次前向前安装 checksum pass；框架不能在构造 SDC 前提前执行
+训练图。</p>
+<p>HCCL native gate 读取并缓存 <code>NPU_ASD_ENABLE</code>。compiled SDC 在 torch-npu 导入完成后，
+把 typed <code>hccl_mode</code> 写入该变量，并将 module state 设为 <code>train</code>、call state 设为 <code>backward</code>。
+这两个状态在后续训练中保持不变。首次导入前设置原生变量可能启用 Eager 包装；native 检测路径
+已经缓存 HCCL 模式后再修改变量则不会生效。标准 Trainer 构造期间不启用上述检测状态；其他框架
+接入时也必须保证设置开关前没有提前触发 native 检测路径。更改模式需要重启 worker。
+SDC 使用进程级 torch-npu 和 Inductor 状态，不提供运行期重配置或卸载接口。</p>
+<p><code>with_checksum=True</code> 时，<code>SDC.__init__()</code> 安装进程级 Inductor post-grad pass，首次编译
+的训练图即包含由 <code>checker.checksum_enable</code> 控制的 checksum custom op。Gradient checker
+达到阈值后只打开 native gate，后续 step 直接在原图执行 checksum，不调用
+<code>torch.compiler.reset()</code>。</p>
+<p>checksum pass 对训练图中的 BF16 NPU <code>aten.mm.default</code>、<code>aten.matmul.default</code> 和
+<code>aten.bmm.default</code> 插入 checksum custom op。</p>
+<p><code>SDC.finalize_sdc_step()</code> 只在成功 step 后执行 gradient accumulation 边界提交。HCCL 状态不会在
+step 结束时恢复或切换；失败 step 的异常直接向上传播，不执行后处理。</p>
+<h2 id="_4">模块职责</h2>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/extensions/trainer.py</code></td>
+<td>编排标准 Trainer 与 SDC 生命周期。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/components/sdc/sdc.py</code></td>
+<td>一次完成配置校验、HCCL、checksum 和 gradient 初始化；在 accumulation 边界直接提交梯度。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/compile/sdc_checksum.py</code>、<code>torchtitan_npu/ops/misc/sdc_checksum.py</code></td>
+<td>安装 checksum pass 并注册 custom op。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_5">验证范围</h2>
+<p><code>tests/unit_tests/test_sdc.py</code> 覆盖 config、gradient 和 HCCL 的 CPU 可观察契约，
+通过 native checker 替身验证 typed tuning、参数筛选和累积提交，并检查 <code>TrainerEx</code>
+在模型构建后一次初始化 SDC，失败 backward 不提交梯度。</p>
+<p><code>tests/smoke_tests/sdc/test_sdc.py</code> 为每个场景启动独立 Python worker，覆盖 Eager/compiled
+控制与无效配置、BF16 gradient、checksum custom-op 输出修改、编译图 consumer、初始化通信后
+启用 HCCL 的训练路径，以及 three-strikes 后不重新编译的 checksum 激活。该文件是专项 NPU
+冒烟测试，不替代 <code>tests/integration_tests</code> 中的完整模型训练验证。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../muon_optimizer/" class="btn btn-neutral float-left" title="DeepSeek-V4 Muon 优化器"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../torch_compile/" class="btn btn-neutral float-right" title="torch.compile 与 AscendC AutoFuse 特性">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../torch_compile/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
