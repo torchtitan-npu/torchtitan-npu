@@ -213,15 +213,15 @@ golden 与 patched transformers 比特一致，AscendC 融合内核与 golden �
 </tbody>
 </table>
 <h2 id="compressedvarlenmetadata">压缩布局：CompressedVarlenMetadata</h2>
-<p><a href="../../torchtitan_npu/models/deepseek_v4/metadata.py"><code>metadata.py</code></a> 定义唯一的注意力契约 <code>CompressedVarlenMetadata</code>，由同文件中的 <code>CompressedBlockMaskHandler</code>（模型目录默认 handler）每个 batch 构建一次，供所有 DSA 层复用：</p>
+<p><a href="../../torchtitan_npu/models/deepseek_v4/metadata.py"><code>metadata.py</code></a> 定义公共注意力契约 <code>CompressedVarlenMetadata</code>。每个 batch 由 <code>DeepSeekV4Model.build_attention_masks</code> 统一构建：先从 <code>VarlenMetadata</code> 调用 <code>build_compressed_varlen_metadata</code> 生成公共契约；启用 CP 时，再由 <code>_build_cp_metadata</code> 调用 <code>build_cp_plan</code> 生成 rank-local varlen、压缩计划和窗口计划；最后由 <code>metadata_extension</code> 补充参考路径或 AscendC 路径专属的 metadata。结果供所有 DSA 层复用：</p>
 <ul>
-<li><code>varlen</code>：<code>VarlenMetadata</code>，<code>cu_seq_q</code> 是序列边界的唯一权威来源。模型目录的参考 tier 要求 <code>cu_seq_q == cu_seq_k</code>（连续文档，non-CP）；统一 kernel contract（<code>build_kernel_layout</code>）无此限制，CP 流由 AscendC 融合路径消费。</li>
+<li><code>varlen</code>：<code>VarlenMetadata</code> 或 CP 下的 <code>CPVarlenMetadata</code>，<code>cu_seq_q</code> 是序列边界的唯一权威来源。<code>build_kernel_layout</code> 只构建普通流计划，并明确要求 <code>cu_seq_q == cu_seq_k</code>；CP 的 rank-local 计划由 <code>build_cp_plan</code> 构建，不会把 CP metadata 传给 <code>build_kernel_layout</code>。参考 tier 同样只支持 <code>cu_seq_q == cu_seq_k</code> 的非 CP 连续文档。</li>
 <li><code>batch_size</code> / <code>seq_len</code>：容器网格形状。DSV4 打包场景使用 <code>local_batch_size == 1</code>，因此 <code>batch_size == 1</code>、<code>seq_len</code> 等于总 token 数（<code>cu_seq_q[-1]</code>），元数据完全由 varlen 流推导，不依赖 positions。</li>
 <li><code>plans[ratio]</code>：每个模型实际使用的压缩比（1、4、128）对应一个 <code>CompressedBlockLayout</code>：</li>
 <li><code>cu_seqlens_cmp_k</code>、<code>block_remainder</code>：打包压缩块流边界与每文档尾部余数，直接喂给 AscendC 算子；</li>
-<li><code>gather_indices</code>、<code>block_positions</code>、<code>first_indices</code>：统一的 Compressor 契约（块 token gather、文档内块起点 RoPE、文档/段首块位置——重叠 borrow 掩码），CP 与非 CP 以同一字段名提供（CP 下 <code>plans[ratio]</code> 即 CP ratio plan——part 1 由 <code>build_kernel_layout</code> 在虚拟增强流上推导，<code>block_positions</code> 经 <code>+A</code> 文档锚定；<code>first_indices</code> 为 plan-block 序的段首位置；非 CP 下为 <code>cu_seqlens_cmp_k[:-1]</code>）；</li>
-<li><code>dense_mask</code> / <code>doc_of_block</code> / <code>block_local</code> / <code>static_blocks</code>：参考 tier（<code>reference.py</code>），<code>window_size</code>/<code>block_size</code> 为模型配置常量，经 <code>ReferenceMetadataExtension</code> 一次性预计算；</li>
-<li>AscendC <code>*_metadata</code> 张量不进入模型目录元数据；AscendC override handler 返回携带 <code>asc_plans</code> 的 <code>AscCompressedVarlenMetadata</code> 包装。</li>
+<li><code>gather_indices</code>、<code>block_positions</code>、<code>first_indices</code>：统一的 Compressor 契约（块 token gather、文档内块起点 RoPE、文档/段首块位置——重叠 borrow 掩码），CP 与非 CP 以同一字段名提供。非 CP 字段由 <code>build_kernel_layout</code> 生成；CP 下的 <code>plans[ratio]</code> 由 <code>build_cp_plan</code> 生成，并额外携带 dispatcher 所需字段。</li>
+<li><code>reference.ratios[ratio]</code>：保存 <code>dense_mask</code>、<code>doc_of_block</code>、<code>block_local</code> 和 <code>static_blocks</code> 等参考路径字段，由 <code>ReferenceMetadataExtension</code> 一次性预计算，不属于公共 <code>plans[ratio]</code>。</li>
+<li><code>asc_plans[ratio]</code>：保存 AscendC 的 <code>smla_metadata</code>、<code>smla_grad_metadata</code>、<code>li_metadata</code> 和 <code>slig_metadata</code>。这些张量不进入模型目录的公共 metadata；AscendC extension 返回携带该字段的 <code>AscCompressedVarlenMetadata</code>。</li>
 </ul>
 <p>一个 batch 里可以打包多条序列，所以 <code>B</code> 与序列条数无关。例如：</p>
 <pre><code class="language-text">positions  = [[0, 1, 2, 0, 1]]
@@ -242,12 +242,12 @@ block_positions  = [0, 4, 0, 4, 8, 12]
 overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
 </code></pre>
 <ul>
-<li><code>r=1</code>：不生成压缩 KV，仅执行原始 KV 的滑窗注意力（plan 只含 AscendC metadata，<code>has_cmp_kv=False</code>）。</li>
+<li><code>r=1</code>：不生成压缩 KV，仅执行原始 KV 的滑窗注意力。公共 <code>plans[1]</code> 不包含压缩块，AscendC extension 仍生成对应的 <code>asc_plans[1]</code>，融合算子使用 <code>has_cmp_kv=False</code>。</li>
 <li><code>r=4</code>（CSA）：启用重叠压缩和 LightningIndexer；前驱块必须属于同一文档（<code>overlap_valid</code>）。</li>
 <li><code>r=128</code>（HCA）：生成连续压缩 KV，不执行 LightningIndexer TopK。</li>
 </ul>
 <h2 id="golden">参考路径（默认内核与 golden）</h2>
-<p>模型目录默认内核是 varlen 化的 <code>CompressedSparseInnerAttention</code>（上游 port）：在 <code>[swa_k | cmp_k | sink]</code> 拼接的容器 KV 上构建文档感知的两级 <code>BlockMask</code>（块列表超集 + token 级 <code>mask_mod</code>），CSA 的 top-k 由 <code>Indexer.select</code> 在 dense mask 上选择。块列表的静态部分（滑窗、sink、HCA 压缩区）由 handler 预计算进 <code>static_blocks</code>，每层只做 CSA top-k scatter 与 mask_mod 过滤。golden override 用 eager 逐文档 FP32 实现（gather-matmul + 逐文档 indexer top-k）作为比特级数值参考。</p>
+<p>模型目录默认内核是 varlen 化的 <code>CompressedSparseInnerAttention</code>（上游 port）：在 <code>[swa_k | cmp_k | sink]</code> 拼接的容器 KV 上构建文档感知的两级 <code>BlockMask</code>（块列表超集 + token 级 <code>mask_mod</code>），CSA 的 top-k 由 <code>Indexer.select</code> 在 dense mask 上选择。块列表的静态部分（滑窗、sink、HCA 压缩区）由 <code>ReferenceMetadataExtension</code> 预计算进 <code>reference.ratios[ratio].static_blocks</code>，每层只做 CSA top-k scatter 与 mask_mod 过滤。golden override 用 eager 逐文档 FP32 实现（gather-matmul + 逐文档 indexer top-k）作为比特级数值参考。</p>
 <h2 id="ascendc">AscendC 融合路径</h2>
 <p><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn/ascendc.py"><code>sparse_attn/ascendc.py</code></a> 中的 <code>AscCompressedSparseInnerAttention</code> 执行以下步骤：</p>
 <ol>
@@ -283,7 +283,7 @@ overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
 </tr>
 <tr>
 <td>四个 <code>*_metadata</code> 张量</td>
-<td><code>plan</code>（NPU handler 预计算）</td>
+<td><code>asc_plans[ratio]</code>（AscendC extension 预计算）</td>
 </tr>
 </tbody>
 </table>

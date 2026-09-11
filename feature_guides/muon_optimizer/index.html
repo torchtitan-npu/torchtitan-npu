@@ -223,9 +223,11 @@ torchtitan_npu.override.common.muon_state_swap.muon_state_swap_checkpoint
 </code></pre>
 <p>启用后：</p>
 <ul>
-<li>Muon 的 <code>momentum_buffer</code> 在首次创建后注册为 NovaSwap tensor，并在 step 前
-  H2D、step 后 D2H；</li>
-<li>AdamW 的 <code>exp_avg</code> 和 <code>exp_avg_sq</code> 在 step 前换入、step 后换出；</li>
+<li>Muon 的 <code>momentum_buffer</code> 在首次创建后注册为 NovaSwap tensor 并换出；后续按
+  compute layout 在 <code>_prepare_local</code> 中执行 H2D 和等待，准备本地 state 后执行
+  D2H；</li>
+<li>AdamW 的 <code>exp_avg</code> 和 <code>exp_avg_sq</code> 通过 optimizer step pre/post hook，在整个
+  step 前换入、step 后换出；</li>
 <li>optimizer state 仍由 PyTorch optimizer 懒创建，swap 不会在模型初始化阶段提前
   生成完整 state storage；</li>
 <li>AdamW 和 Muon 使用不同的唯一 swap name，避免多个 optimizer 实例互相覆盖；</li>
