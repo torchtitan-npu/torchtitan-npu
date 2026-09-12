@@ -180,6 +180,8 @@ state[&quot;exp_avg_sq&quot;] = torch_npu.empty_with_swapped_memory(
 <p>对于 DTensor 参数，Virtual Optimizer 仅按照当前 rank 的 local shard 分配 moments，并保留原有 device mesh、placements、全局 shape 和 stride。部分 rank 可能持有 zero-sized local shard，而 swap allocator 不接受空 tensor，因此该情况使用普通的 <code>torch.empty_like()</code>。</p>
 <h2 id="_5">启用方式</h2>
 <p>Virtual Optimizer 通过 TorchTitan 的配置级 override 启用，不增加 <code>virtual_optimizer_size</code>、<code>swap_optimizer_times</code> 等配置字段。</p>
+<p>Virtual Optimizer 与 <code>torchtitan_npu.override.common.optimizer.swap_optimizer</code> 都替换
+<code>OptimizersContainer.Config</code>，不能同时出现在 <code>override.imports</code> 中。</p>
 <h3 id="_6">命令行示例</h3>
 <pre><code class="language-bash">python -m torchtitan_npu.train \
   --module torchtitan_npu.models.deepseek_v4 \
