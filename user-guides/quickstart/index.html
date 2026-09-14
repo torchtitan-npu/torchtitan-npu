@@ -263,12 +263,49 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 </tr>
 </tbody>
 </table>
+<p>LI Q/K 量化可通过以下参数单独选择，必须同时启用低精度训练：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.li-quantization mxfp4
+</code></pre>
+<p>支持的 LI 量化类型及对应 CANN <code>quant_mode</code> 为：</p>
+<table>
+<thead>
+<tr>
+<th><code>li-quantization</code></th>
+<th style="text-align: right;">CANN <code>quant_mode</code></th>
+<th>Q/K 量化方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fp8</code></td>
+<td style="text-align: right;">1</td>
+<td>FP8 per-token-head</td>
+</tr>
+<tr>
+<td><code>mxfp8</code></td>
+<td style="text-align: right;">3</td>
+<td>MXFP8</td>
+</tr>
+<tr>
+<td><code>mxfp4</code></td>
+<td style="text-align: right;">5</td>
+<td>MXFP4</td>
+</tr>
+<tr>
+<td><code>hif8</code></td>
+<td style="text-align: right;">4</td>
+<td>HiFloat8 per-tensor</td>
+</tr>
+</tbody>
+</table>
 <p>量化相关 CLI 参数：</p>
 <ul>
 <li><code>--extension.quantization.enable-quantized-training</code> 与 <code>--extension.quantization.no-enable-quantized-training</code>：选择低精度或高精度通路；默认使用高精度，只有显式传入 enable 开关才启用低精度。</li>
 <li><code>--extension.quantization.recipe</code>：选择 <code>all_mxfp8</code>、<code>mix</code> 或 <code>all_block_fp8</code>，默认使用 <code>mix</code>。</li>
 <li><code>--extension.quantization.enable-mxfp4-qat</code> 与 <code>--extension.quantization.no-enable-mxfp4-qat</code>：控制 routed expert 的 Block FP8 weight 是否增加 MXFP4 QAT fake quant 数值约束，默认关闭，仅对包含 Block FP8 的 recipe 生效。该选项不是持久化 4-bit 参数训练，也不会把算子替换为原生 A8W4 GEMM。</li>
-<li><code>--extension.quantization.dst-type-max</code>：MXFP4 fake quant 的目标数据类型最大值，默认 <code>0.0</code>，由数据类型自动推导。</li>
+<li><code>--extension.quantization.li-quantization</code>：选择 LI Q/K 量化类型，可选 <code>mxfp4</code>、<code>mxfp8</code>、<code>fp8</code> 或 <code>hif8</code>；需要同时启用 <code>enable-quantized-training</code>。</li>
+<li><code>--extension.quantization.dst-type-max</code>：量化目标数据类型最大值，用于 MXFP4 fake quant 和 HiF8 LI 量化时，默认值为 <code>0.0</code>；HiF8 支持 <code>0</code>、<code>15</code>、<code>56</code>、<code>224</code> 和 <code>32768</code>。</li>
 <li><code>--profiler.enable-profiling</code>：启用性能分析。</li>
 <li><code>USE_GOLDEN</code>：设为 <code>1</code> 时选择 golden attention override；默认使用 Ascend 融合算子路径。</li>
 </ul>
