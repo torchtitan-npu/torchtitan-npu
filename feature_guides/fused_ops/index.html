@@ -39,10 +39,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
-                </li>
-              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -177,17 +173,10 @@
 <td>只替换组件中的对应逻辑，其余逻辑沿用上游实现</td>
 <td><a href="../../torchtitan_npu/ops/ascendc/moe_token_unpermute.py"><code>npu_moe_token_unpermute</code></a>（接入：<a href="../../torchtitan_npu/override/common/token_dispatcher.py"><code>torchtitan_npu.override.common.token_dispatcher.asc</code></a>）</td>
 </tr>
-<tr>
-<td>融合算子是一段可被 <code>torch.compile</code> 捕获的连续计算</td>
-<td>pre-AOT pattern</td>
-<td>在 <code>compile/patterns/</code> 中替换编译图中的片段</td>
-<td><a href="../../torchtitan_npu/compile/patterns/deepseek_v4/inplace_partial_rope.py"><code>inplace_partial_rotary_mul</code></a></td>
-</tr>
 </tbody>
 </table>
-<p><code>torch.library.custom_op</code> 只是 <code>ops</code> 实现需要进入 <code>torch.compile</code> 图时的兼容封装，不改变上述两种
-组件替换方式。仅替换编译图片段时，使用 pre-AOT pattern。
-片段融合的完整示例见<a href="../../graph_pattern_fusion/">片段融合算子接入</a>。</p>
+<p><code>torch.library.custom_op</code> 只是 <code>ops</code> 实现需要进入 <code>torch.compile</code> 图时的兼容封装，
+不改变上述两种组件替换方式。</p>
 <h2 id="_3">目录与命名</h2>
 <h3 id="_4">入口命名</h3>
 <p>公开入口统一为：</p>
@@ -258,8 +247,7 @@
 <li>算子支持的设备代际、CANN 版本、dtype、shape 和并行范围。</li>
 </ul>
 <p>选择最小且稳定的组件边界。融合算子覆盖组件全部计算时，整体替换 Module；只覆盖组件部分计算时，
-继承并重写对应方法；仅替换编译图连续片段时，改用 pre-AOT pattern。模型专属 target 不要放入
-<code>common/</code>。</p>
+继承并重写对应方法。模型专属 target 不要放入 <code>common/</code>。</p>
 <h3 id="2">2. 实现算子层</h3>
 <ul>
 <li>AscendC/CANN：kernel 由 CANN 或 <code>torch_npu</code> 提供接口，仓库不重复实现。<code>ops/ascendc/</code> 负责调用
@@ -419,6 +407,8 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 <li><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn"><code>deepseek_v4/sparse_attn</code></a>：AscendC、PyPTO 与 golden DSA。</li>
 <li><a href="../../torchtitan_npu/override/deepseek_v4/mhc"><code>deepseek_v4/mhc</code></a>：AscendC 与 Triton 多后端替换。</li>
 <li><a href="../../torchtitan_npu/override/common/token_dispatcher.py"><code>torchtitan_npu/override/common/token_dispatcher.py</code></a>：<code>token_dispatcher.asc</code> 在 <code>AllToAllTokenDispatcher</code> 中替换局部 dispatch/combine 计算。</li>
+<li><a href="../../torchtitan_npu/override/common/rope.py"><code>torchtitan_npu/override/common/rope.py</code></a>：<code>rope.asc_partial</code> 整体替换 partial-RoPE 站点，含可选 CANN 依赖的惰性加载。</li>
+<li><a href="../../torchtitan_npu/ops/ascendc/inplace_partial_rotary_mul.py"><code>torchtitan_npu/ops/ascendc/inplace_partial_rotary_mul.py</code></a>：原生 mutator 算子的 functional autograd 包装（clone + 前向/反向原地旋转）。</li>
 <li><a href="../../torchtitan_npu/ops/ascendc/moe_token_unpermute.py"><code>ops/ascendc/moe_token_unpermute.py</code></a>：custom op、Fake 和 Autograd 注册示例。</li>
 </ul>
               

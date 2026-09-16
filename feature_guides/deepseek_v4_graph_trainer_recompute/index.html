@@ -39,10 +39,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
-                </li>
-              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -92,6 +88,8 @@
     <li class="toctree-l3"><a class="reference internal" href="#42-npu">4.2 NPU 策略框架</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#43-dsv4-mhc">4.3 dsv4-mhc 策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#44">4.4 前向变异算子的重算保真</a>
     </li>
         </ul>
     </li>
@@ -169,6 +167,7 @@
 <pre><code class="language-text">enable = true
 mode = &quot;aot_fx_trace&quot;
 memory_policy = &quot;full&quot;
+pass_pipeline = &quot;mutation-functionalization&quot;
 disable_passes = [&quot;cudagraph_pass&quot;]
 </code></pre>
 <p>配置位置：</p>
@@ -230,9 +229,21 @@ disable_passes = [&quot;cudagraph_pass&quot;]
     D -- &quot;否&quot; --&gt; F[&quot;沿用 full 决策&quot;]
 </code></pre>
 <p>它的权衡是保存少量高成本出口，重算低成本节点，以降低显存并控制反向计算开销。规则依赖 FQN、算子 target 和 occurrence，模型重构后可能静默失配。</p>
+<h3 id="44">4.4 前向变异算子的重算保真</h3>
+<p>原生 SAR 按数据流回放重算节点，无数据输出的前向变异算子（如 partial-RoPE 对
+clone 的原地旋转）不会进入回放链，反向会读到未旋转的值（上游 issue
+<a href="https://github.com/pytorch/torchtitan/issues/4688">#4688</a>）。DSV4 GraphTrainer 默认
+启用上游 PR <a href="https://github.com/pytorch/torchtitan/pull/4708">#4708</a> 的
+<code>functionalize_recompute_mutations_pass</code>（见 2.1）：在 memory-policy 打标之后、
+CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随之自然重算；对无可
+重算变异的图是 no-op。已验证 A3（CANN w0902，backward 走临时 shim）2p/8p 精度
+对齐；A5 原生反向未验证。固定 TorchTitan 依赖自带等价 pass 后，删除本 backport
+与 <code>pass_pipeline</code> 设置即可。</p>
 <h2 id="5">5. 支持边界与风险</h2>
 <ul>
 <li><code>dsv4-mhc</code> 依赖 FQN、FX target 和 occurrence，模型或编译器升级后必须检查规则命中数。</li>
+<li>变异算子重算保真依赖上游 #4708 的 functionalization 语义与原生 SAR 的交互；升级
+  PyTorch 或 TorchTitan 后需重跑 <code>test_rope_recompute_integration.py</code> 的正/负对照。</li>
 <li>重计算链路依赖 FX tracer、AOTAutograd、Dynamo dynamic annotation 和 Inductor 私有 API，升级 PyTorch、torch-npu 或 TorchTitan 后需重新回归。</li>
 </ul>
 <h2 id="6">6. 关键文件</h2>
@@ -273,12 +284,12 @@ disable_passes = [&quot;cudagraph_pass&quot;]
 <td><code>torchtitan_npu/models/deepseek_v4/compressor.py</code></td>
 </tr>
 <tr>
-<td>RoPE compiler pattern</td>
-<td><code>torchtitan_npu/compile/patterns/deepseek_v4/inplace_partial_rope.py</code></td>
+<td>变异重算保真（functionalization backport）</td>
+<td><code>torchtitan_npu/patches/torchtitan/graph_trainer/functionalize_recompute_mutations.py</code></td>
 </tr>
 <tr>
 <td>重算单测</td>
-<td><code>tests/unit_tests/compile/patterns/deepseek_v4/test_recompute_policy.py</code></td>
+<td><code>tests/unit_tests/compile/test_recompute_policy.py</code></td>
 </tr>
 </tbody>
 </table>

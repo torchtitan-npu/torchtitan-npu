@@ -39,10 +39,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../graph_pattern_fusion/">片段融合算子接入</a>
-                </li>
-              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -91,9 +87,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#22-aot_eager">2.2 使用 aot_eager 检查编译兼容性</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#23-pattern">2.3 注册特定图 pattern</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#24">2.4 配置和环境变量</a>
+    <li class="toctree-l3"><a class="reference internal" href="#23">2.3 配置和环境变量</a>
     </li>
         </ul>
     </li>
@@ -119,13 +113,11 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#52-loss">5.2 模型和 loss 编译</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#53-pre-aot-pattern">5.3 pre-AOT pattern</a>
+    <li class="toctree-l3"><a class="reference internal" href="#53-ascendc-autofuse-fallback">5.3 AscendC AutoFuse 与 fallback</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#54-ascendc-autofuse-fallback">5.4 AscendC AutoFuse 与 fallback</a>
+    <li class="toctree-l3"><a class="reference internal" href="#54-npu-patch">5.4 NPU 兼容 patch</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#55-npu-patch">5.5 NPU 兼容 patch</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#56">5.6 与其他组件的交互</a>
+    <li class="toctree-l3"><a class="reference internal" href="#55">5.5 与其他组件的交互</a>
     </li>
         </ul>
     </li>
@@ -193,7 +185,6 @@ Host 下发和中间 Tensor 读写。<code>torch.compile</code> 使用 TorchDyna
 <ul>
 <li>复用 TorchTitan 配置选择需要编译的训练组件；</li>
 <li>选择 <code>torch_npu</code> 内置的 AscendC Inductor 后端；</li>
-<li>提供可选的 pre-AOT graph pattern；</li>
 <li>在包导入阶段安装当前软件栈需要的 NPU 兼容 patch。</li>
 </ul>
 <p>相关机制的边界如下：</p>
@@ -217,32 +208,21 @@ Host 下发和中间 Tensor 读写。<code>torch.compile</code> 使用 TorchDyna
 <td>自动融合受支持的 Inductor 子图并生成 AscendC Kernel</td>
 </tr>
 <tr>
-<td>pre-AOT pattern</td>
-<td>Dynamo 成图后、AOTAutograd 生成反向前</td>
-<td>将稳定连续片段替换为专用融合实现</td>
-</tr>
-<tr>
 <td>override 与 custom op</td>
 <td>模型构建或明确算子边界</td>
 <td>替换完整组件，或封装已有 CANN/Triton/PyPTO 算子</td>
 </tr>
 </tbody>
 </table>
-<p>普通 ATen 图优先交给 AutoFuse；完整组件使用 override；只有稳定且无法由通用融合表达的局部片段才使用
-pre-AOT pattern。这样可以保持模型代码与 NPU 后端解耦，避免为同一目标维护多套 wrapper。</p>
+<p>普通 ATen 图优先交给 AutoFuse；完整组件使用 override。这样可以保持模型代码与 NPU 后端解耦，
+避免为同一目标维护多套 wrapper。</p>
 <h2 id="2">2. 用户使用场景与对外接口</h2>
 <h3 id="21-ascendc-autofuse">2.1 启用 AscendC AutoFuse</h3>
-<p>仓库脚本提供最短启用方式：</p>
+<p>使用 TorchTitan 原生 CLI 配置编译：</p>
 <pre><code class="language-bash">TORCHINDUCTOR_NPU_BACKEND=ascendc \
-COMPILE_BACKEND=inductor \
-bash scripts/run_train.sh &lt;训练参数&gt;
-</code></pre>
-<p>也可以直接使用 TorchTitan CLI：</p>
-<pre><code class="language-bash">export TORCHINDUCTOR_NPU_BACKEND=ascendc
-
 bash scripts/run_train.sh \
   --compile.enable \
-  --compile.components model,loss \
+  --compile.components model \
   --compile.backend inductor \
   &lt;训练参数&gt;
 </code></pre>
@@ -252,33 +232,26 @@ export TORCHINDUCTOR_NPU_BACKEND=ascendc
 
 NODE_IPS=192.168.1.10,192.168.1.11 \
 NGPU=16 \
-COMPILE_BACKEND=inductor \
 bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
-  --compile.components model,loss \
+  --compile.backend inductor \
+  --compile.components model loss \
   --training.steps 5
 </code></pre>
 <p>该 wrapper 最终调用 <code>scripts/run_train_multinodes.sh</code>；同一节点上的 <code>torchrun</code> 子进程会继承启动 shell
-的环境变量。需要启用 pre-AOT pattern 时，再增加 <code>PATTERN_IMPORTS</code>；如果脚本无法自动识别本机地址，设置
-对应的 <code>LOCAL_HOST</code>。</p>
+的环境变量。如果脚本无法自动识别本机地址，设置对应的 <code>LOCAL_HOST</code>。</p>
 <h3 id="22-aot_eager">2.2 使用 <code>aot_eager</code> 检查编译兼容性</h3>
-<pre><code class="language-bash">COMPILE_BACKEND=aot_eager \
-bash scripts/run_train.sh &lt;训练参数&gt;
+<pre><code class="language-bash">bash scripts/run_train.sh \
+  --compile.enable \
+  --compile.components model \
+  --compile.backend aot_eager \
+  &lt;训练参数&gt;
 </code></pre>
 <p><code>aot_eager</code> 可检查 Dynamo、AOTAutograd、FakeTensor 和训练反向是否可用，但不会把完整模型交给 AscendC
-AutoFuse。当前 DeepSeek-V4 示例默认使用 <code>aot_eager</code>；验证 AutoFuse 功能或性能时，需要显式设置
-<code>COMPILE_BACKEND=inductor</code>。</p>
+AutoFuse。DeepSeek-V4 Flash A3/A5 示例默认使用 <code>inductor</code>；可在命令末尾追加
+<code>--compile.backend aot_eager</code> 检查编译兼容性。</p>
 <p>含 FlexAttention 的模型在 <code>aot_eager</code> 下可能由上游 regional Inductor 单独编译 FlexAttention 区域。
 这仍不等同于完整 TransformerBlock 使用 <code>inductor</code> 编译。</p>
-<h3 id="23-pattern">2.3 注册特定图 pattern</h3>
-<p>当融合目标是 Module 内的一段稳定连续计算时，可以在进程启动前导入 pattern 模块：</p>
-<pre><code class="language-bash">PATTERN_IMPORTS=torchtitan_npu.compile.patterns.deepseek_v4.inplace_partial_rope \
-TORCHINDUCTOR_NPU_BACKEND=ascendc \
-COMPILE_BACKEND=inductor \
-bash scripts/run_train.sh &lt;训练参数&gt;
-</code></pre>
-<p>多个模块使用逗号分隔。pattern 修改编译图，<code>override.imports</code> 修改配置树和组件，两者是独立入口。
-pattern 的开发与验证方法见<a href="../../graph_pattern_fusion/">片段融合算子接入</a>。</p>
-<h3 id="24">2.4 配置和环境变量</h3>
+<h3 id="23">2.3 配置和环境变量</h3>
 <p>本仓直接复用上游 <code>torchtitan.config.CompileConfig</code>：</p>
 <table>
 <thead>
@@ -312,8 +285,9 @@ pattern 的开发与验证方法见<a href="../../graph_pattern_fusion/">片段�
 </tbody>
 </table>
 <p>当前固定的上游基线实际消费 <code>model</code> 和 <code>loss</code>。配置中写入其他名称，不代表对应组件已经编译。
-<code>COMPILE_BACKEND</code> 便捷入口会显式选择 <code>model</code>；需要同时编译 loss 时，在脚本末尾追加
-<code>--compile.components model,loss</code> 覆盖该默认值。</p>
+通用启动脚本直接透传 CLI，不自动启用编译。Flash 示例通过 CLI 默认启用 <code>model</code> 编译；
+需要同时编译 loss 时，追加 <code>--compile.components model loss</code>；关闭编译使用 <code>--compile.no-enable</code>。
+仅设置 <code>--compile.backend</code> 不会自动启用编译，通用入口还需传入 <code>--compile.enable</code>。</p>
 <p>仓库相关环境变量如下：</p>
 <table>
 <thead>
@@ -324,20 +298,8 @@ pattern 的开发与验证方法见<a href="../../graph_pattern_fusion/">片段�
 </thead>
 <tbody>
 <tr>
-<td><code>COMPILE_BACKEND</code></td>
-<td>非空时，启动脚本追加 model compile CLI</td>
-</tr>
-<tr>
 <td><code>TORCHINDUCTOR_NPU_BACKEND</code></td>
 <td>选择 Inductor 内部的 NPU Codegen</td>
-</tr>
-<tr>
-<td><code>PATTERN_IMPORTS</code></td>
-<td><code>TORCHTITAN_NPU_PATTERN_IMPORTS</code> 的脚本便捷别名</td>
-</tr>
-<tr>
-<td><code>TORCHTITAN_NPU_PATTERN_IMPORTS</code></td>
-<td>导入并注册以逗号分隔的 pattern 模块</td>
 </tr>
 <tr>
 <td><code>ASCEND_SET_ENV_PATH</code></td>
@@ -355,7 +317,7 @@ Inductor 内部的 NPU Codegen。两者不能互相替代：</p>
 <p><code>torch_npu._inductor</code> 在导入阶段完成后端注册。环境变量必须在 <code>import torch</code> 之前设置；同一进程中先导入框架、
 再修改环境变量，不能可靠切换已经初始化的 Codegen。</p>
 <p><code>scripts/run_train.sh</code> 在启动 Python 前默认设置 AscendC。当前 <code>scripts/run_train_multinodes.sh</code> 不补充该默认值，
-多机任务必须在所有节点启动前显式导出同一变量，并确保所有 rank 使用相同 backend 和 pattern 集合。</p>
+多机任务必须在所有节点启动前显式导出同一变量，并确保所有 rank 使用相同 backend。</p>
 <h3 id="32-torch_npu">3.2 当前主线使用 <code>torch_npu</code> 内置后端</h3>
 <p>配套 AscendC backend 已随 <code>torch_npu</code> 安装到 <code>torch_npu/_inductor/ascendc</code>。当前主线不再要求额外安装或
 手工导入旧版独立 <code>inductor_npu_ext</code>，也不再使用旧的 <code>npu_bypass_triton_codegen</code> 方案。</p>
@@ -384,7 +346,7 @@ dtype、device 与 layout 语义。<code>torch.fx.wrap</code> 只阻止 Python w
 Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论。</p>
 <p>AscendC 融合 Kernel 默认缓存到 <code>/tmp/.npu_kernels_&lt;user&gt;</code>，也可通过
 <code>TORCHINDUCTOR_NPU_EXT_CACHE_DIR</code> 指定。缓存目录依赖文件锁，不能放到无法保证锁语义的跨 OS 共享目录。
-切换软件版本、SoC、backend、模型图、shape 关键配置、pattern 或 custom op 后，应使用隔离缓存或定向失效相关
+切换软件版本、SoC、backend、模型图、shape 关键配置或 custom op 后，应使用隔离缓存或定向失效相关
 产物；不建议每次训练前无条件清空整个 <code>/tmp</code>。</p>
 <p>下列调试选项会改变编译或执行行为，不能直接用于正式性能结论：</p>
 <table>
@@ -427,7 +389,6 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 
     subgraph PLUGIN[torchtitan-npu 接入层]
         PATCH[NPU compatibility patches]
-        PATTERN[可选 pre-AOT patterns]
         EXT[TrainerEx 与 override/custom op]
     end
 
@@ -438,7 +399,6 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 
     subgraph PYTORCH[PyTorch 编译层]
         DYNAMO[TorchDynamo]
-        PREAOT[pre-AOT graph pass]
         AOT[AOTAutograd]
         INDUCTOR[TorchInductor]
         FALLBACK[fallback / extern kernel]
@@ -453,11 +413,9 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 
     USER --&gt; LAUNCH --&gt; ENTRY
     ENTRY --&gt; PATCH
-    ENTRY --&gt; PATTERN
     ENTRY --&gt; EXT
     ENTRY --&gt; CONFIG --&gt; MODEL --&gt; DYNAMO
-    PATTERN --&gt; PREAOT
-    DYNAMO --&gt; PREAOT --&gt; AOT --&gt; INDUCTOR --&gt; BACKEND
+    DYNAMO --&gt; AOT --&gt; INDUCTOR --&gt; BACKEND
     BACKEND --&gt;|满足 lowering 条件| AUTOFUSE --&gt; CACHE --&gt; KERNEL
     BACKEND --&gt;|不满足条件| FALLBACK
 </code></pre>
@@ -471,8 +429,7 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 <p>包初始化顺序为：</p>
 <pre><code class="language-text">patches → compile → config → extensions → ops
 </code></pre>
-<p>该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效；AscendC backend 的自有 graph pass 先注册，
-仓内 pattern 再追加到已有 pass 链。新增初始化逻辑不能随意调整此顺序。</p>
+<p>该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效。新增初始化逻辑不能随意调整此顺序。</p>
 <h3 id="52-loss">5.2 模型和 loss 编译</h3>
 <p>标准 DeepSeek/Qwen 模型路径通常遵循：</p>
 <pre><code class="language-text">模型构建与 override
@@ -485,25 +442,14 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 SimpleFSDP 顺序，不适用上述标准路径。</p>
 <p>loss 由上游 <code>BaseLoss._maybe_compile</code> 独立检查 <code>components</code>，并使用同一个 <code>compile.backend</code>。模型编译与 loss
 编译互不隐含。</p>
-<h3 id="53-pre-aot-pattern">5.3 pre-AOT pattern</h3>
-<p><code>torchtitan_npu.compile</code> 在首次导入时读取 <code>TORCHTITAN_NPU_PATTERN_IMPORTS</code>。目标模块调用
-<code>register_pre_aot_patterns</code>，将具名 <code>PatternReplacement</code> 追加到共享 <code>_PreAOTPatternPass</code>：</p>
-<ul>
-<li>保留已经存在的 Inductor custom pass；</li>
-<li>共享 pass 只安装一次；</li>
-<li>pattern 未命中时保留原图；</li>
-<li>pattern 名称、字面量策略、源码和 closure 参数参与 cache identity。</li>
-</ul>
-<p>模型已经编译后再注册 pattern，不会追溯修改已生成的 compiled callable。DeepSeek-V4 partial RoPE 是当前参考
-实现，详细的 search/replacement、alias 和梯度约束不在本文重复展开。</p>
-<h3 id="54-ascendc-autofuse-fallback">5.4 AscendC AutoFuse 与 fallback</h3>
+<h3 id="53-ascendc-autofuse-fallback">5.3 AscendC AutoFuse 与 fallback</h3>
 <p>选择 <code>ascendc</code> 后，<code>torch_npu</code> 向 Inductor 注册 NPU scheduling、wrapper Codegen、lowering、decomposition
 和图优化。后端根据 op、SoC、dtype、shape、stride、layout、数据依赖和 mutation/alias 判断节点能否 lowering
 和融合。</p>
 <p>满足条件的节点形成融合组，由 CANN AutoFuse 生成 AscendC 图、tiling、Host wrapper 和 device Kernel；
 不满足条件的节点保留为 fallback/extern kernel。这部分实现位于 <code>torch_npu</code> 和 CANN，本仓只负责选择、接入和
 兼容。</p>
-<h3 id="55-npu-patch">5.5 NPU 兼容 patch</h3>
+<h3 id="54-npu-patch">5.4 NPU 兼容 patch</h3>
 <table>
 <thead>
 <tr>
@@ -526,7 +472,7 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 </tbody>
 </table>
 <p>两个 patch 都依赖包导入时机。CPU-only import 能验证模块可加载，但不能证明 NPU 条件分支已经生效。</p>
-<h3 id="56">5.6 与其他组件的交互</h3>
+<h3 id="55">5.5 与其他组件的交互</h3>
 <table>
 <thead>
 <tr>
@@ -553,7 +499,7 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 </tr>
 <tr>
 <td>多机训练</td>
-<td>所有节点必须使用相同软件版本、Codegen backend 和 pattern imports</td>
+<td>所有节点必须使用相同软件版本和 Codegen backend</td>
 </tr>
 </tbody>
 </table>
@@ -562,7 +508,6 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 <p>不能仅以「训练成功」判断融合生效。建议按以下顺序验证：</p>
 <ol>
 <li>确认日志出现 <code>Compiling each TransformerBlock with torch.compile</code> 或 loss 编译日志；</li>
-<li>启用 pattern 时，确认出现 <code>Pre-AOT pattern ... replaced N subgraph(s)</code>；</li>
 <li>使用 <code>TORCH_COMPILE_DEBUG=1</code> 检查 lowered/fallback summary 和编译产物；</li>
 <li>用真实输入验证正向、反向、输出和梯度；</li>
 <li>通过 profiling 确认真实 <code>autofused_*</code> device Kernel 及原生小算子变化；</li>
@@ -602,11 +547,6 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 <td>可验证成图和正反向，不证明 AutoFuse 性能</td>
 </tr>
 <tr>
-<td>pre-AOT pattern</td>
-<td>显式导入 pattern 模块</td>
-<td>当前提供 DeepSeek-V4 partial RoPE 示例；真实 Kernel 需在配套算子环境验证</td>
-</tr>
-<tr>
 <td>GraphTrainer</td>
 <td>选择 <code>graph_trainer_*</code> 配置</td>
 <td>独立特性，不属于本文标准 CompileConfig 路径</td>
@@ -628,7 +568,7 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 <tr>
 <td>本仓</td>
 <td><code>scripts/run_train.sh</code></td>
-<td>单机启动、AscendC 默认 Codegen、compile 和 pattern 参数</td>
+<td>单机启动与 AscendC 默认 Codegen</td>
 </tr>
 <tr>
 <td>本仓</td>
@@ -644,16 +584,6 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 <td>本仓</td>
 <td><code>torchtitan_npu/__init__.py</code></td>
 <td>固定 patches、compile、config、extensions 和 ops 的加载顺序</td>
-</tr>
-<tr>
-<td>本仓</td>
-<td><code>torchtitan_npu/compile/__init__.py</code></td>
-<td>读取并导入 <code>TORCHTITAN_NPU_PATTERN_IMPORTS</code> 指定的 pattern 模块</td>
-</tr>
-<tr>
-<td>本仓</td>
-<td><code>torchtitan_npu/compile/pattern_replacement.py</code></td>
-<td>共享 pre-AOT pass、注册和 cache identity</td>
 </tr>
 <tr>
 <td>本仓</td>
@@ -684,7 +614,6 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 </table>
 <h3 id="64">6.4 相关文档</h3>
 <ul>
-<li><a href="../../graph_pattern_fusion/">片段融合算子接入</a></li>
 <li><a href="../fused_ops/">融合算子接入指南</a></li>
 <li><a href="../../user-guides/installation/">软件安装</a></li>
 </ul>
