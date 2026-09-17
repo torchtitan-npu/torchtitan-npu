@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>GraphTrainer EP overlap 适配 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "GraphTrainer EP overlap \u9002\u914d";
+        var mkdocs_page_input_path = "feature_guides/graph_trainer_ep_overlap.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">GraphTrainer EP overlap 适配</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">能力范围、依赖与验证边界</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">实现原理</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">四个上游临时补丁</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#1-ep_chunk_concretizationpy">1. ep_chunk_concretization.py</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#2-ep_overlap_shape_queriespy">2. ep_overlap_shape_queries.py</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#3-ep_ready_nodes_deduppy">3. ep_ready_nodes_dedup.py</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#4-ep_shape_live_outpy">4. ep_shape_live_out.py</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">启用方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dsv4-2026-09-16">DSV4 整网实跑验证（2026-09-16）</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">相关文档</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">GraphTrainer EP overlap 适配</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="graphtrainer-ep-overlap">GraphTrainer EP overlap 适配</h1>
+<p>EP overlap 是 torchtitan 上游 <code>experiments/graph_trainer/</code> 为 MoE + Expert Parallel（EP）训练提供的通用 graph pass：把 MoE 区域按 token 维切成两个 chunk，使一个 chunk 的 all-to-all 通信与另一个 chunk 的专家计算重叠。该能力的配置接口、pass pipeline 和本文的临时补丁均不绑定具体模型名称。本文描述启用该能力所需的四个 <code>patches/torchtitan/</code> 临时补丁；这些问题最先由 DeepSeek-V4（DSV4）验证图暴露，当前整网验证也使用 DSV4。</p>
+<table>
+<thead>
+<tr>
+<th>序号</th>
+<th>pass名称</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>mark_unbacked（前置操作，不属于pass）</td>
+<td>在 trace 前制造 chunk 动态维度及 hint</td>
+</tr>
+<tr>
+<td>2</td>
+<td>populate_chunk_dim_metadata_pass</td>
+<td>trace 后识别该符号，并登记“这是 EP chunk symbol”</td>
+</tr>
+<tr>
+<td>3</td>
+<td>ep_overlap_chunk_pass</td>
+<td>利用 EP chunk symbol 符号切图</td>
+</tr>
+<tr>
+<td>4</td>
+<td>ep_overlap_schedule_pass</td>
+<td>根据两个 chunk 重排通信和计算</td>
+</tr>
+<tr>
+<td>5</td>
+<td>concretize_ep_chunk_symbolic_shapes_pass</td>
+<td>调度结束后，使用筛选后的 hint 具体化相关符号</td>
+</tr>
+</tbody>
+</table>
+<p>EP overlap 默认不启用。它只在 GraphTrainer 编译路径（<code>graph_trainer_*</code> 配置）下生效，普通 eager 训练不走这些 graph pass；下文配置项中的 <code>strategy=eager</code> 指 GraphTrainer 的另一种 chunk 实现方式。DSV4 验证样例所依赖的模型侧 GraphTrainer 适配见 <a href="../deepseek_v4_graph_trainer/"><code>deepseek_v4_graph_trainer.md</code></a>。</p>
+<h2 id="_1">能力范围、依赖与验证边界</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>能力对象</td>
+<td>使用 GraphTrainer、MoE 和真实 EP token exchange 的训练图；EP degree &gt; 1</td>
+</tr>
+<tr>
+<td>当前整网验证模型</td>
+<td>DeepSeek-V4，使用 <code>graph_trainer_deepseek_v4_flash_43layers_16experts</code> 配置</td>
+</tr>
+<tr>
+<td>训练路径</td>
+<td>GraphTrainer <code>aot_fx_trace</code>；eager 路径不涉及</td>
+</tr>
+<tr>
+<td>torchtitan 基线</td>
+<td><code>0.3.0</code>（<code>requirements.txt</code> 固定版本）</td>
+</tr>
+<tr>
+<td>环境</td>
+<td>Ascend NPU + <code>torch-npu</code> + CANN + HCCL；EP degree &gt; 1</td>
+</tr>
+<tr>
+<td>默认状态</td>
+<td>关闭，需显式传 <code>--compile.ep_overlap.enabled</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">实现原理</h2>
+<h3 id="_3">四个上游临时补丁</h3>
+<p>补丁位于 <code>torchtitan_npu/patches/torchtitan/experiments/graph_trainer/</code>，针对 <code>requirements.txt</code> 固定的 torchtitan 0.3.0，在 <code>import torchtitan_npu</code> 时经 <code>patches/torchtitan/__init__.py</code> 自动 <code>apply()</code>。它们修正的是上游 graph pass 的行为，代码不依赖 NPU 专有算子，也不检查模型类型。DSV4 验证图只是这些问题的首个整网复现场景；任何产生相同符号关系、节点标注或调度依赖的 GraphTrainer MoE 图都会进入相同处理逻辑。</p>
+<p>四个 patch 共替换或包装五个上游函数，均有标记防止重复 <code>apply()</code>。它们的执行顺序是：第四个作用于 chunk pass，第二、第三个作用于 overlap schedule pass，第一个作用于调度后的 concretization pass。</p>
+<table>
+<thead>
+<tr>
+<th>补丁模块</th>
+<th>替换或包装的上游符号</th>
+<th>当前修复方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ep_chunk_concretization</code></td>
+<td><code>ep_pass_utils._placeholder_symbol_hints</code>、<code>_concretize_value</code></td>
+<td>筛选含 chunk symbol 的 placeholder 维度；与传入 hint 符号无交集的值保持原样</td>
+</tr>
+<tr>
+<td><code>ep_overlap_shape_queries</code></td>
+<td><code>ep_overlap_pass._collect_token_exchanges</code></td>
+<td>清理 body 内 AllToAll launch 的 size query 误继承的 exchange 标注，再调用上游收集器</td>
+</tr>
+<tr>
+<td><code>ep_ready_nodes_dedup</code></td>
+<td><code>ep_overlap_pass._ready_nodes</code></td>
+<td>保留候选遍历和依赖检查，用本轮 <code>selected</code> 集合跨 chunk 去重</td>
+</tr>
+<tr>
+<td><code>ep_shape_live_out</code></td>
+<td><code>ep_chunk_pass._split_live_out_users</code></td>
+<td>将同一 root 内直接查询 AllToAll dim-0 的 full user 移到 chunked</td>
+</tr>
+</tbody>
+</table>
+<h4 id="1-ep_chunk_concretizationpy">1. ep_chunk_concretization.py</h4>
+<p>报错示例：</p>
+<pre><code class="language-text">ValueError: Chunk pass could not derive a base hint for symbol u0 from
+arg2594_1.shape[0] extent Max(0, u0 - Min(1, u0)) + 1.
+</code></pre>
+<p>FX 图中既有 EP chunk symbol，也有独立的数据相关 metadata symbol。社区 <code>ep_pass_utils.py</code> 中的 <code>_placeholder_symbol_hints</code> 遍历所有 tensor placeholder 的 shape 维度，对每个维度调用 <code>_record_symbols_from_extent</code>。因此，与 chunk 无关的非线性 metadata 维度也会进入 hint 推导，可能因无法推导 base hint 而报错。</p>
+<p>社区具体化流程先合并 placeholder hint 和 chunk hint，再调用 <code>_concretize_value</code>。原 <code>_concretize_value</code> 还可能通过值自身的 hint 把不属于目标范围的动态值折叠成常量。</p>
+<p><strong>Patch 方案：</strong></p>
+<table>
+<thead>
+<tr>
+<th>社区函数</th>
+<th>当前实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_placeholder_symbol_hints</code></td>
+<td>替换为 <code>_chunk_placeholder_symbol_hints</code>：取得 <code>chunk_symbol_hints_for_mode(gm).keys()</code>，只对自由符号与它有交集的 placeholder shape 维度调用上游 <code>_record_symbols_from_extent</code></td>
+</tr>
+<tr>
+<td><code>_concretize_value</code></td>
+<td>包装原函数：值的自由符号与传入 <code>symbol_hints.keys()</code> 无交集时原样返回，否则委托上游原函数具体化</td>
+</tr>
+</tbody>
+</table>
+<p>placeholder hint 收集逻辑：</p>
+<pre><code class="language-python">def _chunk_placeholder_symbol_hints(gm: fx.GraphModule) -&gt; dict[object, int]:
+    chunk_symbols = ep_pass_utils.chunk_symbol_hints_for_mode(gm).keys()
+    hints: dict[object, int] = {}
+    for node in gm.graph.nodes:
+        if node.op != &quot;placeholder&quot; or (val := ep_pass_utils.tensor_meta(node)) is None:
+            continue
+        for dim, extent in enumerate(val.shape):
+            symbols = ep_pass_utils.free_symbols(extent)
+            if not symbols &amp; chunk_symbols:
+                continue
+            ep_pass_utils._record_symbols_from_extent(hints, extent, source=f&quot;{node.name}.shape[{dim}]&quot;)
+    return hints
+</code></pre>
+<p>值具体化的包装逻辑：</p>
+<pre><code class="language-python">def _concretize_chunk_value(value: object, symbol_hints: dict[object, int]) -&gt; object:
+    if not ep_pass_utils.free_symbols(value) &amp; symbol_hints.keys():
+        return value
+    return original_concretize_value(value, symbol_hints)
+</code></pre>
+<p>这里有两个不同的筛选集合：placeholder 维度按 <strong>EP chunk symbol</strong> 筛选；值具体化按调用方传入的 <strong>合并后 hint 字典</strong>筛选。若选中的维度包含其他符号且上游能推导其 hint，这些符号也可能进入具体化范围，不能将第二层条件表述为“值必须直接含有 EP chunk symbol”。</p>
+<p>当前实现不扫描全图的 shape、stride、storage offset，也不计算符号依赖连通分量。选中维度的 hint 推导仍使用上游规则：缺少 hint、无法推导 base hint、hint 冲突都会继续报错，不会被忽略。<code>apply()</code> 检查六个所需上游辅助符号，缺失时记录 warning 并跳过此 patch。</p>
+<h4 id="2-ep_overlap_shape_queriespy">2. ep_overlap_shape_queries.py</h4>
+<p>报错示例：</p>
+<pre><code class="language-text">ValueError: ep_overlap found EP token-exchange metadata on non-marker
+node sym_size_int (aten.sym_size.int). Only all_to_all launches
+and their wait_tensor nodes may carry this annotation.
+</code></pre>
+<p>错误发生在 <code>ep_overlap_schedule_pass</code> 的通信节点收集阶段。AllToAll 输出的接收 token 数是数据相关的，trace 会生成 <code>aten.sym_size.int(all_to_all_output, 0)</code> 来绑定其首维长度。该节点在通信标注的作用域内生成，可能继承 <code>EP_token_exchange=dispatch</code>。社区 <code>_collect_token_exchanges</code> 只接受带此标注的 token-exchange launch 及其 wait，遇到 size query 就报错。</p>
+<p><strong>Patch 方案：</strong>在原 <code>_collect_token_exchanges</code> 前遍历当前 <code>body.nodes</code>，仅处理同时满足以下条件的节点：</p>
+<ul>
+<li><code>op == "call_function"</code>、target 为 <code>aten.sym_size.int</code>，且恰有两个位置参数。</li>
+<li>第一个参数是当前 body 内的 FX 节点，并且上游 <code>_is_token_exchange_launch</code> 将其识别为 token-exchange launch。</li>
+</ul>
+<p>包装函数的主体如下；只在 <code>custom</code> 中存在 <code>EP_token_exchange</code> 时复制字典并删除这个键：</p>
+<pre><code class="language-python">node_set = set(body.nodes)
+for node in body.nodes:
+    if not _is_token_exchange_shape_query(node, node_set):
+        continue
+    custom = ep_overlap_pass._custom_meta(node)
+    if _EP_TOKEN_EXCHANGE in custom:
+        custom = dict(custom)
+        del custom[_EP_TOKEN_EXCHANGE]
+        node.meta[&quot;custom&quot;] = custom
+return current(body, order=order)
+</code></pre>
+<p>其余 metadata 保留；删除后即使 <code>custom</code> 为空也保留该容器；没有该标签时不改写 metadata。匹配条件不限制查询维度为 0，也不显式检查查询值是否 unbacked。launch/wait 的识别、唯一 wait 检查、顺序检查和 wait 标注归一化仍由上游完成，其他非目标节点的错误继续抛出。</p>
+<p>当前正式 patch 仍采用“删除 shape query 继承的标签”方案，没有改成“保留标签、仅绕过报错”。</p>
+<h4 id="3-ep_ready_nodes_deduppy">3. ep_ready_nodes_dedup.py</h4>
+<p>报错示例及调用关系：</p>
+<pre><code class="language-text">AssertionError: stable topological sort failed
+
+ep_overlap_schedule_pass()
+  -&gt; _schedule_ep_overlap_regions()
+     -&gt; _plan_region()
+        -&gt; _build_region_phases()
+           -&gt; _append_ready_blocks()
+              -&gt; _ready_nodes()       # 可能返回重复 node
+     -&gt; _apply_schedule()
+        -&gt; _phase_order_deps()         # 顺序约束可能构成环
+        -&gt; _stable_topological_sort()
+</code></pre>
+<p>节点有确定的 chunk 所有权，但两个 chunk 的调度候选集合可能有交集。例如，节点 N 属于 chunk0，同时又是 chunk1 后续 AllToAll 的依赖，它可能同时出现在两个 chunk 的候选集中。</p>
+<p>社区 <code>_ready_nodes</code> 对每个 chunk 仅排除此前已经 <code>emitted</code> 的节点；<code>_append_ready_blocks</code> 要等整个 ready 元组生成后才更新 <code>emitted</code>，因此无法排除本轮内部的重复项。若返回结果为 <code>[N, A, N]</code>，后续顺序依赖会形成 <code>N -&gt; A -&gt; N</code>。</p>
+<p><strong>Patch 方案：</strong>当前提交保留 <code>_ready_nodes</code> 的遍历实现，在一次调用内新增 <code>selected</code> 集合；不修改传入的 <code>emitted</code>。替换函数的主体如下：</p>
+<pre><code class="language-python">ready = []
+selected: set[fx.Node] = set()
+for chunk_id in chunk_order:
+    body = region.bodies_by_chunk[chunk_id]
+    candidates = sorted(candidates_by_chunk.get(chunk_id, set()) - emitted, key=order.__getitem__)
+    for node in candidates:
+        if node in selected:
+            continue
+        if not include_waits and ep_overlap_pass._is_c10d_functional_node(node):
+            continue
+        deps = ep_overlap_pass._body_deps(node, body=body, owner_by_node=owner_by_node)
+        if all(dep in emitted for dep in deps):
+            ready.append(node)
+            selected.add(node)
+return tuple(ready)
+</code></pre>
+<p>chunk 遍历顺序、chunk 内候选排序、<code>include_waits</code> 过滤以及依赖必须已经 <code>emitted</code> 的条件都保留；只有实际追加到 ready 的节点才记入 <code>selected</code>。每个节点在一次返回中最多出现一次，保留首次被选中的位置。当前代码没有调用原 <code>_ready_nodes</code> 后再对返回值去重。</p>
+<h4 id="4-ep_shape_live_outpy">4. ep_shape_live_out.py</h4>
+<p>报错示例：</p>
+<pre><code class="language-text">ValueError: Chunk pass cannot materialize live-out without chunk dimension;
+all_to_all_single_default from 'layers.0.moe' has full users
+['sym_size_int:sym_size.int:fqn=layers.0.moe.dispatcher']
+and requires a forward accumulation proof or a backward parameter-gradient consumer.
+</code></pre>
+<p>live-out 是 chunk body 内产生、但仍被 body 外节点使用的值。社区 <code>_split_live_out_users</code> 将消费者分成 <code>chunked</code>（跟随对应 chunk 的值）和 <code>full</code>（需要重建完整值）。某些 dispatcher size query 带有 MoE 模块 FQN，却位于 body 外；它们需要查询各 chunk 自己接收的 token 数，但上游分类将其归入 <code>full</code>。</p>
+<p>社区 <code>_materialize_live_out</code> 只能在识别到 chunk 维时沿该维 <code>cat</code>，或在有加法重建依据时 <code>add</code>。AllToAll 输出首维是独立的接收 token symbol，通常不含选定的 chunk symbol，因而无法识别拼接维度；正向也没有适用的加法依据，最终报错。修复此场景的关键是调整消费者归属，使它无需完整值重建。</p>
+<p><strong>Patch 方案：</strong>只包装 <code>_split_live_out_users</code>。先调用社区原函数，再从 <code>full</code> 中筛选：</p>
+<ul>
+<li>user 是 <code>call_function</code> 节点，target 为 <code>aten.sym_size.int</code>，恰有两个位置参数，第二个参数为 <code>0</code>。</li>
+<li>第一个参数直接指向 <code>call_function</code> 类型的 <code>_c10d_functional.all_to_all_single.default</code> 节点。</li>
+<li>user 的模块 FQN 位于 <code>producer_region.root_fqn</code> 内。</li>
+</ul>
+<pre><code class="language-python">chunked, full = current(users, plans, producer_region, symbol_hints)
+moved = tuple(
+    user
+    for user in full
+    if _is_dim0_all_to_all_size_user(user)
+    and ep_chunk_pass.is_module_fqn_inside_root(
+        ep_chunk_pass._get_module_fqn(user), producer_region.root_fqn
+    )
+)
+if not moved:
+    return chunked, full
+moved_set = set(moved)
+return (*chunked, *moved), tuple(user for user in full if user not in moved_set)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>当前行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_split_live_out_users</code></td>
+<td>将满足上述条件的 user 从 full 移到 chunked；没有匹配者时返回原分类结果</td>
+</tr>
+<tr>
+<td><code>_materialize_live_out</code></td>
+<td><strong>保持社区原函数，不再替换，也不新增 AllToAll dim-0 的 cat fallback</strong></td>
+</tr>
+</tbody>
+</table>
+<p>匹配不依赖 <code>EP_token_exchange</code> 标签，也不覆盖 wait 输出、普通张量或其他维度的 size query。没有剩余 full users 时，社区 chunk pass 跳过这个 live-out 的完整值重建。仍有 full users 时继续执行社区重建规则和校验，不能重建的情况仍报错。</p>
+<p>第二个 patch 的标签清理发生在后续 schedule pass，晚于这里的 live-out 分类，因此第四个问题不是删除标签引起的。</p>
+<p>父模块、其他 root 或缺失 FQN 的 dim-0 query 仍可能被归为 full；若未来要支持这些场景，需要额外定义重建方案，不能将当前补丁的适用范围外推为所有 AllToAll shape live-out 都受支持。</p>
+<h2 id="_4">启用方式</h2>
+<p>EP overlap 通过 <code>--compile.ep_overlap.*</code> 打开。满足前述条件的 GraphTrainer MoE recipe 均通过同一组配置项启用；模型入口、dispatcher、并行配置和算子 override 仍由各模型 recipe 负责。</p>
+<p>下面仅给出本文整网验证使用的 DSV4 示例：flash 43layers/16experts、8 卡、EP=8，复用仓内 DSV4 GraphTrainer 入口脚本。</p>
+<pre><code class="language-bash">NGPU=8 \
+HF_ASSETS_PATH=/path/to/DeepSeekV4_tokenizer \
+bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
+  --optimizer.name native \
+  --compile.disable_passes cudagraph_pass,annotate_flex_attention_for_regional_inductor_pass,regional_inductor_pass \
+  --compile.ep_overlap.enabled \
+  --compile.ep_overlap.strategy graph \
+  --compile.ep_overlap.chunk_dim seq \
+  --compile.ep_overlap.module_fqn 'layers.*.moe'
+</code></pre>
+<p><code>EpOverlapConfig</code>（<code>torchtitan/experiments/graph_trainer/configs.py</code>）字段：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>取值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>bool</code>，默认 <code>False</code></td>
+<td>是否启用 EP overlap</td>
+</tr>
+<tr>
+<td><code>strategy</code></td>
+<td><code>eager</code> / <code>graph</code>，默认 <code>graph</code></td>
+<td><code>eager</code> 在 trace 前包装模块 forward；<code>graph</code> trace 原模型后用 FX pass 切分</td>
+</tr>
+<tr>
+<td><code>chunk_dim</code></td>
+<td><code>batch</code> / <code>seq</code>，默认 <code>batch</code></td>
+<td>切分的逻辑输入维</td>
+</tr>
+<tr>
+<td><code>module_fqn</code></td>
+<td><code>layers.*</code> / <code>layers.*.moe</code>，默认 <code>layers.*</code></td>
+<td>被切分的模块 FQN 模式</td>
+</tr>
+<tr>
+<td><code>disable_early_grad_accumulation</code></td>
+<td><code>bool</code>，默认 <code>False</code></td>
+<td>关闭 graph chunking 的早期参数梯度累加，用于需要与 eager chunking 保持严格顺序的验证场景</td>
+</tr>
+</tbody>
+</table>
+<p>上游 <code>validate_ep_overlap_config</code> 约束：<code>chunk_dim=seq</code> 仅在 <code>module_fqn=layers.*.moe</code> 时可用——序列切分要求完整 K/V 上下文，因此只对 MoE block 根成立。</p>
+<p>若需把 EP overlap 固化为某个配置的默认值，在 <code>config_registry.py</code> 的对应工厂中对 <code>config.compile.ep_overlap</code> 赋 <code>EpOverlapConfig(...)</code>。</p>
+<h2 id="dsv4-2026-09-16">DSV4 整网实跑验证（2026-09-16）</h2>
+<p>本节只记录 DSV4 作为验证载体的结果，用于证明通用 EP overlap 能力及临时补丁在这一具体组合上可以完成整网训练。</p>
+<p>在同一台机器上按“关闭 EP overlap -&gt; 开启 EP overlap”的顺序各运行 10 step。两组均使用 8 张 Ascend 910、CANN 9.2.0、TorchTitan <code>v0.3.0</code>（<code>086bf6c166ec85c1298eb5596fa9bf95f6a2d840</code>）和本仓库 HEAD <code>ec98b86809e024e105958b50c7714666c8c65ff2</code>。模型为 flash 43 layers / 16 experts，EP=8、DP shard=8、TP/CP/PP=1，local/global batch size 为 1/64，sequence length 为 4096，seed 为 42。</p>
+<p>开启组再追加“启用方式”中的四个 <code>--compile.ep_overlap.*</code> 参数；关闭组不追加这些参数。</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th style="text-align: right;">EP overlap 关闭</th>
+<th style="text-align: right;">EP overlap 开启</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>结果</td>
+<td style="text-align: right;">10/10 step，退出码 0</td>
+<td style="text-align: right;">10/10 step，退出码 0</td>
+</tr>
+<tr>
+<td>graph pass</td>
+<td style="text-align: right;">7 个，43.617 s</td>
+<td style="text-align: right;">13 个，228.628 s</td>
+</tr>
+<tr>
+<td>EP 图变换</td>
+<td style="text-align: right;">无</td>
+<td style="text-align: right;">seq chunking 86 个 region；scheduling 86 个 region</td>
+</tr>
+<tr>
+<td>step 2-10 平均耗时</td>
+<td style="text-align: right;">64.975 s</td>
+<td style="text-align: right;">62.923 s</td>
+</tr>
+<tr>
+<td>step 2-10 平均 TPS</td>
+<td style="text-align: right;">505.000</td>
+<td style="text-align: right;">521.222</td>
+</tr>
+<tr>
+<td>loss（step 1 -&gt; 10）</td>
+<td style="text-align: right;">12.19569 -&gt; 9.91401</td>
+<td style="text-align: right;">12.19564 -&gt; 9.94998</td>
+</tr>
+<tr>
+<td>日志记录的峰值显存</td>
+<td style="text-align: right;">52.22 GiB（85.23%）</td>
+<td style="text-align: right;">59.37 GiB（96.90%）</td>
+</tr>
+</tbody>
+</table>
+<p>该次顺序单跑中，开启组 step 2-10 的平均 TPS 比关闭组高约 3.2%。</p>
+<p>开启组的代价也较明显：日志峰值显存增加 7.15 GiB。</p>
+<h2 id="_5">相关文档</h2>
+<ul>
+<li>DSV4 模型侧 GraphTrainer 适配：<a href="../deepseek_v4_graph_trainer/"><code>deepseek_v4_graph_trainer.md</code></a></li>
+<li>临时补丁目录约定：<a href="../../torchtitan_npu/patches/torchtitan/README.md"><code>torchtitan_npu/patches/torchtitan/README.md</code></a></li>
+<li>Override 注册表：<a href="../../torchtitan_npu/override/README.md"><code>torchtitan_npu/override/README.md</code></a></li>
+<li>上游 GraphTrainer 与 EP overlap 说明：<a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/experiments/graph_trainer/README.md"><code>torchtitan/experiments/graph_trainer/README.md</code></a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../fused_ops/" class="btn btn-neutral float-left" title="融合算子接入指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../muon_optimizer/" class="btn btn-neutral float-right" title="DeepSeek-V4 Muon 优化器">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

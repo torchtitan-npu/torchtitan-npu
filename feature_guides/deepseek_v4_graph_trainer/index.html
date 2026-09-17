@@ -97,6 +97,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
@@ -153,7 +155,7 @@
 <p>编译模式固定为 <code>aot_fx_trace</code>（上游已弃用 <code>aot</code> 与 <code>jit</code> 两种旧模式）。NPU 上必须禁用 <code>cudagraph_pass</code>（CUDA graph capture 无意义且不兼容），本适配的编译配置已内置该禁用项。</p>
 <h2 id="_1">本仓实现</h2>
 <h3 id="_2">配置入口</h3>
-<p><code>torchtitan_npu/models/deepseek_v4/config_registry.py</code> 新增 4 个配置工厂，均复用对应 eager 配置，经 <code>to_graph_trainer_config</code> 包装为 <code>GraphTrainer.Config</code>：</p>
+<p><code>torchtitan_npu/models/deepseek_v4/config_registry.py</code> 新增 5 个配置工厂，均复用对应 eager 配置，经 <code>to_graph_trainer_config</code> 包装为 <code>GraphTrainer.Config</code>：</p>
 <table>
 <thead>
 <tr>
@@ -178,6 +180,10 @@
 <td><code>graph_trainer_deepseek_v4_pro</code></td>
 <td><code>deepseek_v4_pro</code></td>
 </tr>
+<tr>
+<td><code>graph_trainer_deepseek_v4_pro_61layers_32experts</code></td>
+<td><code>deepseek_v4_pro_61layers_32experts</code></td>
+</tr>
 </tbody>
 </table>
 <p>编译配置统一为 <code>mode="aot_fx_trace"</code>、<code>memory_policy="full"</code>、<code>disable_passes=["cudagraph_pass"]</code>。模型通过 <code>_graph_trainer_model_registry</code> 包装为 <code>GraphTrainerDeepSeekV4Model.Config</code>，并行化函数指向 <code>parallelize_graph_trainer_deepseek_v4</code>。</p>
@@ -191,7 +197,7 @@
 <li>无条件应用 <code>apply_simple_fsdp</code>：fsdp mesh 在 degree 1 时也存在（<code>ParallelDims._mesh_exist</code>），因此单卡下 MixedPrecisionPolicy 的 param_dtype cast 仍然生效。</li>
 <li>按模式应用 <code>apply_graph_trainer_compile</code>。</li>
 </ol>
-<p>入口处有两条硬约束：<code>spmd_types</code> backend 不支持（simple_fsdp 构建于 raw DTensor 操作之上，该 backend 会报错）；TP 启用时 <code>seq_len</code> 必须整除 <code>parallel_dims.seq_len_divisor</code>（TP degree × 2·CP degree，<code>use_local_output=True</code> 使用 plain tensor）。</p>
+<p>入口处有两条硬约束：<code>spmd_types</code> backend 不支持（simple_fsdp 构建于 raw DTensor 操作之上，该 backend 会报错）；TP 启用时 <code>seq_len</code> 必须整除 <code>parallel_dims.seq_len_divisor</code>（TP degree × 2 x CP degree，<code>use_local_output=True</code> 使用 plain tensor）。</p>
 <h3 id="graph-safe">Graph-safe 改造</h3>
 <p>GraphTrainer 的 trace 约束与 eager 有本质差异：<code>minimal_fx_tracer</code> 在 FakeTensor 下联合 trace，数据相关控制流与形状推导无法静态化，aot_autograd recompute 会丢弃 forward 中的 in-place 写。DSV4 稀疏注意力路径中依赖 in-place 写或数据相关形状推断的写法，在编译路径均改为函数式等价实现；注意力元数据 dataclass 注册为 pytree node，使 <code>minimal_fx_tracer</code> 能够识别其结构。</p>
 <h3 id="inductor-runtime-estimation-patch">Inductor runtime estimation patch</h3>
@@ -242,13 +248,14 @@
 </tr>
 <tr>
 <td>EP overlap（上游实验性 pass）</td>
-<td>未验证</td>
+<td>已通过patch适配；见 <a href="../graph_trainer_ep_overlap/"><code>graph_trainer_ep_overlap.md</code></a></td>
 </tr>
 </tbody>
 </table>
 <h2 id="_7">相关文档</h2>
 <ul>
 <li>上游 GraphTrainer 说明与 EP overlap 用法：<a href="https://github.com/pytorch/torchtitan/blob/main/torchtitan/experiments/graph_trainer/README.md"><code>torchtitan/experiments/graph_trainer/README.md</code></a></li>
+<li>EP overlap 适配：<a href="../graph_trainer_ep_overlap/"><code>graph_trainer_ep_overlap.md</code></a></li>
 <li>DSV4 稀疏注意力与 TND 融合路径：<a href="../deepseek_v4_tnd/"><code>deepseek_v4_tnd.md</code></a></li>
 </ul>
               

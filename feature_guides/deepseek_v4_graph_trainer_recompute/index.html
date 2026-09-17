@@ -107,6 +107,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
@@ -205,7 +207,7 @@ disable_passes = [&quot;cudagraph_pass&quot;]
 <pre><code class="language-text">torchtitan/experiments/graph_trainer/memory_policy.py
 </code></pre>
 <h3 id="42-npu">4.2 NPU 策略框架</h3>
-<pre><code class="language-text">torchtitan_npu/patches/torchtitan/graph_trainer/memory_policy.py
+<pre><code class="language-text">torchtitan_npu/patches/torchtitan/experiments/graph_trainer/memory_policy.py
 </code></pre>
 <p>NPU 扩展使用 <code>NodePolicyKey</code> 按 FX target、模块 FQN 和 occurrence 定位节点，并提供 layer boundary、<code>MUST_SAVE</code>、反向节点跳过、<code>lm_head/loss</code> 跳过和 SymInt 保存等规则。</p>
 <h3 id="43-dsv4-mhc">4.3 <code>dsv4-mhc</code> 策略</h3>
@@ -265,7 +267,7 @@ CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随�
 </tr>
 <tr>
 <td>NPU policy 框架</td>
-<td><code>torchtitan_npu/patches/torchtitan/graph_trainer/memory_policy.py</code></td>
+<td><code>torchtitan_npu/patches/torchtitan/experiments/graph_trainer/memory_policy.py</code></td>
 </tr>
 <tr>
 <td><code>dsv4-mhc</code> 策略</td>
@@ -285,7 +287,7 @@ CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随�
 </tr>
 <tr>
 <td>变异重算保真（functionalization backport）</td>
-<td><code>torchtitan_npu/patches/torchtitan/graph_trainer/functionalize_recompute_mutations.py</code></td>
+<td><code>torchtitan_npu/patches/torchtitan/experiments/graph_trainer/functionalize_recompute_mutations.py</code></td>
 </tr>
 <tr>
 <td>重算单测</td>

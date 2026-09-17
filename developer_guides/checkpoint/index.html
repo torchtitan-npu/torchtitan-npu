@@ -109,6 +109,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/sdc/">静默数据损坏检测（SDC）</a>
@@ -202,7 +204,7 @@ dataloader 和训练状态，适合断点续训以及改变并行切分后的加
 <code>model.safetensors.index.json</code>，也应准备对应的 tokenizer 和 <code>config.json</code> 等配置文件。
 该格式只表示模型权重，不包含优化器、学习率调度器和训练步数。</p>
 <h2 id="_2">常用配置项</h2>
-<p>配置类型来自上游 <code>torchtitan.config.Checkpoint</code>，Python 配置使用下划线命名，命令行
+<p>配置类型来自上游 <code>torchtitan.components.checkpointer.base</code>，Python 配置使用下划线命名，命令行
 使用 tyro 的连字符命名：</p>
 <table>
 <thead>
@@ -351,8 +353,7 @@ bash scripts/run_train.sh \
   --checkpoint.initial-load-path /absolute/path/to/dsv4_checkpoint/checkpoint/step-100 \
   --checkpoint.no-initial-load-model-only
 </code></pre>
-<p>如果 <code>{dump_folder}/{checkpoint.folder}</code> 已经存在可用 checkpoint，框架会优先从该目录
-优先从该目录加载，并忽略 <code>initial_load_path</code>。从新权重启动实验时，应使用新的 <code>dump-folder</code> 或
+<p>如果 <code>{dump_folder}/{checkpoint.folder}</code> 已经存在可用 checkpoint，框架会优先从该目录加载，并忽略 <code>initial_load_path</code>。从新权重启动实验时，应使用新的 <code>dump-folder</code> 或
 清理旧的 checkpoint 目录。</p>
 <p>如只需要模型和部分训练状态，可以排除不需要的键：</p>
 <pre><code class="language-bash">bash scripts/run_train.sh \
