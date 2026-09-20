@@ -67,6 +67,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
@@ -225,14 +227,13 @@ FlexShard bucket 调度：</p>
 <p>AdamW 的 <code>exp_avg</code>、<code>exp_avg_sq</code>（AMSGrad 时还包括 <code>max_exp_avg_sq</code>）按 bucket 拼成连续
 flat state。每个 bucket 执行 H2D、<code>WAIT_DEVICE</code>、上游 AdamW 更新和 D2H，并在当前 bucket
 更新前提交下一个 bucket 的 H2D。</p>
-<p>启用 <code>swap_optimizer</code> 的 <code>OptimizerStateSwapContainer</code> 不支持 optimizer <code>state_dict()</code>、
-<code>load_state_dict()</code>、完整 optimizer checkpoint 保存或断点续训。需要 checkpoint 互操作时，
-移除该 override 并使用普通 optimizer 路径。</p>
+<p>开启 swap 之后，checkpoint 的存储和加载支持同步模式和基于 CPU snapshot 的异步模式 <code>async</code>，暂不支持
+<code>async_with_pinned_mem</code>。</p>
 <h2 id="_2">能力边界</h2>
 <p>当前方案适合 DSV4 单机 8 卡、TP/PP=1、EP/DP-shard 并行的实验和训练。尚未证明：</p>
 <ul>
 <li>TP&gt;1 或 PP&gt;1 的 DistMuon；</li>
-<li>swap 开启时的 optimizer checkpoint 保存、加载和断点续训；</li>
+<li><code>async_with_pinned_mem</code>、跨 world size 恢复及更复杂并行拓扑下的 swap checkpoint；</li>
 </ul>
               
             </div>

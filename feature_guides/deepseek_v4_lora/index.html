@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 LoRA 微调 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 LoRA \u5fae\u8c03";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_lora.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 LoRA 微调</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#peft-adapter">加载 PEFT adapter</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">验证</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 LoRA 微调</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-lora">DeepSeek-V4 LoRA 微调</h1>
+<p>在 DSV4 recipe 的 <code>converters</code> 中选择 <code>DeepSeekV4LoRAConverter.Config</code>，即可启用 dense、batched 和 routed-expert LoRA。recipe 自动选择 LoRA 并行化与 PEFT checkpoint manager；无需额外 enable 开关。rank、alpha 和目标模块在 converter 配置中设置，保存选项使用 <code>checkpoint.*</code>；暂不支持量化基座。</p>
+<p>完整 Flash 模型使用已有的 <code>deepseek_v4_flash_lora</code> recipe（dense/expert rank 16、alpha 32），无需创建额外配置模块。正式入口复用 A3 4K launcher 的节点、数据、并行和编译配置，并开启 checkpoint 保存。当前 LoRA 训练仅支持 AdamW；公共 A3 launcher 默认使用 Muon，因此运行时须显式传入 <code>--optimizer.name AdamW</code>：</p>
+<pre><code class="language-sh">NODE_IPS=&quot;${NODE_IPS}&quot; \
+HF_ASSETS_PATH=/path/to/tokenizer \
+CKPT_INIT_LOAD_PATH=/path/to/bf16-base-weights \
+CKPT_SAVE_LOAD_PATH=/path/to/run/checkpoint \
+bash examples/deepseek_v4/deepseek_v4_flash_lora_4k_a3.sh \
+  --optimizer.name AdamW \
+  --training.steps 500 --checkpoint.interval 100
+</code></pre>
+<p>节点和数据环境变量说明见 <a href="../../examples/deepseek_v4/readme.md">训练示例</a>。命令末尾的 CLI 参数可覆盖 launcher 默认值。自定义 recipe 可继续在 <code>deepseek_v4_flash(converters=[...])</code> 中配置 <code>DeepSeekV4LoRAConverter.Config</code>。</p>
+<p>模型并行化后、optimizer 创建前冻结非 LoRA 参数，并关闭 MoE load-balancing hook，保留基座 routing bias。部分 adapter 训练时，在该 parallelize callback 返回后冻结相应 adapter（例如全部 <code>lora_a</code>），仅训练剩余参数。</p>
+<p><code>checkpoint.periodic_save_adapter_only=True</code> 时，周期 checkpoint 使用 native DCP，保存 adapter 和 routing buffer，不重复保存冻结的基座。启用 <code>checkpoint.save_training_state=True</code> 后，还会保存 optimizer、scheduler、dataloader 和 step；上述 LoRA launcher 已启用此选项。恢复时保持相同基座、训练总步数和运行目录；用 <code>--checkpoint.load-step 10</code> 指定恢复点。</p>
+<p>最后一步导出 PEFT 的 <code>adapter_model.safetensors</code> 和 <code>adapter_config.json</code>，仅包含 adapter 权重。训练续跑使用周期 DCP；若最后一步也需保存训练状态，设置 <code>--checkpoint.no-last-save-in-peft --checkpoint.no-last-save-model-only</code>。启用 expert adapter 时，PEFT 导出要求 dense 和 expert 的 rank 相同。启用 checkpoint 后，MTP adapter、rank 不兼容和不支持的 PEFT 目标在 checkpoint 初始化时拒绝，而不是训练结束后才失败。<code>last_save_in_hf=True</code> 不合并 LoRA 增量，因此本 checkpoint manager 禁止该选项；请使用 PEFT 或 native DCP。</p>
+<h2 id="peft-adapter">加载 PEFT adapter</h2>
+<p>导出使用 <code>target_parameters</code>，保留 batched projection 的分组前向计算，并将 routed expert 的 gate/up adapter 转成融合参数格式。加载时显式指定与训练相同的基座：</p>
+<pre><code class="language-python">from peft import PeftModel
+from transformers import AutoModelForCausalLM
+
+base = AutoModelForCausalLM.from_pretrained(&quot;/path/to/hf-base&quot;)
+model = PeftModel.from_pretrained(base, &quot;/path/to/run/checkpoint/step-100&quot;)
+</code></pre>
+<p>基座路径须为 Transformers 可加载的模型目录；训练用 native DCP 路径不能直接用于此处。PEFT 导出不支持 MTP adapter；训练 MTP adapter 时使用 native checkpoint，或设置 <code>include_mtp=False</code> 后导出 PEFT。</p>
+<h2 id="_1">验证</h2>
+<p>CPU 消费者测试在实际 Transformers 模型上加载 dense、batched 和 routed-expert adapter，并与直接合并权重的模型比较 logits：</p>
+<pre><code class="language-sh">TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -m pytest \
+  tests/unit_tests/models/deepseek_v4/test_lora_state_dict_adapter.py -k peft_export_loads
+</code></pre>
+<p>该测试需要上述可选依赖。NPU 用例复用现有 integration runner，在 EP2/FSDP2 上执行 2 步 A/B 训练，检查冻结基座与 routing bias 不变、adapter 更新。该用例不做中间 checkpoint 保存或恢复；最后一步通过实际 checkpoint manager 导出 PEFT，并检查导出张量的 key、shape、数值及 rank、alpha、target 配置。冻结 A、仅训练 B 由 CPU 单元测试覆盖：</p>
+<pre><code class="language-sh">python -m tests.integration_tests.run_tests /tmp/lora-ab \
+  --test_suite models --test_name dsv4_lora_ep2_fsdp2 --ngpu 2 --no-parallel
+</code></pre>
+<p>PEFT export requires a local checkpoint output folder; remote output URIs are rejected during initialization.
+Set <code>--checkpoint.peft-base-model-name-or-path</code> to the Hugging Face base model ID or directory for external loaders.
+When omitted, an HF initial checkpoint supplies this metadata; native DCP paths are never exported as the base model.
+Otherwise the configured HF assets path supplies the default base metadata.</p>
+<p>Final PEFT export reconstructs only LoRA tensors across ranks, one tensor at a time.
+Rank 0 writes the CPU adapter tensors to safetensors and the PEFT configuration;
+all ranks receive the save result. Native training checkpoints continue to use DCP.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deepseek_v4_graph_trainer_recompute/" class="btn btn-neutral float-left" title="DeepSeek-V4 GraphTrainer 激活重计算"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_tnd/" class="btn btn-neutral float-right" title="DeepSeek-V4 TND 适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../deepseek_v4_graph_trainer_recompute/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_tnd/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

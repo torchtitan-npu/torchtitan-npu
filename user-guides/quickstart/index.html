@@ -67,6 +67,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
@@ -102,6 +104,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-torchao-npu">DeepSeek-V4 TorchAO-NPU 低精度训练</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v41-torchao-npu">DeepSeek-V4.1 TorchAO-NPU 低精度训练</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#rank">排查启动报错：查看更多 rank 日志</a>
     </li>
         </ul>
@@ -136,7 +140,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="_1">快速上手</h1>
-<p>参考 <a href="../installation/">软件安装</a> 准备环境后，进入 <code>torchtitan-npu</code> 仓库根目录。除另有说明外，本文中的相对路径和命令均以仓库根目录为基准。本文先以 DeepSeek V3 说明通用启动方式，再给出 DeepSeek-V4 多卡训练和 TorchAO-NPU 低精度训练入口。</p>
+<p>参考 <a href="../installation/">软件安装</a> 准备环境后，进入 <code>torchtitan-npu</code> 仓库根目录。除另有说明外，本文中的相对路径和命令均以仓库根目录为基准。本文先以 DeepSeek V3 说明通用启动方式，再给出 DeepSeek-V4/V4.1 多卡训练和 TorchAO-NPU 低精度训练入口。</p>
 <h2 id="_2">数据准备</h2>
 <ol>
 <li>使用仓库预置的 DeepSeek V3 Tokenizer，目录为 <code>tests/assets/deepseek_v3/</code>，单卡默认命令会直接使用该目录，无需额外下载。</li>
@@ -309,6 +313,25 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 <li><code>USE_GOLDEN</code>：设为 <code>1</code> 时选择 golden attention override；默认使用 Ascend 融合算子路径。</li>
 </ul>
 <p>启动日志中出现 <code>Applied TorchAO-NPU recipe=...</code> 表示低精度 recipe 已生效。</p>
+<h3 id="deepseek-v41-torchao-npu">DeepSeek-V4.1 TorchAO-NPU 低精度训练</h3>
+<p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口。除启用量化训练和选择 <code>recipe</code> 外，增加
+<code>--extension.quantization.enable-sparse-attention-quantization</code>，将 V4.1 的稀疏 attention
+替换为混合量化路径；该开关需要与
+<code>--extension.quantization.enable-quantized-training</code> 同时传入。当前入口面向 A5（Ascend 950）硬件：</p>
+<blockquote>
+<p>[!NOTE]
+启用 'enable-sparse-attention-quantization' 会对KV做 'mxfp8_bf16' 和 'mxfp4_bf16' 量化，需要参考 <a href="https://gitcode.com/cann/cann-recipes-infer/blob/master/ops/ascendc/README.md">Ascend C 自定义算子编译安装说明</a> 编译并安装 'kv_compress_epilog_v2' 算子，注意添加自定义算子环境变量。</p>
+</blockquote>
+<p>deepseek v4.1 模型做低精预训练可运行以下脚本：</p>
+<pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
+bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_cpt_4k_a5.sh
+</code></pre>
+<p>deepseek v4.1 模型做QAT训练可运行以下脚本：</p>
+<pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
+bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_qat_4k_a5.sh
+</code></pre>
+<p>不使能 <code>enable-sparse-attention-quantization</code> 时，<code>recipe</code> 仍会量化匹配的权重和其他模块，V4.1 稀疏 attention 保持原始路径。启动日志中的
+<code>sparse_attention_quantization=True</code> 可用于确认该开关已生效。</p>
 <h3 id="rank">排查启动报错：查看更多 rank 日志</h3>
 <blockquote>
 <p>[!TIP]
