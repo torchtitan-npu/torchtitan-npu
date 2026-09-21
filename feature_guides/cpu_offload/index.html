@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>CPU Offload - 权重、梯度与优化器状态全 CPU 常驻 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "CPU Offload - \u6743\u91cd\u3001\u68af\u5ea6\u4e0e\u4f18\u5316\u5668\u72b6\u6001\u5168 CPU \u5e38\u9a7b";
+        var mkdocs_page_input_path = "feature_guides/cpu_offload.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">背景与挑战</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">特性概述</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">启用方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">架构</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">组件清单</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">支持组合</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">显存与带宽权衡</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">与其他特性的关系</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_9">限制</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="cpu-offload-cpu">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</h1>
+<h2 id="_1">背景与挑战</h2>
+<p>在大规模分布式训练中，模型参数、梯度和优化器状态全部驻留 NPU HBM，显存占用为三者的总和。对于 MoE 模型（如 DeepSeek-V4），仅参数和梯度就可达数百 GB，远超单卡 HBM 容量。</p>
+<p>Virtual Optimizer（见 <a href="../virtual_optimizer/">virtual_optimizer.md</a>）已将优化器 moments 移到 Host 内存，但参数和梯度仍在 NPU 上。当参数+梯度的规模本身成为瓶颈时，需要更彻底的方案：<strong>将三者全部常驻 CPU，仅在计算时按需搬到 NPU</strong>。</p>
+<h2 id="_2">特性概述</h2>
+<p>CPU Offload 是一套"CPU 常驻 + NPU 计算"的显存优化方案：</p>
+<ul>
+<li><strong>参数（权重）</strong>：CPU pinned 存储，forward 前异步预取到 NPU</li>
+<li><strong>梯度</strong>：backward 后 reduce-scatter 结果直接落 CPU（pinned），第二个 microbatch 起在 NPU 上做分块累加</li>
+<li><strong>优化器状态</strong>：CPU 常驻，每次 step 在 NPU 上执行更新计算</li>
+</ul>
+<p><strong>核心思想</strong>：PyTorch FSDP2 的 <code>CPUOffloadPolicy</code> 负责参数/梯度的 CPU offload 基础设施；本仓在其上补齐 NPU 侧的性能关键路径（异步预取、NPU 梯度累加、NPU 侧 clip、CPU 常驻优化器），使全 offload 训练达到可用的吞吐。</p>
+<h2 id="_3">启用方式</h2>
+<p>单一开关，通过命令行：</p>
+<pre><code class="language-bash"># 命令行
+--training.enable-cpu-offload
+</code></pre>
+<p>且需要同步在脚本中添加torchtitan_npu.override.common.optimizer.swap_optimizer 的 overrides</p>
+<p>该开关同时驱动两条路径：</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>机制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FSDP 数据面</td>
+<td><code>parallelize_fn</code> 读取 flag → <code>CPUOffloadPolicy()</code> → FSDPParam 的 <code>offload_to_cpu=True</code></td>
+</tr>
+<tr>
+<td>优化器容器</td>
+<td><code>swap_optimizer</code> override 分支 → <code>CpuOffloadOptimizersContainer</code>（安装 FSDP/grad-clip 补丁）</td>
+</tr>
+</tbody>
+</table>
+<p>未开启时，相关补丁模块<strong>不被 import</strong>，训练行为与上游完全一致。</p>
+<h2 id="_4">架构</h2>
+<pre><code>--training.enable-cpu-offload
+├── parallelize_fn → CPUOffloadPolicy → FSDPParam.offload_to_cpu = True
+│   ├── forward: unshard 时 CPU pinned 参数 → NPU（多 rank: 上游内建 / 单 rank: 本仓预取补丁）
+│   └── backward: foreach_reduce → 梯度 reduce-scatter → D2H 落 CPU pinned
+│                                    → 第二个 microbatch 起在 NPU 分块累加（本仓补丁）
+│
+├── swap_optimizer 分支 → CpuOffloadOptimizersContainer
+│   ├── 安装 grad_accum.install() + grad_clip.install()（显式、幂等）
+│   ├── clip: NPU 侧范数计算 + 系数发布 → 优化器直接消费已缓存的 NPU 梯度
+│   └── optimizer: CpuOffloadAdamW / CpuOffloadDistributedMuon
+│       └── 每 step: CPU 参数/状态 H2D → NPU ping-pong buffer → 计算 → D2H 回 CPU
+│
+└── TrainerEx → cpu_dtensor_init.install()
+    └── init_weights 时 CPU DTensor 参数在 NPU 上初始化后拷回
+</code></pre>
+<h2 id="_5">组件清单</h2>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extensions/cpu_offload/staging.py</code></td>
+<td><code>CpuStaging</code>：有界 pinned 传输环（owner/wait/close 协议）</td>
+</tr>
+<tr>
+<td><code>extensions/cpu_offload/runtime.py</code></td>
+<td><code>GradientClipChannel</code>：clip→optimizer 显式交接 + <code>stage_gradient</code></td>
+</tr>
+<tr>
+<td><code>extensions/cpu_offload/cpu_offload_adamw.py</code></td>
+<td><code>CpuOffloadAdamW</code>：公开算子实现，CPU 常驻状态 + NPU 计算</td>
+</tr>
+<tr>
+<td><code>extensions/cpu_offload/cpu_offload_muon.py</code></td>
+<td><code>CpuOffloadDistributedMuon</code>：FlexShard 双路径（local + redistribution）</td>
+</tr>
+<tr>
+<td><code>extensions/distributed/grad_accum.py</code></td>
+<td>梯度累加 + 单 rank 参数预取（FSDP 集成）</td>
+</tr>
+<tr>
+<td><code>extensions/distributed/grad_clip.py</code></td>
+<td>clip 补丁：NPU 侧范数计算（cached / bounded 双模式）</td>
+</tr>
+<tr>
+<td><code>patches/torch_npu/cpu_dtensor_init.py</code></td>
+<td><code>Module._init_param</code> 包装：CPU DTensor 参数 NPU 初始化</td>
+</tr>
+<tr>
+<td><code>override/common/optimizer.py</code></td>
+<td><code>CpuOffloadOptimizersContainer</code>：唯一 owner，显式安装/关闭</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_6">支持组合</h2>
+<table>
+<thead>
+<tr>
+<th>并行模式</th>
+<th>支持</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DP shard (FSDP)</td>
+<td>✅</td>
+<td>主路径</td>
+</tr>
+<tr>
+<td>HSDP (shard + replicate)</td>
+<td>✅</td>
+<td>单 rank AG 组走预取补丁</td>
+</tr>
+<tr>
+<td>EP (expert parallel)</td>
+<td>✅</td>
+<td>clip 支持跨 EP mesh 的范数归约</td>
+</tr>
+<tr>
+<td>CP (context parallel)</td>
+<td>✅</td>
+<td>CP 维度参与范数归约</td>
+</tr>
+<tr>
+<td>PP</td>
+<td>✅</td>
+<td>pp_mesh 参与 clip 总范数 all_reduce</td>
+</tr>
+<tr>
+<td>TP</td>
+<td>❌</td>
+<td>未测试</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_7">显存与带宽权衡</h2>
+<p><strong>cached clip 模式</strong>（默认，有 consumer 时）：clip 时全量梯度 H2D 一次，NPU 上算范数后<strong>驻留</strong>，优化器直接消费——每个梯度每 step 只 H2D 一次，代价是 NPU 峰值显存 <code>O(全部梯度)</code>。</p>
+<p>关键性质：offload 后 NPU 占用（梯度 + buffer）<strong>严格低于</strong>非 offload 基线（梯度 + 参数 + 优化器状态），因此不存在"比不 offload 更早 OOM"的场景。</p>
+<p><strong>bounded fallback</strong>（无 consumer 时自动退化）：64MB 分块算范数，NPU 峰值 <code>O(64MB)</code> 常数，代价是梯度 H2D 两次（clip 一次 + 优化器一次）。实测性能下降明显（全量梯度二次 H2D 为每步秒级），故未暴露为用户选项；如未来超大模型确有需求，可低成本启用。</p>
+<p>Chunk 大小（64 MiB）为内部调优常量，非用户配置。</p>
+<h2 id="_8">与其他特性的关系</h2>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>关系</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OptimizerStateSwapContainer</td>
+<td>在优化器部分会swap权重和梯度</td>
+</tr>
+<tr>
+<td>CpuOffloadOptimizersContainer</td>
+<td>在优化器部分仅swap权重</td>
+</tr>
+<tr>
+<td>FullAC (全激活检查点)</td>
+<td>正交：AC 管激活，offload 管参数/梯度/状态；可组合使用</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_9">限制</h2>
+<ul>
+<li>优化器固定支持 <code>CpuOffloadAdamW</code> 和 <code>CpuOffloadDistributedMuon</code>（Muon）</li>
+<li>不支持 <code>amsgrad</code>、<code>fused</code>、<code>capturable</code>、<code>differentiable</code>、<code>foreach</code>、复数张量</li>
+<li>梯度 clip 仅支持 L2 和 inf 范数</li>
+<li>DistMuon 需要 DTensor 参数 + FlexShard compute layout 配置</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../developer_guides/unit-test-architecture/" class="btn btn-neutral float-left" title="Unit Test 架构与迁移方案"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_cp/" class="btn btn-neutral float-right" title="DeepSeek-V4 上下文并行（CP）">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../developer_guides/unit-test-architecture/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_cp/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
