@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
-    <title>CPU Offload - 权重、梯度与优化器状态全 CPU 常驻 - torchtitan-npu</title>
+    <title>CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面 - torchtitan-npu</title>
     <link rel="stylesheet" href="../../css/theme.css" />
     <link rel="stylesheet" href="../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "CPU Offload - \u6743\u91cd\u3001\u68af\u5ea6\u4e0e\u4f18\u5316\u5668\u72b6\u6001\u5168 CPU \u5e38\u9a7b";
+        var mkdocs_page_name = "CPU Offload - \u6743\u91cd\u4e0e\u68af\u5ea6 CPU \u5e38\u9a7b\uff0c\u4f18\u5316\u5668\u72b6\u6001\u53ef\u9009 CPU/NPU \u9a7b\u7559\u9762";
         var mkdocs_page_input_path = "feature_guides/cpu_offload.md";
         var mkdocs_page_url = null;
       </script>
@@ -61,7 +61,7 @@
               </ul>
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">背景与挑战</a>
     </li>
@@ -132,7 +132,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Feature guides</li>
-      <li class="breadcrumb-item active">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</li>
+      <li class="breadcrumb-item active">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -141,7 +141,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="cpu-offload-cpu">CPU Offload - 权重、梯度与优化器状态全 CPU 常驻</h1>
+                <h1 id="cpu-offload-cpu-cpunpu">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</h1>
 <h2 id="_1">背景与挑战</h2>
 <p>在大规模分布式训练中，模型参数、梯度和优化器状态全部驻留 NPU HBM，显存占用为三者的总和。对于 MoE 模型（如 DeepSeek-V4），仅参数和梯度就可达数百 GB，远超单卡 HBM 容量。</p>
 <p>Virtual Optimizer（见 <a href="../virtual_optimizer/">virtual_optimizer.md</a>）已将优化器 moments 移到 Host 内存，但参数和梯度仍在 NPU 上。当参数+梯度的规模本身成为瓶颈时，需要更彻底的方案：<strong>将三者全部常驻 CPU，仅在计算时按需搬到 NPU</strong>。</p>
@@ -150,7 +150,8 @@
 <ul>
 <li><strong>参数（权重）</strong>：CPU pinned 存储，forward 前异步预取到 NPU</li>
 <li><strong>梯度</strong>：backward 后 reduce-scatter 结果直接落 CPU（pinned），第二个 microbatch 起在 NPU 上做分块累加</li>
-<li><strong>优化器状态</strong>：CPU 常驻，每次 step 在 NPU 上执行更新计算</li>
+<li><strong>优化器状态</strong>：两种驻留面——默认 <strong>NPU 常驻、step 原地更新</strong>（无逐 step 往返）；
+  列出 <code>swap_optimizer</code> override 时退回 CPU 常驻 + 每 step 在 NPU 上执行更新计算</li>
 </ul>
 <p><strong>核心思想</strong>：PyTorch FSDP2 的 <code>CPUOffloadPolicy</code> 负责参数/梯度的 CPU offload 基础设施；本仓在其上补齐 NPU 侧的性能关键路径（异步预取、NPU 梯度累加、NPU 侧 clip、CPU 常驻优化器），使全 offload 训练达到可用的吞吐。</p>
 <h2 id="_3">启用方式</h2>
@@ -158,7 +159,29 @@
 <pre><code class="language-bash"># 命令行
 --training.enable-cpu-offload
 </code></pre>
-<p>且需要同步在脚本中添加torchtitan_npu.override.common.optimizer.swap_optimizer 的 overrides</p>
+<p>优化器状态的驻留面由是否列出 <code>torchtitan_npu.override.common.optimizer.swap_optimizer</code>
+的 override 决定（数据面始终 offload）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>参数/梯度</th>
+<th>优化器状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>仅 <code>--training.enable-cpu-offload</code>（无需列 override）</td>
+<td>CPU 常驻</td>
+<td><strong>NPU 常驻</strong>，step 原地更新，无逐 step H2D/D2H 往返</td>
+</tr>
+<tr>
+<td>再列出 <code>swap_optimizer</code> override</td>
+<td>CPU 常驻</td>
+<td>CPU 常驻（历史行为），每 step H2D → NPU 计算 → D2H</td>
+</tr>
+</tbody>
+</table>
 <p>该开关同时驱动两条路径：</p>
 <table>
 <thead>
@@ -174,7 +197,7 @@
 </tr>
 <tr>
 <td>优化器容器</td>
-<td><code>swap_optimizer</code> override 分支 → <code>CpuOffloadOptimizersContainer</code>（安装 FSDP/grad-clip 补丁）</td>
+<td><code>TrainerEx</code> 默认派生 <code>CpuOffloadNpuStateOptimizersContainer</code>；列出 <code>swap_optimizer</code> 时 override 再派生 <code>CpuOffloadOptimizersContainer</code>（两者都安装 FSDP/grad-clip 补丁）</td>
 </tr>
 </tbody>
 </table>
@@ -186,11 +209,13 @@
 │   └── backward: foreach_reduce → 梯度 reduce-scatter → D2H 落 CPU pinned
 │                                    → 第二个 microbatch 起在 NPU 分块累加（本仓补丁）
 │
-├── swap_optimizer 分支 → CpuOffloadOptimizersContainer
+├── TrainerEx 默认派生 → CpuOffloadNpuStateOptimizersContainer（列出 swap_optimizer 时
+│   override 再派生 → CpuOffloadOptimizersContainer）
 │   ├── 安装 grad_accum.install() + grad_clip.install()（显式、幂等）
 │   ├── clip: NPU 侧范数计算 + 系数发布 → 优化器直接消费已缓存的 NPU 梯度
 │   └── optimizer: CpuOffloadAdamW / CpuOffloadDistributedMuon
-│       └── 每 step: CPU 参数/状态 H2D → NPU ping-pong buffer → 计算 → D2H 回 CPU
+│       ├── 状态 CPU 常驻: 每 step CPU 参数/状态 H2D → NPU ping-pong buffer → 计算 → D2H 回 CPU
+│       └── 状态 NPU 常驻: 仅 CPU 参数 H2D，状态在 NPU 原地更新，D2H 仅回写参数
 │
 └── TrainerEx → cpu_dtensor_init.install()
     └── init_weights 时 CPU DTensor 参数在 NPU 上初始化后拷回
@@ -214,11 +239,11 @@
 </tr>
 <tr>
 <td><code>extensions/cpu_offload/cpu_offload_adamw.py</code></td>
-<td><code>CpuOffloadAdamW</code>：公开算子实现，CPU 常驻状态 + NPU 计算</td>
+<td><code>CpuOffloadAdamW</code>：公开算子实现，状态驻留面可选（CPU 常驻 / NPU 常驻原地更新）+ NPU 计算</td>
 </tr>
 <tr>
 <td><code>extensions/cpu_offload/cpu_offload_muon.py</code></td>
-<td><code>CpuOffloadDistributedMuon</code>：FlexShard 双路径（local + redistribution）</td>
+<td><code>CpuOffloadDistributedMuon</code>：FlexShard 双路径（local + redistribution），momentum 驻留面同上</td>
 </tr>
 <tr>
 <td><code>extensions/distributed/grad_accum.py</code></td>
@@ -234,7 +259,7 @@
 </tr>
 <tr>
 <td><code>override/common/optimizer.py</code></td>
-<td><code>CpuOffloadOptimizersContainer</code>：唯一 owner，显式安装/关闭</td>
+<td><code>CpuOffload*OptimizersContainer</code>：唯一 owner，显式安装/关闭；NPU-state 默认与 CPU-state（含 HostSparse）变体按 <code>swap_optimizer</code> 选择</td>
 </tr>
 </tbody>
 </table>
