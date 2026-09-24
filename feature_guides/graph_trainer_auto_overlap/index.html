@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>GraphTrainer NPU Auto Overlap - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "GraphTrainer NPU Auto Overlap";
+        var mkdocs_page_input_path = "feature_guides/graph_trainer_auto_overlap.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">GraphTrainer NPU Auto Overlap</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">1. 整体流程</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#11-ep-overlap">1.1 与原生 EP overlap 的关系</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#12-pass">1.2 pass 流程</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-benchmark">2. 单算子 Benchmark</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#21-moe-shape">2.1 MoE 动态 shape 处理</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#22">2.2 计算算子</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#23">2.3 通信算子</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#24-cost-rank">2.4 单算子 cost 的跨 rank 对齐</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-benchmark">3. 整图 Benchmark</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#31">3.1 为什么需要整图校准</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#32">3.2 校准执行</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#33-cann-cost">3.3 CANN cost 获取</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#34-cost-rank">3.4 cost 跨 rank 对齐</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4">4. 自动调度</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#41-cost-model">4.1 调度范围与 cost model</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#42">4.2 依赖与安全约束</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#43-token-count-d2h">4.3 Token-count D2H 优化</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#44">4.4 节点选择优先级</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#45-rank">4.5 跨 Rank 一致性</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5">5. 调试与实现索引</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">相关文档</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">GraphTrainer NPU Auto Overlap</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="graphtrainer-npu-auto-overlap">GraphTrainer NPU Auto Overlap</h1>
+<p>NPU Auto Overlap 用于 TorchTitan GraphTrainer 的双 chunk MoE 通信掩盖自动调度。它在 NPU 上测量计算和通信耗时，再以依赖安全、跨 rank 一致为约束重排图，使双 chunk 的计算和通信互相掩盖。</p>
+<p>该特性复用原生 EP overlap 的切图、process-group 隔离、结构校验和符号 shape 处理，将 <code>ep_overlap_schedule_pass</code> 的固定调度替换为基于实测 cost 的自动调度。使用时需要：</p>
+<ol>
+<li>设置 <code>TORCHINDUCTOR_USE_TORCH_PROFILER_BENCHMARKER=1</code>；</li>
+<li>设置 <code>TORCHINDUCTOR_USE_EXPERIMENTAL_BENCHMARKER=0</code>；</li>
+<li>开启 EP overlap，并选择对应的 Auto Overlap pipeline。</li>
+</ol>
+<p>完整配置参考 <a href="../../examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_auto_overlap.sh"><code>deepseek_v4_flash_8p_cpt_4k_a3_auto_overlap.sh</code></a>。</p>
+<h2 id="1">1. 整体流程</h2>
+<h3 id="11-ep-overlap">1.1 与原生 EP overlap 的关系</h3>
+<p>原生 EP overlap 将目标 MoE 区域切成两个 chunk，并以固定规则重排节点。NPU Auto Overlap 保留切图结果，等动态 shape 具体化后再根据 NPU 实测 cost 调度：</p>
+<pre><code class="language-text">原生 EP overlap
+  chunk metadata -&gt; EP chunk -&gt; 固定调度 -&gt; shape 具体化 -&gt; 后续编译
+
+NPU Auto Overlap
+  chunk metadata -&gt; EP chunk -&gt; EP 结构校验 -&gt; shape 具体化 -&gt; 自动调度 -&gt; 后续编译
+</code></pre>
+<p>启用时，pipeline 组合逻辑执行以下操作：</p>
+<ol>
+<li>从完整的原生 GraphTrainer pipeline 开始。</li>
+<li>将原生 EP 调度 pass 替换为结构校验的 <code>ep_overlap_validate_pass</code>，不应用原生固定调度。</li>
+<li>在 EP chunk shape 具体化之后插入 NPU Auto Overlap pass。</li>
+<li>保持其他 pass 的内容和相对顺序不变。</li>
+</ol>
+<p>如果必要的 EP pass 缺失、目标 pass 重复，或者当前正在加载预编译产物，则不改写 pipeline。</p>
+<h3 id="12-pass">1.2 pass 流程</h3>
+<p>当前流程包含 1 次单算子建模和 2 轮整图校准：</p>
+<pre><code class="language-text">单计算/通信算子 benchmark
+  -&gt; 第 1 轮调度
+  -&gt; 整图 benchmark
+  -&gt; 第 2 轮调度
+  -&gt; 整图 benchmark
+  -&gt; 第 3 轮调度
+</code></pre>
+<p>第一次调度在原始 FX 图的 MoE 区域内逐算子 benchmark，获取初始 cost model 并执行自动调度。之后，每轮都执行上一轮排好的整图，通过 profiling 采集训练场景下通算并发时的算子耗时，校准 cost model，再次执行自动调度。</p>
+<p>跨轮次保留三类信息：</p>
+<ul>
+<li>上一轮生成的图顺序，作为下一轮的输入；</li>
+<li>原始图节点的 canonical 顺序，作为各轮确定性排序和通信算子编号的稳定基准；</li>
+<li>最近一次可用的节点 cost，用于整图测量缺失时回退。</li>
+</ul>
+<p>整图校准需要当前 traced graph、模型、batch 和训练上下文。runtime context 不可用时，只执行首次单算子 benchmark 和调度。</p>
+<h2 id="2-benchmark">2. 单算子 Benchmark</h2>
+<h3 id="21-moe-shape">2.1 MoE 动态 shape 处理</h3>
+<p>原生 runtime estimator 可以从 FakeTensor metadata 为普通静态 shape 算子构造输入，但 MoE 的 routed-token 维度由当步路由结果决定，常以动态 shape 出现在 FX 图中。直接沿用原生物化逻辑通常有两种结果：</p>
+<ul>
+<li>动态维度无法物化，算子不能 benchmark；</li>
+<li>使用统一的符号 fallback 值，会使 dispatch、combine、GMM 和 permutation 的 workload 彼此不匹配。</li>
+</ul>
+<p>Auto Overlap 采用负载均衡假设：保留可确定的总 token 数，并将 routed tokens 尽量均匀分配给 experts 和 EP ranks，使同一 chunk 内的通信和计算看到一致、合法的 workload。</p>
+<h3 id="22">2.2 计算算子</h3>
+<p>普通计算节点从 FakeTensor metadata 恢复 shape、stride、dtype、device 和非 tensor 参数，并生成相同布局的随机 tensor。只有纯函数、输入 metadata 完整且 tensor 值不决定算子合法性的节点才使用通用物化；包含 index、mask、offset 或 split 信息的整数/布尔 tensor 不会被任意随机化。</p>
+<p>MoE 中两类动态算子使用专门输入构造：</p>
+<table>
+<thead>
+<tr>
+<th>算子</th>
+<th>合成 workload</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grouped MM</td>
+<td>从同 chunk 的 dispatch 推导 routed-token 总量，均匀生成每个 expert 的 token count 和累计 offset；覆盖 forward、dgrad 和 wgrad 形态</td>
+</tr>
+<tr>
+<td>Permute / unpermute</td>
+<td>根据 routed-token 总量、top-k 和 expert 数构造均匀 routing；unpermute 使用匹配 NPU permute 返回语义的 inverse indices</td>
+</tr>
+</tbody>
+</table>
+<p>只改变 shape、stride、view 或 alias 等 tensor metadata 的节点按零 cost 处理。无法安全物化或 benchmark 失败的计算节点也回退为零 cost，并打印告警；整图校准有机会在后续轮次补上真实测量。</p>
+<p>计算算子通过 NPU profiler benchmark backend 多次执行并得到稳定耗时。cache key 包含算子、tensor shape/stride/dtype/device、非 tensor 参数以及动态 workload 假设，因此相同 workload 可以复用结果，不同布局或路由规模不会错误共享 cost。</p>
+<h3 id="23">2.3 通信算子</h3>
+<p>为每个通信 launch 找到对应 wait，并以 launch 到完成的耗时作为通信 cost。单算子通信 benchmark 优先使用 CANN profiler；当前 CANN 或 <code>torch_npu</code> 无法导出、关联 HCOM 活动时，回退到 NPU event 计时。</p>
+<p>A2A 的输入在通信组内共同构造：</p>
+<ol>
+<li>每个 rank 提供本地 routed-token 总量。</li>
+<li>通信组内交换这些总量，并将每行尽量均匀分给目标 ranks，形成兼容的 split matrix。</li>
+<li>dispatch 使用该矩阵的本地发送行和接收列。</li>
+<li>combine 反转与配对 dispatch 的输入、输出 splits，使其 workload 保持一致。</li>
+</ol>
+<p>同一 chunk 的 dispatch token 总量也用于 GMM 和 permutation，避免各算子独立固化动态 shape 后得到互相矛盾的 workload。</p>
+<p>CANN 路径会先按 workload 去重和查询缓存，再逐个测量缺失的通信签名。每次样本取通信组内最慢 rank，最后对多次样本取中位数，从而表示一次通信的全局完成时间。</p>
+<h3 id="24-cost-rank">2.4 单算子 cost 的跨 rank 对齐</h3>
+<p>首轮 benchmark 基于尚未调度的 MoE 区域，各 rank 具有相同的可 benchmark 节点数量和 canonical 顺序。因此计算、通信 cost 可以在每个 region 内按位置交换，并对各 rank 的值取中位数。</p>
+<h2 id="3-benchmark">3. 整图 Benchmark</h2>
+<h3 id="31">3.1 为什么需要整图校准</h3>
+<p>单算子 benchmark 提供稳定、可启动调度的初始 cost，但它不能反映训练中算子的上下文和并发环境。</p>
+<p>整图 benchmark 直接执行上一轮排好的 GraphTrainer 图，因而能够观察：</p>
+<ul>
+<li>计算、HCCL 通信和 copy 并发时的实际设备耗时；</li>
+<li>当前节点顺序、stream dependency 和资源竞争带来的影响；</li>
+<li>前一轮 schedule 改变后，各节点 cost 随执行上下文发生的变化。</li>
+</ul>
+<p>这些 cost 不是单算子的硬件延迟，而是当前训练 schedule 中的设备侧测量，更适合用来校准下一轮调度。</p>
+<h3 id="32">3.2 校准执行</h3>
+<p>每轮校准复用模型和首个 batch，不额外消耗 dataloader 数据。执行前复制输入 tensor，执行后恢复模型 buffer 和 CPU/NPU RNG 状态；不修改 parameter 或 gradient。</p>
+<p>在整图 profiling 采集前，各卡会对进行同步并 warmup ，之后再执行被测整图。</p>
+<h3 id="33-cann-cost">3.3 CANN cost 获取</h3>
+<p>整图 profiling 不向 FX 图插入逐节点 marker，而是：</p>
+<ol>
+<li>按 FX 执行顺序匹配 CANN 中已有的 CPU dispatcher scope；</li>
+<li>沿 <code>torch_to_npu</code> flow 找到该 scope 下发的设备任务；</li>
+<li>计算节点保留 kernel 和 copy，过滤 host enqueue/dequeue 及设备控制事件；</li>
+<li>通信节点使用对应 HCOM 活动的完成耗时。</li>
+</ol>
+<h3 id="34-cost-rank">3.4 cost 跨 rank 对齐</h3>
+<p>非均匀切分（例如切分 DeepSeekV4 的 MHC）可能使各 rank 的 FX 图存在差异，无法采用按节点位置顺序对齐。为此，每个本地节点使用不依赖本地编号的语义 key，信息包含：</p>
+<ul>
+<li>计算节点使用所在 MoE region、前向/反向、chunk、module scope、算子类型、输入/输出 tensor metadata，以及相同签名的出现次序；</li>
+<li>通信节点额外使用逻辑通信组序号、通信类型和 count/dispatch/combine 角色。</li>
+</ul>
+<p>各 rank 交换“语义 key -&gt; cost”映射。只有所有 ranks 都存在的 key 才采用本轮整图 cost，并取各 rank 的最小值；仅部分 ranks 测得的节点统一回退到上一轮，避免下一轮调度因 cost 来源不同而分叉。通信执行前还会校验每个逻辑通信组中的通信类型和数量，防止不一致的通信图进入校准执行。</p>
+<h2 id="4">4. 自动调度</h2>
+<h3 id="41-cost-model">4.1 调度范围与 cost model</h3>
+<p>调度仅针对双 chunk MoE 区域。调度范围包括两个 chunk body，以及同一 MoE 内会影响 overlap 的共享计算，例如未归入任一 chunk 的权重转换。</p>
+<p>当前调度模型基于以下假设：</p>
+<ul>
+<li>计算节点在一条有序计算时间线上执行；</li>
+<li>MoE 区域内的 EP 通信共享一条有序通信资源；</li>
+<li>通信下发后，后续计算消耗其尚未覆盖的时间；</li>
+<li>执行 wait 时仍未覆盖的通信尾部计为暴露时间。</li>
+</ul>
+<p>当前跨 rank cost 对齐和调度投票使用 WORLD，因此参与调度的图通信组必须覆盖全部 rank，多个 EP subgroup 或 PP stage 暂不支持。</p>
+<p>模型估算的隐藏时间和暴露时间用于比较候选顺序，不等同于整图实测耗时。copy、AI Core 和 HCCL 之间更细粒度的资源竞争由整图校准间接反馈。</p>
+<h3 id="42">4.2 依赖与安全约束</h3>
+<p>调度前会完成以下处理：</p>
+<ol>
+<li>收集调度区域内的通信 launch，并关联所有对应 wait。</li>
+<li>从完整 FX 图向调度区域投影依赖，保留“离开调度区域后又重新进入”的间接路径，避免局部合法顺序在全图形成环。</li>
+<li>补充动态 split-list host 协议无法由 tensor edge 完整表达的依赖。</li>
+<li>基于这些依赖维护可执行节点集合，并逐步生成新的 region 顺序。</li>
+<li>将多个调度区域的顺序约束合入全图；发生冲突时保留最大无环子集。</li>
+<li>完成稳定拓扑排序后，再校验通信顺序及其跨 rank 一致性。</li>
+</ol>
+<h3 id="43-token-count-d2h">4.3 Token-count D2H 优化</h3>
+<p>原始两个 chunk 各自包含一次异步 D2H 和一次同步 D2H：</p>
+<pre><code class="language-text">chunk 0: count0 -&gt; D2H0 async -&gt; D2H1 sync -&gt; dispatch0
+chunk 1: count1 -&gt; D2H2 async -&gt; D2H3 sync -&gt; dispatch1
+</code></pre>
+<p>Auto Overlap 将四次 copy 按稳定顺序下发，只保留最后一次 host 同步：</p>
+<pre><code class="language-text">count0 -&gt; count1 -&gt; D2H0/D2H1/D2H2 async -&gt; D2H3 sync -&gt; dispatch0/1
+</code></pre>
+<p>为保证正确性，读取 host 数据的消费者都依赖最终同步点，而两个 dispatch 只依赖各自的 split-list 物化路径。token-count 通信不会和相邻通信交换；其 wait 进入数据通信关键路径后也会被优先完成。</p>
+<h3 id="44">4.4 节点选择优先级</h3>
+<p>主循环优先保持通信连续下发，同时用不会延迟下一次下发的计算填充空闲窗口。</p>
+<p>准备下一次通信时，调度器会比较原始顺序中相邻的两个候选通信。只有在两者属于同一通信组、彼此无依赖、准备路径安全且都不是 token-count 通信时，才允许交换。</p>
+<p>候选顺序的 score 考虑：</p>
+<ul>
+<li>下发前的准备工作是否造成通信资源空闲；</li>
+<li>第一段通信还有多少尾部无法被准备工作和可执行计算覆盖；</li>
+<li>第一段通信完成后会解锁多少后续计算；</li>
+<li>避免重复计算两个候选共同的准备工作。</li>
+</ul>
+<p>只有所有 ranks 都认为交换合法、且跨 rank 平均收益为正，才接受交换，保证通信顺序相同。</p>
+<p>确定好下个通信后，按如下优先级下发算子：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">优先级</th>
+<th>场景</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>下一个通信已可执行</td>
+<td>立即下发</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>通信正在执行，下一次通信下发尚未进入准备阶段</td>
+<td>在预留准备预算后，用能够放入剩余窗口的独立计算填充</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>下一次下发仍有可执行的非 wait 前置节点</td>
+<td>按稳定顺序推进关键准备路径</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>token-count wait 阻塞数据通信准备</td>
+<td>尽快完成 host 协议，不把它当作普通长通信窗口</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>已无待下发通信，但仍有通信在执行</td>
+<td>执行较大的就绪计算，覆盖剩余通信时间</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>下一通个信依赖尚未完成的通信结果</td>
+<td>在执行可能阻塞的 wait 前，先用就绪计算掩盖通信尾部</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>没有需要优先处理的通信</td>
+<td>按稳定顺序执行节点，继续推进图</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>只剩 wait</td>
+<td>完成最早的 wait</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>防御性兜底</td>
+<td>选择稳定顺序最早的就绪节点</td>
+</tr>
+</tbody>
+</table>
+<p>当调度器已经选择某个通信后，会持续推进它的输入准备直到下发，避免准备过程中反复改选目标。</p>
+<h3 id="45-rank">4.5 跨 Rank 一致性</h3>
+<p>调度器通过以下机制避免 ranks 之间的通信顺序分叉：</p>
+<ul>
+<li>调度前比较各 rank 的通信清单，包括通信组内序号、算子类型与角色，以及所属 MoE；</li>
+<li>通信交换由所有 ranks 共同决策；</li>
+<li>多个节点在依赖和调度优先级上等价时，按首次调度前的 canonical 顺序确定先后；</li>
+<li>调度后按通信组校验最终 launch-order signature。</li>
+</ul>
+<p>非均匀切分可以使计算节点和 wait 的具体位置不同，但同一通信组内的通信 launch 顺序必须一致。</p>
+<h2 id="5">5. 调试与实现索引</h2>
+<p>设置 <code>--compile.debug-graph-passes</code> 后，除原生 graph pass 调试信息外，auto overlap 还会：</p>
+<ul>
+<li>保留内部 CANN profiling 目录，位于 <code>$TMPDIR</code> 或系统临时目录；</li>
+<li>保存自动调度前后的可读 FX 图，位于 <code>./fx_graphs/</code> 目录；</li>
+<li>日志打印单算子本地/对齐 cost、整图应用 cost 和逐步调度决策。</li>
+</ul>
+<p>相关代码：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto_overlap.py</code></td>
+<td>pipeline 注册、调度与整图校准流程编排</td>
+</tr>
+<tr>
+<td><code>npu_moe_auto_scheduler.py</code></td>
+<td>调度区域收集、节点重排和安全校验</td>
+</tr>
+<tr>
+<td><code>compute_benchmark.py</code></td>
+<td>计算节点输入物化与单算子 benchmark</td>
+</tr>
+<tr>
+<td><code>collective_benchmark.py</code></td>
+<td>通信输入物化、CANN benchmark 和 event fallback</td>
+</tr>
+<tr>
+<td><code>whole_graph_benchmark.py</code></td>
+<td>整图校准执行、CANN cost 获取和对齐</td>
+</tr>
+<tr>
+<td><code>utils.py</code></td>
+<td>设置 profiling 工作目录、FX 图保存和通用方法</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_1">相关文档</h2>
+<ul>
+<li>原生 EP overlap 与 NPU 适配：<a href="../graph_trainer_ep_overlap/"><code>graph_trainer_ep_overlap.md</code></a></li>
+<li>DeepSeek-V4 GraphTrainer 编译路径：<a href="../deepseek_v4_graph_trainer/"><code>deepseek_v4_graph_trainer.md</code></a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../fused_ops/" class="btn btn-neutral float-left" title="融合算子接入指南"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../graph_trainer_ep_overlap/" class="btn btn-neutral float-right" title="GraphTrainer EP overlap 适配">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../fused_ops/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../graph_trainer_ep_overlap/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

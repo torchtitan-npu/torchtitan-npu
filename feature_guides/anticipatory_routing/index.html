@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Loss spike 检测与路由重放（Anticipatory Routing） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Loss spike \u68c0\u6d4b\u4e0e\u8def\u7531\u91cd\u653e\uff08Anticipatory Routing\uff09";
+        var mkdocs_page_input_path = "feature_guides/anticipatory_routing.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">启动入口</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">配置参数</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">检测与回滚目标</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">生命周期</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">数据、路由与状态隔离</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">模块职责</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_7">验证范围</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_8">恢复边界与执行时序</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">Loss spike 检测与路由重放（Anticipatory Routing）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="loss-spike-anticipatory-routing">Loss spike 检测与路由重放（Anticipatory Routing）</h1>
+<p>Anticipatory Routing 用于在 MoE 训练发生 loss spike 时，恢复异常起点之前的 checkpoint，
+并通过预先录制、延迟重放专家 ID 执行一段恢复训练。该能力默认关闭，通过
+<code>TrainerEx.Config.anticipatory</code> 对应的 CLI 参数启用，适用于 TorchTitan 0.3.0 的标准 NPU Trainer。</p>
+<p>恢复过程复用上游 <code>train()</code> 和 <code>train_step()</code>，梯度累积、梯度裁剪、optimizer 和
+LR scheduler 更新仍由上游完成。路由重放只固定专家 ID，gate scores 和梯度根据当前参数重新计算。</p>
+<h2 id="_1">启动入口</h2>
+<p>使用 <code>torchrun -m torchtitan_npu.train</code> 启动，使 NPU 配置转换构造 <code>TrainerEx</code>。
+<code>scripts/run_train.sh</code> 和 <code>scripts/run_train_multinodes.sh</code> 默认使用 NPU 入口。</p>
+<p>使用单卡 DeepSeek-V4 调试脚本的示例：</p>
+<pre><code class="language-bash">HF_ASSETS_PATH=&quot;$PWD/tests/assets/deepseek_v3&quot; \
+CKPT_SAVE_LOAD_PATH=&quot;$PWD/outputs/anticipatory_run/checkpoint&quot; \
+bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh \
+  --training.steps 1000 \
+  --checkpoint.enable --checkpoint.no-load-only --checkpoint.interval 50 \
+  --anticipatory.enable \
+  --anticipatory.delay-steps 8 \
+  --anticipatory.active-steps 32
+</code></pre>
+<p>从仓库根目录运行；<code>tests/assets/deepseek_v3</code> 需包含已准备好的 tokenizer.json 和 tokenizer_config.json，
+数据使用 <code>tests/assets/c4_test</code>。checkpoint 目录需可写，独立实验应使用新的目录。
+该示例通过训练 loss 的趋势和波动自动检测异常。
+启动脚本可能恢复现有 checkpoint；进行独立实验时应使用独立的输出目录。</p>
+<h2 id="_2">配置参数</h2>
+<table>
+<thead>
+<tr>
+<th>CLI 参数</th>
+<th style="text-align: right;">默认值</th>
+<th>约束与作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--anticipatory.enable</code></td>
+<td style="text-align: right;"><code>false</code></td>
+<td>开启自动检测和回滚恢复。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.delay-steps</code></td>
+<td style="text-align: right;"><code>16</code></td>
+<td>非负整数；路由预取队列的目标深度，也是 WARMUP 的 step 数据量。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.active-steps</code></td>
+<td style="text-align: right;"><code>500</code></td>
+<td>正整数；ACTIVE 的 optimizer 更新次数，不包括 DRAIN。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.max-rollbacks</code></td>
+<td style="text-align: right;"><code>3</code></td>
+<td>非负整数；本次运行的回滚次数上限，<code>0</code> 表示仅检测、不执行回滚，跳过回滚相关的 checkpoint 校验。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.index-store-dtype</code></td>
+<td style="text-align: right;"><code>auto</code></td>
+<td>专家 ID 的存储类型：<code>auto</code>、<code>int16</code>、<code>int32</code>、<code>int64</code>；必须能表示全部专家 ID。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.warmup-steps</code></td>
+<td style="text-align: right;"><code>100</code></td>
+<td>至少为<code>2</code>；检测器开始判定异常前积累的统计观测次数。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.z-threshold</code></td>
+<td style="text-align: right;"><code>6.0</code></td>
+<td>大于<code>0</code>；触发 spike 的标准化残差阈值。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.level-decay</code></td>
+<td style="text-align: right;"><code>0.97</code></td>
+<td>在<code>(0, 1)</code> 内；loss 水平和残差方差的衰减系数。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.trend-decay</code></td>
+<td style="text-align: right;"><code>0.9</code></td>
+<td>在<code>[0, 1)</code> 内；loss 趋势的衰减系数。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.onset-z-threshold</code></td>
+<td style="text-align: right;"><code>2.0</code></td>
+<td>大于<code>0</code> 且不超过触发阈值；用于回溯异常起点。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.onset-lookback</code></td>
+<td style="text-align: right;"><code>64</code></td>
+<td>正整数；异常起点回溯的最大记录数，也是连续冻结统计更新的上限。</td>
+</tr>
+<tr>
+<td><code>--anticipatory.detector.cooldown-steps</code></td>
+<td style="text-align: right;"><code>500</code></td>
+<td>非负整数；两次触发之间实际完成的 optimizer 更新次数必须严格大于该值，包括 ACTIVE/DRAIN；回滚不倒退该计数。</td>
+</tr>
+</tbody>
+</table>
+<p><code>detector.warmup-steps</code> 是检测器的统计预热，与回滚后的路由 WARMUP 不同。
+<code>delay-steps=0</code> 时不预填队列，ACTIVE 每步先录制当前数据，再立即重放训练，通常不经过 DRAIN。</p>
+<p>队列每个元素保存一个 optimizer step 的全部 microbatch 及其专家 ID。microbatch 保留在 CPU，
+专家 ID 保留在训练 device；内存占用随 <code>delay-steps</code> 增长。过大的 WARMUP 可能耗尽主机内存、
+pinned memory 或 NPU 显存而发生 OOM。ACTIVE 先入队再出队，会暂时多持有一个 step；
+仅前向工作副本和 buffer 快照也会增加峰值内存。</p>
+<h2 id="_3">检测与回滚目标</h2>
+<p>每个 microbatch 结束后仅累加 detached loss；完整 optimizer step 结束后归约为全局 loss。
+NORMAL 阶段每步调用检测器，ACTIVE 和队列未排空的 DRAIN 不触发新回滚。</p>
+<p>检测器使用 Holt 线性趋势预测。设历史水平为 <code>level</code>、趋势为 <code>trend</code>、残差方差为 <code>var</code>：</p>
+<pre><code class="language-text">predicted_loss = level + trend
+sigma = sqrt(max(var, 0))
+sigma_floor = max(1e-12, 1e-6 * max(abs(loss), abs(predicted_loss)))
+z = (loss - predicted_loss) / max(sigma, sigma_floor)
+</code></pre>
+<p>统计预热完成且超过冷却期后，<code>z &gt; z_threshold</code> 触发检测。检测器从当前记录向前回溯，
+直到遇到 <code>z &lt;= onset_z_threshold</code>，得到连续异常区间的起点 <code>onset</code>。
+超过起点阈值的观测会暂时冻结统计更新，避免异常抬高预测基线；冻结受 <code>onset-lookback</code> 限制；达到上限后持续更新统计，只有观测回到 onset 阈值以内才重置冻结计数。
+相对标准差下限避免恒定 loss 后的微小数值噪声触发回滚。冷却计数独立于逻辑 step，检测器重置也不清零。</p>
+<p>回滚目标 <code>target</code> 是满足 <code>0 &lt; target &lt; onset</code> 的最新完整 checkpoint，而不是固定回退若干步。
+候选必须包含模型参数、optimizer、LR scheduler、dataloader 和训练进度；开启 EMA 时也需保留其恢复状态。
+通过原生 DCP 元数据检查 checkpoint 的完整性，选择包含完整训练状态的恢复点。
+分布式运行要求 checkpoint 目录对相关 rank 可见，并同步选中的目标 step。</p>
+<p>没有有效目标或回滚预算耗尽时，记录 warning 并继续训练。回滚计数属于当前运行状态，
+不作为本特性的 checkpoint 状态保存。检测器在回滚和恢复 NORMAL 时重置统计历史，但保留冷却记录。</p>
+<h2 id="_4">生命周期</h2>
+<pre><code class="language-text">TrainerEx.Config.__post_init__()
+-&gt; validate_anticipatory_config()
+
+Trainer 标准初始化完成
+-&gt; AnticipatorySchedule(trainer)
+   -&gt; 关闭时不创建 schedule，trainer.anticipatory_schedule 为 None
+   -&gt; 创建 engine：包装 dataloader，安装 checkpoint 保存保护
+   -&gt; schedule 绑定 router cache，创建 detector 和 FIFO 队列
+
+TrainerEx.train_step()
+-&gt; schedule.training_step_context()
+   -&gt; 准备 microbatch 数据和路由模式
+   -&gt; super().train_step(batches)
+      -&gt; forward_backward_step() 为当前 microbatch 选择路由 slot
+      -&gt; 前向、反向、loss 累加
+      -&gt; 梯度裁剪、optimizer 和 scheduler 更新
+   -&gt; 汇总 step loss、推进阶段、检测 spike
+   -&gt; 必要时恢复 checkpoint，并在当前调用内部执行 WARMUP
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>数据读取</th>
+<th>路由行为</th>
+<th>参数更新</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NORMAL</td>
+<td>从 dataloader 读取当前 step</td>
+<td>当前参数正常选择专家</td>
+<td>是</td>
+</tr>
+<tr>
+<td>WARMUP</td>
+<td>预取最多<code>delay_steps</code> 个 step</td>
+<td>仅前向录制专家 ID，数据和路由入队</td>
+<td>否</td>
+</tr>
+<tr>
+<td>ACTIVE</td>
+<td>每步预取并录制一个新 step，再取出队头训练</td>
+<td>重放队头数据对应的专家 ID</td>
+<td>是</td>
+</tr>
+<tr>
+<td>DRAIN</td>
+<td>停止预取，消费队列中剩余数据</td>
+<td>继续重放对应的缓存专家 ID</td>
+<td>是</td>
+</tr>
+</tbody>
+</table>
+<p>WARMUP 在回滚处理内部完成，不是外层训练循环的独立 step。恢复 checkpoint 后，
+engine 丢弃旧的 dataloader iterator，并清理梯度、辅助统计和 FSDP 临时状态。
+下一次读取基于恢复后的 dataloader 状态重建 iterator。</p>
+<p>ACTIVE 预算归零后，队列非空则进入 DRAIN；队列为空则恢复 NORMAL。
+数据和剩余训练步数充足时，恢复阶段执行 <code>active_steps + delay_steps</code> 次 optimizer 更新。
+临近训练结束或数据耗尽时会提前停止预取、排空已有队列。不完整 step 的读取会撤销，避免把尾部数据误记为已消费。</p>
+<p>例如恢复到 step 50，<code>delay_steps=2</code>、<code>active_steps=3</code>：</p>
+<pre><code class="language-text">WARMUP：录制 B51、B52，step 保持 50
+ACTIVE 51：录制 B53，重放训练 B51
+ACTIVE 52：录制 B54，重放训练 B52
+ACTIVE 53：录制 B55，重放训练 B53
+DRAIN  54：重放训练 B54
+DRAIN  55：重放训练 B55，队列排空
+NORMAL 56：读取 B56，恢复实时路由
+</code></pre>
+<p>最后一个 DRAIN step 完成后已恢复 NORMAL，其 loss 可以作为新统计窗口的观测。</p>
+<h2 id="_5">数据、路由与状态隔离</h2>
+<p>每个队列元素的 <code>microbatches[i]</code> 与 <code>slots[i]</code> 对应；slot 内使用 router 的模块路径区分各层。
+所有参与录制的动态 router 共享一个 cache，由调度器设置 <code>OFF</code>、<code>CAPTURE</code>、<code>REPLAY</code> 模式。
+训练每个 microbatch 前选择对应 slot，并保持到该 microbatch 的 backward 完成，包括 activation checkpoint 重计算。</p>
+<p>录制时从 CPU batch 制作 device 工作副本；训练时由上游先在 CPU 统计有效 token，再搬运数据到 device。
+直接保留 CPU batch 引用也保留其已有 pinned 属性，不额外执行 CPU 缓存复制。</p>
+<p>仅前向使用 <code>no_grad()</code>，不调用 <code>model.eval()</code>。录制前后保存并恢复注册 buffer、辅助 loss 统计、
+token 计数及 Python、NumPy、PyTorch CPU/device RNG，随后重置 FSDP 迭代状态。</p>
+<p>engine 在初始化时包装当前 checkpointer 实例的 <code>save()</code>。恢复阶段暂停保存，训练失败时也不保存；
+允许保存时仍调用原始方法。队列未排空时 dataloader 进度领先参数更新，且 checkpoint 不保存预取队列，
+因此此时保存会在恢复后跳过未训练的数据。回到 NORMAL 后解除限制，由上游按原有策略决定保存时机。</p>
+<h2 id="_6">模块职责</h2>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/extensions/trainer.py</code></td>
+<td>配置接入、一次初始化及训练上下文编排。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/config.py</code></td>
+<td>声明恢复配置、参数范围及配置兼容性校验。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/engine.py</code></td>
+<td>组件初始化、loss 汇总、仅前向隔离、checkpoint 选择及恢复、保存保护。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/schedule.py</code></td>
+<td>管理 FIFO 队列、阶段转换、训练数据供应及 spike 响应。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/cache.py</code></td>
+<td>管理路由模式、microbatch slot 和专家 ID 存储。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/data.py</code></td>
+<td>管理可恢复 iterator、完整 step 读取及仅前向工作副本。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/detector.py</code></td>
+<td>维护 loss 趋势统计，判定 spike 并回溯 onset。</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/extensions/experiment/anticipatory_routing/router.py</code></td>
+<td>通过 HashRouter 配置 override 接入录制与重放，查找 router 并创建、绑定共享缓存。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_7">验证范围</h2>
+<p><code>tests/unit_tests/extensions/experiment/anticipatory_routing/test_anticipatory_routing.py</code> 覆盖以下场景：</p>
+<ul>
+<li>回滚后模型、optimizer 动量、LR scheduler、训练 step、token 计数和 dataloader 位置恢复，重建 iterator 后的数据及参数更新与恢复点一致。</li>
+<li>多 microbatch、多层 router 的专家 ID 正确配对；实时 top-k 与录制结果不同时仍使用缓存 ID，路由分数保持可求梯度。</li>
+<li>CPU 场景下的 WARMUP → ACTIVE → DRAIN → NORMAL 完整恢复周期，包括数据顺序、队列深度、参数更新次数及数据和路由的存储设备。</li>
+<li>WARMUP 不推进参数、scheduler、token 计数或注册 buffer；ACTIVE 和 DRAIN 均消费对应的缓存路由，队列排空后恢复正常路由。</li>
+<li>恢复期间暂停 checkpoint 保存，恢复 NORMAL 后允许保存；实际 REPLAY 前向异常原样传播、清理队列和路由上下文，并禁止后续保存。</li>
+<li>新 checkpoint 缺少 optimizer 元数据前缀时选择旧的完整 checkpoint；拒绝其他 dataloader 和可广播但形状不匹配的路由缓存。</li>
+</ul>
+<p><code>tests/unit_tests/extensions/experiment/anticipatory_routing/test_detector.py</code> 覆盖持续水平漂移、恒定 loss 后的微小噪声、
+跨回滚及 ACTIVE/DRAIN 更新的冷却计数、非有限阈值校验、零回滚预算的 checkpoint 校验、PP 拒绝和 ID 存储类型边界。</p>
+<p><code>tests/smoke_tests/anticipatory_routing/test_anticipatory_routing.py</code> 使用小型 NPU 路由模型和上游训练步，覆盖以下场景：</p>
+<ul>
+<li>一次性扰动 labels 引起真实 loss 升高，由自动检测器识别 spike 并触发回滚。</li>
+<li>选择并加载磁盘 DCP checkpoint，恢复模型、optimizer、LR scheduler、训练进度及 dataloader 状态。</li>
+<li>执行 WARMUP → ACTIVE → DRAIN → NORMAL 完整恢复流程，检查阶段切换、队列深度和训练完成状态。</li>
+<li>校验录制与重放时的输入及各层专家 ID 一致；实时 top-k 改变时，训练仍使用缓存的专家 ID。</li>
+<li>检查数据消费顺序，以及 ACTIVE、DRAIN 的路由重放和恢复 NORMAL 后的实时路由计算。</li>
+<li>检查 WARMUP 的 buffer、token 计数和 scheduler 状态隔离，以及 CPU microbatch、NPU 专家 ID 的存储位置。</li>
+<li>检查恢复期间暂停 checkpoint 保存，恢复 NORMAL 后按训练流程继续保存。</li>
+</ul>
+<h2 id="_8">恢复边界与执行时序</h2>
+<p>回滚恢复模型、optimizer、LR scheduler、dataloader 和训练进度。随机流继续推进，
+不回退到 checkpoint 时刻，与普通续训一致；这不承诺逐位重现历史随机计算。
+WARMUP 的 RNG 隔离只保证额外录制前向不推进进入录制时的随机流。</p>
+<p>稳态每个外层训练迭代完成一次 optimizer 更新。触发回滚的那一轮会在 train_step 返回前
+回退逻辑 step：checkpoint 保存被暂停，validator 仍按恢复后的 step 判断，可能重复验证该 step；
+profiler 仍按实际执行的外层迭代推进，结构化日志的 step 标签保留触发步，直到下一轮重新设置。
+因此回滚轮次的验证、分析和日志步号不等同于无回滚训练。</p>
+<p>全 Hash 路由模型没有动态专家选择，固定表的路由天然一致。此时启动会给出 warning，
+特性退化为仅回滚；现有调度仍会预取和排空数据，但不缓存动态专家 ID。</p>
+<p>真实入口集成用例 <code>dsv4_anticipatory_recovery</code> 注册到 models/deepseek_v4 suite，
+使用单卡真实 DeepSeek-V4 recipe、CLI 配置和原生 checkpointer，训练目标仅在测试入口中
+一次性放大以触发真实检测器，验证 override 生效及 WARMUP → ACTIVE → DRAIN → NORMAL。
+生产配置不增加手动触发参数。执行命令：</p>
+<pre><code class="language-bash">python -m tests.integration_tests.run_tests /tmp/anticipatory_integration \
+  --test_suite deepseek_v4 --test_name dsv4_anticipatory_recovery --ngpu 1 --no-parallel
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../developer_guides/unit-test-architecture/" class="btn btn-neutral float-left" title="Unit Test 架构与迁移方案"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../cpu_offload/" class="btn btn-neutral float-right" title="CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../developer_guides/unit-test-architecture/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../cpu_offload/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
