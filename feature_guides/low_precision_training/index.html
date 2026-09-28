@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>低精度训练 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u4f4e\u7cbe\u5ea6\u8bad\u7ec3";
+        var mkdocs_page_input_path = "feature_guides/low_precision_training.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../MTP/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">低精度训练</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">环境要求</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">当前支持的数据格式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#mxfp8-block-fp8">MXFP8 与 Block FP8</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#mxfp4-qat">MXFP4 QAT</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#attention">Attention 量化</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-kv-cache">DeepSeek-V4 KV Cache 量化训练</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v4-li-qk">DeepSeek-V4 LI Q/K 量化</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#deepseek-v41-attention-kv-cache">DeepSeek-V4.1 稀疏 attention KV Cache 量化</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#fsdp">FSDP 权重预量化</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_4">工作原理</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">配置与生效检查</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">实现与验证入口</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">低精度训练</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">低精度训练</h1>
+<p>torchtitan-npu 通过 TorchAO-NPU 为 DeepSeek-V4 和 DeepSeek-V4.1 提供 MXFP8、Block FP8 低精度训练，以及 MXFP4 量化感知训练（QAT）。量化配置复用现有预训练和续训练循环，可按需选择线性层、专家权重和 attention Q/KV 的量化方式。</p>
+<h2 id="_2">环境要求</h2>
+<ul>
+<li>当前低精度训练面向 A5（Ascend 950）硬件，需要配套的 torch_npu、CANN、HCCL 和融合算子环境。</li>
+<li>按<a href="../../user-guides/installation/">软件安装</a>准备基础环境，并安装其中的可选依赖 TorchAO-NPU。仓内适配包依赖 <code>torchao==0.17.0</code>，也可按安装文档通过 <code>PYTHONPATH</code> 加载源码。</li>
+<li>数据集、Tokenizer、CANN 环境变量及单机启动命令见<a href="../../user-guides/quickstart/">快速上手</a>。本文中的参数组合用于追加到对应训练命令。</li>
+</ul>
+<p>配置默认关闭量化训练，DeepSeek-V4/DeepSeek-V4.1 的 A5 示例脚本会显式启用量化。</p>
+<h2 id="_3">当前支持的数据格式</h2>
+<p>当前实现中的量化数据和 scale 表示如下。不同量化路径分别使用低精度计算或 fake quant，并通过对应的反向实现传递梯度。</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>量化数据</th>
+<th>scale 表示</th>
+<th>分组方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MXFP4</td>
+<td>FP4（e2m1，pack uint8）</td>
+<td>E8M0</td>
+<td>每 32 个元素一个 scale</td>
+</tr>
+<tr>
+<td>MXFP8</td>
+<td>FP8（E4M3）</td>
+<td>E8M0</td>
+<td>每 32 个元素一个 scale</td>
+</tr>
+<tr>
+<td>Block FP8</td>
+<td>FP8（E4M3）</td>
+<td>E8M0（二维 block 路径保存两组 scale）</td>
+<td>每 32×32 block 一个 scale</td>
+</tr>
+</tbody>
+</table>
+<p>Block FP8 的二维 block 路径中，两组 scale 分别覆盖最后一维和倒数第二维，scale 张量采用带 pack-2 末维的 E8M0 布局。MXFP4 此处主要用在 SFT-QAT 训练中， MXFP4 是训练时的 fake quant 约束，参数和 matmul 数据仍由 Block FP8 wrapper 保存和计算。</p>
+<h2 id="mxfp8-block-fp8">MXFP8 与 Block FP8</h2>
+<p><code>--extension.quantization.recipe</code> 决定匹配模块的量化方式：</p>
+<table>
+<thead>
+<tr>
+<th>recipe</th>
+<th>attention linear 和 shared expert</th>
+<th>routed grouped experts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all_mxfp8</code></td>
+<td>MXFP8</td>
+<td>MXFP8</td>
+</tr>
+<tr>
+<td><code>mix</code></td>
+<td>MXFP8</td>
+<td>Block FP8</td>
+</tr>
+<tr>
+<td><code>all_block_fp8</code></td>
+<td>Block FP8</td>
+<td>Block FP8</td>
+</tr>
+</tbody>
+</table>
+<p>recipe 按模型配置中的模块路径匹配 Attention linear、shared expert 和 routed expert，将匹配上的模块转化为对应的量化实现。MXFP8 路径对权重和激活使用 MX 量化；Block FP8 路径对权重使用 Block FP8 量化，激活使用 MX 量化。</p>
+<h2 id="mxfp4-qat">MXFP4 QAT</h2>
+<p><code>--extension.quantization.enable-mxfp4-qat</code> 为 routed expert 的 Block FP8 权重增加 MXFP4 fake quant 数值约束，先将权重量化至 MXFP4 格式然后再反量化至 Block FP8，用于在训练中模拟 MXFP4 量化误差。它仅对 <code>mix</code> 和 <code>all_block_fp8</code> 中的 routed expert 生效，默认关闭。</p>
+<p>在训练命令中使用以下参数组合：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.recipe all_block_fp8 \
+--extension.quantization.enable-mxfp4-qat
+</code></pre>
+<p>该选项不会将参数持久化为 4-bit，也不会将计算替换为原生 A8W4 GEMM。<code>all_mxfp8</code> 不包含 Block FP8 权重，启用该项 QAT 约束无效。</p>
+<p>QAT 下做 MXFP4 量化时可以使用 <code>--extension.quantization.dst_type_max</code> 传参来指定量化时目标域的最大值。参数默认值为 0.0 对应 <code>Amax(Dtype)</code>；可以传参 7.0，以防止量化数据中的最大值被截断而产生较大精度损失。</p>
+<p>DeepSeek-V4/V4.1 完整的的 QAT 启动方式见<a href="../../user-guides/quickstart/#deepseek-v41-torchao-npu-低精度训练">快速上手</a>，对应的 qat 脚本同时启用 MXFP4 QAT 和稀疏 attention 量化，后者的自定义算子依赖见下一节。</p>
+<h2 id="attention">Attention 量化</h2>
+<h3 id="deepseek-v4-kv-cache">DeepSeek-V4 KV Cache 量化训练</h3>
+<p>DeepSeek-V4 的 KV Cache 量化训练针对 attention 的 nope 部分进行 MXFP8 fake quant，从而在训练阶段模拟 KV Cache 的量化误差。实现通过替换指定 norm 节点的配置，在 norm 输出上插入量化，量化对象是 norm 输出中的 nope 通道。该配置不适用于 DeepSeek-V4.1 的稀疏 attention 路径。A5 的 DeepSeek-V4 启动脚本已包含以下默认配置：</p>
+<pre><code class="language-bash">--extension.quantization.kv-norm-quantization.format mxfp8 \
+--extension.quantization.kv-norm-quantization.fqns .attention.kv_norm,.attention.compressor.norm \
+--extension.quantization.kv-norm-quantization.block-size 64
+</code></pre>
+<p>三个参数分别指定量化格式、需要替换的配置树节点后缀和 MX block size。<code>fqns</code> 中的两个节点分别对应 attention 的 <code>kv_norm</code> 与 compressor 的 <code>norm</code>，这些节点是量化插入位置。配置字段默认不启用（<code>format=None</code>，节点列表为空）；启用时需同时打开 <code>enable-quantized-training</code>。当前唯一支持的格式是 <code>mxfp8</code>，block size 由消费该配置的 MX 量化实现校验。</p>
+<p>该路径使用 8 bit E4M3 的 MXFP8 数据和 8 bit E8M0 scale；默认脚本把 block size 设为 64，因此每 64 个 nope 通道共享一个 scale。量化结果随后反量化回原始高精度 dtype 参与训练，梯度通过 fake quant 的 STE 传递。</p>
+<h3 id="deepseek-v4-li-qk">DeepSeek-V4 LI Q/K 量化</h3>
+<p>Lightning Indexer（LI）的 Q/K 量化通过 <code>li-quantization</code> 单独选择，需要同时启用低精度训练。例如，在 DeepSeek-V4 命令中追加：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.li-quantization mxfp4
+</code></pre>
+<table>
+<thead>
+<tr>
+<th><code>li-quantization</code></th>
+<th style="text-align: right;">CANN <code>quant_mode</code></th>
+<th>Q/K 量化方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fp8</code></td>
+<td style="text-align: right;">1</td>
+<td>FP8 per-token-head</td>
+</tr>
+<tr>
+<td><code>mxfp8</code></td>
+<td style="text-align: right;">3</td>
+<td>MXFP8</td>
+</tr>
+<tr>
+<td><code>mxfp4</code></td>
+<td style="text-align: right;">5</td>
+<td>MXFP4</td>
+</tr>
+<tr>
+<td><code>hif8</code></td>
+<td style="text-align: right;">4</td>
+<td>HiFloat8 per-tensor</td>
+</tr>
+</tbody>
+</table>
+<p>LI 各模式的实现细节不同：<code>fp8</code> 使用 8 bit E4M3 数据，按 token-head 动态量化，scale 以 FP32 保存；<code>mxfp8</code> 使用 8 bit E4M3 数据和 E8M0 scale；<code>mxfp4</code> 使用 4 bit E2M1 数据和 E8M0 scale；<code>hif8</code> 使用 8 bit HiFloat8 数据，按 tensor 动态量化，scale 以 FP32 保存。CANN 的 <code>quant_mode</code> 由这些数据格式和量化粒度共同决定。</p>
+<p><code>li-quantization</code> 默认传参为 none 不启用量化。当前独立 LI 配置入口匹配 DeepSeek-V4 的模块结构。</p>
+<h3 id="deepseek-v41-attention-kv-cache">DeepSeek-V4.1 稀疏 attention KV Cache 量化</h3>
+<p><code>--extension.quantization.enable-sparse-attention-quantization</code> 将 V4.1 稀疏 attention 替换为混合量化路径：swa_kv 使用 <code>mxfp8_bf16</code>，cmp_kv 使用 <code>mxfp4_bf16</code>。该路径对 KV 量化再反量化后调用 sparse attention 算子，以引入对应的量化误差。</p>
+<p>该缓存布局使用按组保存的 BF16 scale：滑窗 KV 为 8 bit E4M3 数据，每 32 个元素共享一个 BF16 scale；压缩 KV 为 4 bit E2M1 数据，每 16 个元素共享一个 BF16 scale。MXFP4 数据以 <code>uint8</code> 打包，每个字节包含两个 4 bit 值。V4.1 的反向计算使用量化反量化的 <code>swa_kv</code> 和 <code>cmp_kv</code>，并结合量化前向的输出和 LSE 计算梯度。</p>
+<blockquote>
+<p>[!NOTE]
+启用前需参考 <a href="https://gitcode.com/cann/cann-recipes-infer/blob/master/ops/ascendc/README.md">Ascend C 自定义算子编译安装说明</a>，编译并安装 <code>kv_compress_epilog_v2</code>，并配置自定义算子环境变量。</p>
+</blockquote>
+<p>在 V4.1 的 CPT 命令中追加以下参数即可启用，QAT 脚本已包含这些开关：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.enable-sparse-attention-quantization
+</code></pre>
+<p>未启用时，recipe 仍会量化匹配的线性层和专家模块，稀疏 attention 保持原始路径。此开关仅用于 V4.1，若没有对应的匹配节点，会记录警告并跳过替换。</p>
+<h2 id="fsdp">FSDP 权重预量化</h2>
+<p><code>--extension.quantization.enable-fsdp-prequantize</code> 将 Block FP8 权重的量化提前到 FSDP all-gather 之前。all-gather 传输量化后的 FP8 权重与 scale，前向和反向复用量化数据，以减少通信量和重复量化计算。</p>
+<h3 id="_4">工作原理</h3>
+<p>FSDP 的参数通信和梯度通信是两个阶段：参数在模块计算前通过 all-gather 恢复，反向结束后通过 reduce-scatter 规约并重新分片。预量化只改变参数 all-gather 的 payload，不改变梯度 reduce-scatter 使用的 <code>reduce_dtype</code>：</p>
+<pre><code class="language-text">本地权重 shard
+    │ fsdp_pre_all_gather()
+    ├─ 满足条件：cast 到 param_dtype → Block MX 量化
+    │              → B_q（FP8）+ B_s1/B_s2（scale）
+    └─ 不满足条件：回退普通参数通信
+    │
+    ├─ FSDP 分别 all-gather B_q、B_s1、B_s2
+    │
+    └─ fsdp_post_all_gather()
+       重建 wrapper：逻辑参数接口保持 BF16，内部保存 FP8 权重和 scale
+       → 前向/反向复用预量化 payload
+       → 梯度按 reduce_dtype reduce-scatter
+</code></pre>
+<p><code>fsdp_pre_all_gather()</code> 只处理当前 rank 持有的本地分片；量化结果由 FP8 权重 <code>B_q</code> 和两个方向的 scale <code>B_s1</code>、<code>B_s2</code> 组成，FSDP 对三类数据分别执行 all-gather。通信完成后，<code>fsdp_post_all_gather()</code> 首次创建 wrapper，后续更新已分配的 wrapper。wrapper 对 PyTorch、FSDP 和 autograd 暴露 shape 不变的逻辑参数，量化 MatMul 则直接读取内部的 <code>B_q + scale</code>，避免在同一次 unshard 周期的每个 MatMul 前重复量化权重。</p>
+<p>这里的逻辑 dtype 与物理 payload 是两个概念：逻辑参数仍用于梯度路由和 FSDP 状态管理，实际通信和量化计算使用 FP8 权重及 scale。量化 wrapper 的自定义反向将梯度转换回逻辑权重，再交给 FSDP 按 <code>reduce_dtype</code> 做 reduce-scatter；优化器参数和 checkpoint 不会因此永久变成 FP8。</p>
+<p>该选项默认关闭，需要同时启用低精度训练。它只作用于 <code>mix</code> 中的 routed expert 和 <code>all_block_fp8</code> 中匹配的 Block FP8 模块，对 <code>all_mxfp8</code> 无效果：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.recipe all_block_fp8 \
+--extension.quantization.enable-fsdp-prequantize
+</code></pre>
+<p>当前实现要求本地权重分片的倒数第二维按 64 对齐、最后一维按 32 对齐。不满足对齐要求、没有 FSDP 分片（如 EFSDP=1 的 MoE）或本地存储未分配时，回退为高精度通信加运行时量化。</p>
+<h2 id="_5">配置与生效检查</h2>
+<p>以下字段均位于 <code>--extension.quantization</code> 下，表中省略公共前缀：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable-quantized-training</code></td>
+<td><code>False</code></td>
+<td>低精度训练总开关</td>
+</tr>
+<tr>
+<td><code>recipe</code></td>
+<td><code>all_block_fp8</code></td>
+<td>选择 <code>all_mxfp8</code>、<code>mix</code> 或 <code>all_block_fp8</code></td>
+</tr>
+<tr>
+<td><code>enable-mxfp4-qat</code></td>
+<td><code>False</code></td>
+<td>Routed expert 的 MXFP4 fake quant 约束</td>
+</tr>
+<tr>
+<td><code>li-quantization</code></td>
+<td><code>none</code></td>
+<td>V4 LI Q/K 量化，可选 <code>fp8</code>、<code>mxfp8</code>、<code>mxfp4</code>、<code>hif8</code></td>
+</tr>
+<tr>
+<td><code>enable-sparse-attention-quantization</code></td>
+<td><code>False</code></td>
+<td>V4.1 稀疏 attention 混合量化</td>
+</tr>
+<tr>
+<td><code>dst-type-max</code></td>
+<td><code>0.0</code></td>
+<td>用于 MXFP4 量化的目标类型最大值，可取值 0.0, 6.0-12.0</td>
+</tr>
+<tr>
+<td><code>enable-fsdp-prequantize</code></td>
+<td><code>False</code></td>
+<td>Block FP8 权重在 FSDP all-gather 前预量化</td>
+</tr>
+<tr>
+<td><code>kv-norm-quantization.format</code></td>
+<td>未设置</td>
+<td>V4 nope KV Cache 量化格式，目前为 <code>mxfp8</code>（8 bit E4M3）</td>
+</tr>
+<tr>
+<td><code>kv-norm-quantization.fqns</code></td>
+<td>空列表</td>
+<td>V4 的量化插入位置，脚本使用 <code>.attention.kv_norm,.attention.compressor.norm</code></td>
+</tr>
+<tr>
+<td><code>kv-norm-quantization.block-size</code></td>
+<td><code>32</code></td>
+<td>V4 KV Cache MXFP8 的 block size；A5 脚本使用 <code>64</code></td>
+</tr>
+</tbody>
+</table>
+<p>布尔开关可通过对应的 <code>no-</code> 形式显式关闭，例如 <code>--extension.quantization.no-enable-mxfp4-qat</code>、<code>--extension.quantization.no-enable-fsdp-prequantize</code>。使用 <code>--extension.quantization.no-enable-quantized-training</code> 可关闭量化训练总开关。</p>
+<p>启动日志中的 <code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用；同时检查 <code>mxfp4_qat</code>、<code>li_quantization</code>、<code>sparse_attention_quantization</code> 和 <code>enable_fsdp_prequantize</code> 是否符合预期。该日志用于确认配置应用情况，不能替代训练精度和性能验证。</p>
+<p>需要采集性能信息时，可增加 <code>--profiler.enable-profiling</code>。示例脚本中的 <code>USE_GOLDEN=1</code> 用于选择数值基线 attention override，默认使用 Ascend 融合路径；该变量不控制低精度训练总开关。</p>
+<h2 id="_6">实现与验证入口</h2>
+<p>量化入口根据模型类型选择匹配规则，通过 converter 转换模型配置节点，并在模块构建时应用 TorchAO-NPU 量化。本文依据当前配置、转换逻辑和启动脚本整理，未在本文档重构中执行 NPU 训练；不同并行配置的精度与性能需在目标环境中验证。</p>
+<ul>
+<li><a href="../../torchtitan_npu/config/configs.py">量化配置字段</a></li>
+<li><a href="../../interfaces/torchao_converter.py">TorchAO-NPU converter 与 recipe</a></li>
+<li><a href="../../experiments/torchao-npu/torchao_npu/wrapper_tensors/block_mx_wrapper_tensor.py">Block FP8 权重与 FSDP 预量化实现</a></li>
+<li><a href="../../experiments/torchao-npu/torchao_npu/quantized_modules/v41_sparse_attention.py">V4.1 稀疏 attention 量化实现</a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../graph_trainer_ep_overlap/" class="btn btn-neutral float-left" title="GraphTrainer EP overlap 适配"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../muon_optimizer/" class="btn btn-neutral float-right" title="DeepSeek-V4 Muon 优化器">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../graph_trainer_ep_overlap/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../muon_optimizer/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

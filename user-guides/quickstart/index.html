@@ -83,6 +83,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/sdc/">静默数据损坏检测（SDC）</a>
@@ -241,93 +243,54 @@ CKPT_INIT_LOAD_PATH=/path/to/init_load_ckpt \
 bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
   --extension.quantization.enable-quantized-training \
   --extension.quantization.recipe all_block_fp8 \
-  --extension.quantization.no-enable-mxfp4-qat \
   --training.steps 5
 </code></pre>
-<p>低精度 recipe 的目标范围如下：</p>
+<p>常用低精度配置如下，均位于 <code>--extension.quantization</code> 下；表中参数和布尔开关省略该公共前缀：</p>
 <table>
 <thead>
 <tr>
-<th><code>RECIPE</code></th>
-<th>Attention 和 shared expert</th>
-<th>Routed grouped experts</th>
+<th>参数</th>
+<th>选项</th>
+<th>用途</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>all_mxfp8</code></td>
-<td>MXFP8</td>
-<td>MXFP8</td>
+<td><code>enable-quantized-training</code></td>
+<td><code>--enable-quantized-training</code> / <code>--no-enable-quantized-training</code></td>
+<td>启用或关闭低精度训练，默认关闭。</td>
 </tr>
 <tr>
-<td><code>mix</code>（默认）</td>
-<td>MXFP8</td>
-<td>Block FP8</td>
+<td><code>recipe</code></td>
+<td><code>all_mxfp8</code>、<code>mix</code>、<code>all_block_fp8</code></td>
+<td>选择全 MXFP8、混合 MXFP8/Block FP8 或全 Block FP8。</td>
 </tr>
 <tr>
-<td><code>all_block_fp8</code></td>
-<td>Block FP8</td>
-<td>Block FP8</td>
-</tr>
-</tbody>
-</table>
-<p>LI Q/K 量化可通过以下参数单独选择，必须同时启用低精度训练：</p>
-<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
---extension.quantization.li-quantization mxfp4
-</code></pre>
-<p>支持的 LI 量化类型及对应 CANN <code>quant_mode</code> 为：</p>
-<table>
-<thead>
-<tr>
-<th><code>li-quantization</code></th>
-<th style="text-align: right;">CANN <code>quant_mode</code></th>
-<th>Q/K 量化方式</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>fp8</code></td>
-<td style="text-align: right;">1</td>
-<td>FP8 per-token-head</td>
+<td><code>enable-mxfp4-qat</code></td>
+<td><code>--enable-mxfp4-qat</code> / <code>--no-enable-mxfp4-qat</code></td>
+<td>为 routed expert 启用或关闭 MXFP4 QAT 约束，默认关闭。</td>
 </tr>
 <tr>
+<td><code>li-quantization</code></td>
+<td><code>fp8</code>、<code>mxfp8</code>、<code>mxfp4</code>、<code>hif8</code></td>
+<td>选择 DeepSeek-V4 LI Q/K 的量化类型，默认不启用。</td>
+</tr>
+<tr>
+<td><code>kv-norm-quantization.format</code></td>
 <td><code>mxfp8</code></td>
-<td style="text-align: right;">3</td>
-<td>MXFP8</td>
+<td>启用 DeepSeek-V4 KV Cache 的 MXFP8 量化。</td>
 </tr>
 <tr>
-<td><code>mxfp4</code></td>
-<td style="text-align: right;">5</td>
-<td>MXFP4</td>
-</tr>
-<tr>
-<td><code>hif8</code></td>
-<td style="text-align: right;">4</td>
-<td>HiFloat8 per-tensor</td>
+<td><code>enable-fsdp-prequantize</code></td>
+<td><code>--enable-fsdp-prequantize</code> / <code>--no-enable-fsdp-prequantize</code></td>
+<td>在 FSDP all-gather 前预量化 Block FP8 权重，减少通信量，默认关闭。</td>
 </tr>
 </tbody>
 </table>
-<p>量化相关 CLI 参数：</p>
-<ul>
-<li><code>--extension.quantization.enable-quantized-training</code> 与 <code>--extension.quantization.no-enable-quantized-training</code>：选择低精度或高精度通路；默认使用高精度，只有显式传入 enable 开关才启用低精度。</li>
-<li><code>--extension.quantization.recipe</code>：选择 <code>all_mxfp8</code>、<code>mix</code> 或 <code>all_block_fp8</code>，默认使用 <code>mix</code>。</li>
-<li><code>--extension.quantization.enable-mxfp4-qat</code> 与 <code>--extension.quantization.no-enable-mxfp4-qat</code>：控制 routed expert 的 Block FP8 weight 是否增加 MXFP4 QAT fake quant 数值约束，默认关闭，仅对包含 Block FP8 的 recipe 生效。该选项不是持久化 4-bit 参数训练，也不会把算子替换为原生 A8W4 GEMM。</li>
-<li><code>--extension.quantization.li-quantization</code>：选择 LI Q/K 量化类型，可选 <code>mxfp4</code>、<code>mxfp8</code>、<code>fp8</code> 或 <code>hif8</code>；需要同时启用 <code>enable-quantized-training</code>。</li>
-<li><code>--extension.quantization.dst-type-max</code>：量化目标数据类型最大值，用于 MXFP4 fake quant 和 HiF8 LI 量化时，默认值为 <code>0.0</code>；HiF8 支持 <code>0</code>、<code>15</code>、<code>56</code>、<code>224</code> 和 <code>32768</code>。</li>
-<li><code>--extension.quantization.fsdp-prequantize</code>：将 Block FP8 权重的量化提前到 FSDP all-gather 之前，默认关闭。开启后权重在 <code>fsdp_pre_all_gather</code> 中量化为 block MX，all-gather 传输量化后的 FP8 权重与 scale，前向和反向复用该数据，减少通信量和重复量化计算；用 <code>--extension.quantization.no-fsdp-prequantize</code> 可显式关闭。该选项只对 recipe 中包含 Block FP8 的部分生效（<code>mix</code> 的 routed expert 与 <code>all_block_fp8</code>），对 <code>all_mxfp8</code> 无效果；需要同时启用 <code>enable-quantized-training</code>。当分片未按 32 对齐或不存在 FSDP 分片（如 EFSDP=1 的 MoE）时，自动回退为高精度通信加运行时量化。</li>
-<li><code>--profiler.enable-profiling</code>：启用性能分析。</li>
-<li><code>USE_GOLDEN</code>：设为 <code>1</code> 时选择 golden attention override；默认使用 Ascend 融合算子路径。</li>
-</ul>
-<p>启动日志中出现 <code>Applied TorchAO-NPU recipe=...</code> 表示低精度 recipe 已生效。</p>
 <h3 id="deepseek-v41-torchao-npu">DeepSeek-V4.1 TorchAO-NPU 低精度训练</h3>
-<p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口。除启用量化训练和选择 <code>recipe</code> 外，增加
-<code>--extension.quantization.enable-sparse-attention-quantization</code>，将 V4.1 的稀疏 attention
-替换为混合量化路径；该开关需要与
-<code>--extension.quantization.enable-quantized-training</code> 同时传入。当前入口面向 A5（Ascend 950）硬件：</p>
-<blockquote>
-<p>[!NOTE]
-启用 'enable-sparse-attention-quantization' 会对KV做 'mxfp8_bf16' 和 'mxfp4_bf16' 量化，需要参考 <a href="https://gitcode.com/cann/cann-recipes-infer/blob/master/ops/ascendc/README.md">Ascend C 自定义算子编译安装说明</a> 编译并安装 'kv_compress_epilog_v2' 算子，注意添加自定义算子环境变量。</p>
-</blockquote>
+<p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口，当前面向 A5（Ascend 950）硬件。稀疏 attention 量化的配置、依赖和限制见<a href="../../feature_guides/low_precision_training/#deepseek-v41-稀疏-attention-量化">低精度训练特性指南</a>。</p>
+<p>DeepSeek-V4.1 稀疏 attention 的 KV Cache 量化使用独立的
+<code>enable-sparse-attention-quantization</code> 开关。上述配置的默认值、组合限制和完整参数见<a href="../../feature_guides/low_precision_training/">低精度训练特性指南</a>。启动日志中出现 <code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用。</p>
 <p>deepseek v4.1 模型做低精预训练可运行以下脚本：</p>
 <pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
 bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_cpt_4k_a5.sh
@@ -336,8 +299,6 @@ bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_cpt_4k_a5.sh
 <pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
 bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_qat_4k_a5.sh
 </code></pre>
-<p>不使能 <code>enable-sparse-attention-quantization</code> 时，<code>recipe</code> 仍会量化匹配的权重和其他模块，V4.1 稀疏 attention 保持原始路径。启动日志中的
-<code>sparse_attention_quantization=True</code> 可用于确认该开关已生效。</p>
 <h3 id="rank">排查启动报错：查看更多 rank 日志</h3>
 <blockquote>
 <p>[!TIP]
