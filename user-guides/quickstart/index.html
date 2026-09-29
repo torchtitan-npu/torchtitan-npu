@@ -262,8 +262,8 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 </tr>
 <tr>
 <td><code>recipe</code></td>
-<td><code>all_mxfp8</code>、<code>mix</code>、<code>all_block_fp8</code></td>
-<td>选择全 MXFP8、混合 MXFP8/Block FP8 或全 Block FP8。</td>
+<td><code>all_mxfp8</code>、<code>mix</code>、<code>all_block_fp8</code>、<code>all_hif8</code></td>
+<td>选择全 MXFP8、混合 MXFP8/Block FP8、全 Block FP8 或全 HiF8。</td>
 </tr>
 <tr>
 <td><code>enable-mxfp4-qat</code></td>
@@ -284,6 +284,16 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 <td><code>enable-fsdp-prequantize</code></td>
 <td><code>--enable-fsdp-prequantize</code> / <code>--no-enable-fsdp-prequantize</code></td>
 <td>在 FSDP all-gather 前预量化 Block FP8 权重，减少通信量，默认关闭。</td>
+</tr>
+<tr>
+<td><code>enable-hif8-save-quant-codes</code></td>
+<td><code>--enable-hif8-save-quant-codes</code> / <code>--no-enable-hif8-save-quant-codes</code></td>
+<td>把 HiF8 量化矩乘算子（<code>npu_quantize</code>/<code>npu_dynamic_quant</code>/<code>npu_grouped_matmul</code>/<code>npu_quant_matmul</code>）结果保留在 selective activation checkpointing 保存边界内，backward 不再重新推导；仅在 <code>recipe=all_hif8</code> 时生效，默认关闭。</td>
+</tr>
+<tr>
+<td><code>save-block-ops-level</code></td>
+<td><code>0</code>-<code>3</code>（默认 <code>0</code>）</td>
+<td>把 attention / mHC / MoE-routing 相关 NPU 自定义算子加入 selective activation checkpointing 的 MUST_SAVE 列表，用显存换取 backward 更少重复计算。</td>
 </tr>
 </tbody>
 </table>
