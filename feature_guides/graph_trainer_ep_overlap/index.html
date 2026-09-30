@@ -81,6 +81,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">GraphTrainer EP overlap 适配</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#_1">能力范围、依赖与验证边界</a>
@@ -471,6 +473,7 @@ bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
 </tbody>
 </table>
 <p>上游 <code>validate_ep_overlap_config</code> 约束：<code>chunk_dim=seq</code> 仅在 <code>module_fqn=layers.*.moe</code> 时可用——序列切分要求完整 K/V 上下文，因此只对 MoE block 根成立。</p>
+<p>本仓 <code>ep_chunk_concretization</code> 补丁对 <code>strategy=graph</code> 新增运行时约束：所选 <code>batch</code> 或 <code>seq</code> 输入维长度必须不小于 2 且为偶数。Graph chunking 会将该维固定拆成两个等长 chunk；若长度为 1 或奇数，trace 输入准备阶段会直接抛出 <code>ValueError</code>，避免生成不等长 chunk 后再进入符号 shape 推导。<code>strategy=eager</code> 不经过该输入标记流程，不受此项补丁校验影响。</p>
 <p>若需把 EP overlap 固化为某个配置的默认值，在 <code>config_registry.py</code> 的对应工厂中对 <code>config.compile.ep_overlap</code> 赋 <code>EpOverlapConfig(...)</code>。</p>
 <h2 id="dsv4-2026-09-16">DSV4 整网实跑验证（2026-09-16）</h2>
 <p>本节只记录 DSV4 作为验证载体的结果，用于证明通用 EP overlap 能力及临时补丁在这一具体组合上可以完成整网训练。</p>
@@ -535,7 +538,7 @@ bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../graph_trainer_auto_overlap/" class="btn btn-neutral float-left" title="GraphTrainer NPU Auto Overlap"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../graph_trainer_cv_parallel/" class="btn btn-neutral float-left" title="DeepSeek-V4 batch 双流调度"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../low_precision_training/" class="btn btn-neutral float-right" title="低精度训练">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -559,7 +562,7 @@ bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../graph_trainer_auto_overlap/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../graph_trainer_cv_parallel/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../low_precision_training/" style="color: #fcfcfc">Next &raquo;</a></span>

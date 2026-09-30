@@ -73,9 +73,19 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 LoRA 微调</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#peft-adapter">加载 PEFT adapter</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">启用方式</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_2">模型与优化器配置</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_1">验证</a>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">检查点与断点续训</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">导出与加载适配器</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">离线合并</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_6">支持范围与限制</a>
     </li>
     </ul>
                   </li>
@@ -86,6 +96,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
                   </li>
@@ -134,45 +146,106 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="deepseek-v4-lora">DeepSeek-V4 LoRA 微调</h1>
-<p>在 DSV4 recipe 的 <code>converters</code> 中选择 <code>DeepSeekV4LoRAConverter.Config</code>，即可启用 dense、batched 和 routed-expert LoRA。recipe 自动选择 LoRA 并行化与 PEFT checkpoint manager；无需额外 enable 开关。rank、alpha 和目标模块在 converter 配置中设置，保存选项使用 <code>checkpoint.*</code>；暂不支持量化基座。</p>
-<p>完整 Flash 模型使用已有的 <code>deepseek_v4_flash_lora</code> recipe（dense/expert rank 16、alpha 32），无需创建额外配置模块。正式入口复用 A3 4K launcher 的节点、数据、并行和编译配置，并开启 checkpoint 保存。当前 LoRA 训练仅支持 AdamW；公共 A3 launcher 默认使用 Muon，因此运行时须显式传入 <code>--optimizer.name AdamW</code>：</p>
-<pre><code class="language-sh">NODE_IPS=&quot;${NODE_IPS}&quot; \
+<p>DeepSeek-V4 支持对普通线性层、分组线性层和路由专家添加 LoRA 适配器。训练时冻结基座参数，只更新适配器；训练结果可导出为 PEFT 格式，也可离线合并到基座权重。</p>
+<h2 id="_1">启用方式</h2>
+<p>完整 Flash 模型使用 <code>deepseek_v4_flash_lora</code> 配置，普通层和专家的秩均为 16，缩放参数 <code>alpha</code> 为 32。启动脚本沿用对应 CPT 入口的节点、数据、并行和编译配置，并开启检查点保存：</p>
+<pre><code class="language-bash">NODE_IPS=&quot;${NODE_IPS}&quot; \
 HF_ASSETS_PATH=/path/to/tokenizer \
-CKPT_INIT_LOAD_PATH=/path/to/bf16-base-weights \
+CKPT_INIT_LOAD_PATH=/path/to/base-weights \
 CKPT_SAVE_LOAD_PATH=/path/to/run/checkpoint \
 bash examples/deepseek_v4/deepseek_v4_flash_lora_4k_a3.sh \
   --optimizer.name AdamW \
-  --training.steps 500 --checkpoint.interval 100
+  --training.steps 500 \
+  --checkpoint.interval 100
 </code></pre>
-<p>节点和数据环境变量说明见 <a href="../../examples/deepseek_v4/readme.md">训练示例</a>。命令末尾的 CLI 参数可覆盖 launcher 默认值。自定义 recipe 可继续在 <code>deepseek_v4_flash(converters=[...])</code> 中配置 <code>DeepSeekV4LoRAConverter.Config</code>。</p>
-<p>模型并行化后、optimizer 创建前冻结非 LoRA 参数，并关闭 MoE load-balancing hook，保留基座 routing bias。部分 adapter 训练时，在该 parallelize callback 返回后冻结相应 adapter（例如全部 <code>lora_a</code>），仅训练剩余参数。</p>
-<p><code>checkpoint.periodic_save_adapter_only=True</code> 时，周期 checkpoint 使用 native DCP，保存 adapter 和 routing buffer，不重复保存冻结的基座。启用 <code>checkpoint.save_training_state=True</code> 后，还会保存 optimizer、scheduler、dataloader 和 step；上述 LoRA launcher 已启用此选项。恢复时保持相同基座、训练总步数和运行目录；用 <code>--checkpoint.load-step 10</code> 指定恢复点。</p>
-<p>最后一步导出 PEFT 的 <code>adapter_model.safetensors</code> 和 <code>adapter_config.json</code>，仅包含 adapter 权重。训练续跑使用周期 DCP；若最后一步也需保存训练状态，设置 <code>--checkpoint.no-last-save-in-peft --checkpoint.no-last-save-model-only</code>。启用 expert adapter 时，PEFT 导出要求 dense 和 expert 的 rank 相同。启用 checkpoint 后，MTP adapter、rank 不兼容和不支持的 PEFT 目标在 checkpoint 初始化时拒绝，而不是训练结束后才失败。<code>last_save_in_hf=True</code> 不合并 LoRA 增量，因此本 checkpoint manager 禁止该选项；请使用 PEFT 或 native DCP。</p>
-<h2 id="peft-adapter">加载 PEFT adapter</h2>
-<p>导出使用 <code>target_parameters</code>，保留 batched projection 的分组前向计算，并将 routed expert 的 gate/up adapter 转成融合参数格式。加载时显式指定与训练相同的基座：</p>
+<p>A5 使用 <code>CONFIG=deepseek_v4_flash_lora bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a5.sh --checkpoint.no-load-only --checkpoint.save-training-state</code>，直接调用 A5 CPT 入口，默认启用 block-FP8。运行前按实际设备和数据设置节点、卡数、并行参数及输入路径，详见<a href="../../examples/deepseek_v4/readme.md">训练示例</a>。命令末尾的普通 CLI 参数可覆盖默认值。</p>
+<h3 id="_2">模型与优化器配置</h3>
+<p>自定义配置通过 <code>deepseek_v4_flash(converters=[DeepSeekV4LoRAConverter.Config(...)])</code> 启用 LoRA；秩、缩放参数和目标模块在转换器中设置，无需额外启用开关。配置自动选择 LoRA 并行化与检查点管理器。</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--optimizer.name AdamW</code></td>
+<td>使用 AdamW 更新适配器</td>
+</tr>
+<tr>
+<td><code>--optimizer.name Muon</code></td>
+<td>使用 Muon 与 AdamW 混合更新；专家 gate/up 适配器 B 分开由 Muon 更新，要求 TP=PP=1</td>
+</tr>
+<tr>
+<td><code>--extension.quantization.no-enable-quantized-training</code></td>
+<td>关闭量化训练，使用 BF16 基座</td>
+</tr>
+<tr>
+<td><code>--extension.quantization.recipe</code></td>
+<td>选择已有量化方案；A5 入口默认 <code>all_block_fp8</code></td>
+</tr>
+</tbody>
+</table>
+<p>未启用量化时，LoRA 沿用原有基座配置。使用已有 TorchAO-NPU 参数量化方案时，LoRA 配置保留所选量化策略，基座参数沿用原策略选择，适配器保持 BF16。替换整个模块且无法保留适配器前向计算的方案会在配置阶段报错。优化器和并行配置详见 <a href="../muon_optimizer/">Muon 优化器</a>与<a href="../deepseek_v4_cp/">上下文并行</a>。</p>
+<p>模型并行化后、创建优化器前冻结非 LoRA 参数，并关闭 MoE 负载均衡更新，保留基座路由偏置。需要只训练部分适配器时，可在并行化回调返回后冻结对应参数，例如冻结全部 <code>lora_a</code>、仅训练 B。</p>
+<h2 id="_3">检查点与断点续训</h2>
+<p>周期检查点使用原生 DCP 格式。<code>checkpoint.periodic_save_adapter_only=True</code> 时，只保存适配器和路由缓冲区，不重复保存冻结的基座。启用 <code>checkpoint.save_training_state=True</code> 后，还会保存优化器、调度器、数据加载器和训练步数；上述 LoRA 启动脚本已启用此选项。</p>
+<p>断点续训时保持相同基座、训练总步数和检查点目录，并通过 <code>--checkpoint.load-step 100</code> 指定恢复点。</p>
+<p>最后一步默认导出 PEFT 适配器。若需要将最后一步也保存为可续训的 DCP 检查点，设置：</p>
+<pre><code class="language-bash">--checkpoint.no-last-save-in-peft --checkpoint.no-last-save-model-only
+</code></pre>
+<h2 id="_4">导出与加载适配器</h2>
+<p>PEFT 导出生成 <code>adapter_model.safetensors</code> 和 <code>adapter_config.json</code>，只包含适配器权重及配置。导出目录须为本地文件系统路径。</p>
+<p>使用 <code>--checkpoint.peft-base-model-name-or-path</code> 指定供外部加载器使用的 Hugging Face 基座 ID 或目录。未指定时，优先采用 HF 初始检查点路径，否则采用 HF 资源路径；原生 DCP 路径不会写入基座标识。</p>
+<p>加载时使用与训练相同、且 Transformers 能够加载的基座：</p>
 <pre><code class="language-python">from peft import PeftModel
 from transformers import AutoModelForCausalLM
 
 base = AutoModelForCausalLM.from_pretrained(&quot;/path/to/hf-base&quot;)
-model = PeftModel.from_pretrained(base, &quot;/path/to/run/checkpoint/step-100&quot;)
+model = PeftModel.from_pretrained(base, &quot;/path/to/run/checkpoint/step-500&quot;)
 </code></pre>
-<p>基座路径须为 Transformers 可加载的模型目录；训练用 native DCP 路径不能直接用于此处。PEFT 导出不支持 MTP adapter；训练 MTP adapter 时使用 native checkpoint，或设置 <code>include_mtp=False</code> 后导出 PEFT。</p>
-<h2 id="_1">验证</h2>
-<p>CPU 消费者测试在实际 Transformers 模型上加载 dense、batched 和 routed-expert adapter，并与直接合并权重的模型比较 logits：</p>
-<pre><code class="language-sh">TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -m pytest \
-  tests/unit_tests/models/deepseek_v4/test_lora_state_dict_adapter.py -k peft_export_loads
+<p>导出通过 PEFT 的 <code>target_parameters</code> 描述分组投影和专家参数，将路由专家的 gate/up 适配器转换为融合参数格式。</p>
+<h2 id="_5">离线合并</h2>
+<p>在本仓训练环境中运行以下工具，将最终 PEFT 适配器合并到对应的 safetensors 基座，生成可独立加载的模型权重：</p>
+<pre><code class="language-bash">python -m scripts.lora.merge_adapter \
+  --base-model /path/to/base-safetensors \
+  --adapter /path/to/checkpoint/step-500 \
+  --output /path/to/merged-model
 </code></pre>
-<p>该测试需要上述可选依赖。NPU 用例复用现有 integration runner，在 EP2/FSDP2 上执行 2 步 A/B 训练，检查冻结基座与 routing bias 不变、adapter 更新。该用例不做中间 checkpoint 保存或恢复；最后一步通过实际 checkpoint manager 导出 PEFT，并检查导出张量的 key、shape、数值及 rank、alpha、target 配置。冻结 A、仅训练 B 由 CPU 单元测试覆盖：</p>
-<pre><code class="language-sh">python -m tests.integration_tests.run_tests /tmp/lora-ab \
-  --test_suite models --test_name dsv4_lora_ep2_fsdp2 --ngpu 2 --no-parallel
-</code></pre>
-<p>PEFT export requires a local checkpoint output folder; remote output URIs are rejected during initialization.
-Set <code>--checkpoint.peft-base-model-name-or-path</code> to the Hugging Face base model ID or directory for external loaders.
-When omitted, an HF initial checkpoint supplies this metadata; native DCP paths are never exported as the base model.
-Otherwise the configured HF assets path supplies the default base metadata.</p>
-<p>Final PEFT export reconstructs only LoRA tensors across ranks, one tensor at a time.
-Rank 0 writes the CPU adapter tensors to safetensors and the PEFT configuration;
-all ranks receive the save result. Native training checkpoints continue to use DCP.</p>
+<p>输出目录必须不存在，且位于输入目录之外。工具支持官方检查点、Transformers 单文件或分片权重，以及融合专家权重；专家的 gate/up/down 按专家分别合并。</p>
+<p>工具保留 FP16/BF16/FP32 基座的数据类型、分片索引与模型配置，仅重写包含合并目标的分片。量化训练输出不能直接离线 merge；输入须包含普通 FP16/BF16/FP32 logical weight。当前仓库不提供通用量化 checkpoint 离线解码命令。</p>
+<h2 id="_6">支持范围与限制</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>约束</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PEFT 专家导出</td>
+<td>普通层与专家适配器的秩须相同</td>
+</tr>
+<tr>
+<td>MTP 适配器</td>
+<td>使用原生检查点；需要 PEFT 导出时设置 <code>include_mtp=False</code></td>
+</tr>
+<tr>
+<td>完整模型 HF 导出</td>
+<td><code>last_save_in_hf=True</code> 不合并 LoRA 增量，本检查点管理器不接受该选项；使用上述离线合并工具</td>
+</tr>
+<tr>
+<td>离线合并</td>
+<td>支持标准 LoRA 的 <code>alpha/r</code> 缩放，不支持 DoRA、RSLoRA 或逐目标秩与缩放参数</td>
+</tr>
+</tbody>
+</table>
+<p>集成测试复用现有入口：<code>deepseek_v4</code> 中的 <code>dsv4_lora_ep2_fsdp2</code> 检查训练与导出，独立 <code>deepseek_v4_checkpoint</code> suite 中的 <code>dsv4_lora_resume_ep2_fsdp2</code> 在支持分布式 DCP 的运行环境中检查断点续训。运行方式见<a href="../../tests/integration_tests/README.md">集成测试说明</a>。</p>
+<p>合并工具先验证 rank、专家数和量化序列化格式，再按需读取 adapter A/B。结果写入临时目录，全部成功后才发布输出；写入失败会清理临时文件。</p>
+<p>支持 block-FP8 的 Ascend 950 设备（CANN 9.2.0 release，2026-09-09 软件包）使用 <code>deepseek_v4_quantized</code> suite 运行 <code>dsv4_lora_block_fp8_ep2_fsdp2</code>，使用真实 TorchAO-NPU block-FP8 recipe 验证量化基座、浮点 adapter 及训练更新。</p>
+<p>专家 gate/up B 参数分别保存为 <code>w1_lora_b</code> 和 <code>w3_lora_b</code>，共享 <code>w13_lora_a</code>，PEFT 导出格式保持不变。普通 <code>model.load_state_dict</code> 可拆分旧的 <code>w13_lora_b</code> 权重；旧版交错参数的原生 DCP 不能直接续训，因为参数分组及优化器状态已改变。请使用生成该 checkpoint 的版本导出并合并适配器，再从合并后的基座开始新训练。</p>
               
             </div>
           </div><footer>

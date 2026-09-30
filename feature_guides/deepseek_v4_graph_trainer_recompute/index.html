@@ -93,7 +93,9 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#43-dsv4-mhc">4.3 dsv4-mhc 策略</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#44">4.4 前向变异算子的重算保真</a>
+    <li class="toctree-l3"><a class="reference internal" href="#44-dsv4-mhc-moe-save">4.4 dsv4-mhc-moe-save 策略</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#45">4.5 前向变异算子的重算保真</a>
     </li>
         </ul>
     </li>
@@ -114,6 +116,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
                   </li>
@@ -162,7 +166,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="deepseek-v4-graphtrainer">DeepSeek-V4 GraphTrainer 激活重计算</h1>
-<p>本文说明 <code>torchtitan-npu</code> 中 DeepSeek-V4 GraphTrainer 的激活重计算设计，包括默认 <code>full</code> 策略、可选 <code>dsv4-mhc</code> 策略、使用方式和已知限制。</p>
+<p>本文说明 <code>torchtitan-npu</code> 中 DeepSeek-V4 GraphTrainer 的激活重计算设计，包括默认 <code>full</code> 策略、可选 <code>dsv4-mhc</code> / <code>dsv4-mhc-moe-save</code> 策略、使用方式和已知限制。</p>
 <h2 id="1">1. 特性概述</h2>
 <p>DeepSeek-V4 同时包含 attention、压缩 attention、MoE、SimpleFSDP 通信和 Ascend 融合算子。若前向激活全部保存，显存峰值较高；若只在 module 边界统一 checkpoint，又会重算昂贵的 attention/MoE 子图。GraphTrainer 先将前向、loss 和 <code>torch.autograd.grad</code> 反向捕获为联合 FX 图，再按节点决定保存或重算，从而用计算换取显存。</p>
 <p>当前重计算只作用于联合前向/反向图，<code>optimizer.step()</code>、梯度裁剪和 scheduler 仍在图外执行。</p>
@@ -190,6 +194,9 @@ disable_passes = [&quot;cudagraph_pass&quot;]
 <pre><code class="language-bash">--compile.memory-policy dsv4-mhc
 </code></pre>
 <p><code>dsv4-mhc</code> 不是默认策略。建议先用 <code>full</code> 完成数值和编译验证，再在相同模型、batch、并行度和 step 数下对比显存与吞吐。</p>
+<p>如需额外保存 MoE expert 激活、减少反向 W13 或 W1/W3 GEMM replay，可使用：</p>
+<pre><code class="language-bash">--compile.memory-policy dsv4-mhc-moe-save
+</code></pre>
 <h3 id="23">2.3 配置类型要求</h3>
 <p>NPU ConfigManager 会跳过 <code>GraphTrainer.Config</code> 的普通包装，相关代码位于：</p>
 <pre><code class="language-text">torchtitan_npu/config/manager.py
@@ -223,25 +230,32 @@ disable_passes = [&quot;cudagraph_pass&quot;]
 <h3 id="43-dsv4-mhc">4.3 <code>dsv4-mhc</code> 策略</h3>
 <pre><code class="language-text">torchtitan_npu/models/deepseek_v4/memory_policy.py
 </code></pre>
-<p>该策略以 <code>full</code> 为基线，主要做四件事：</p>
+<p>该策略以 <code>full</code> 为基线，当前主要做三件事：</p>
 <ol>
-<li>保存 <code>layers.*.attention.wo_b</code> 中第一次出现的 <code>aten.matmul.default</code>，避免重算昂贵的 attention 出口；</li>
-<li>保存 <code>layers.*.moe</code> 中第一次出现的 <code>aten.add.Tensor</code>，避免重算 MoE 输出合并；</li>
+<li>保存 <code>layers.*.moe</code> 中第一次出现的 <code>aten.add.Tensor</code>，保留已验证的 MoE 输出汇合边界；</li>
 <li>保留 <code>reshard_after_forward=False</code> 时的 FSDP 强制节点；</li>
-<li>每 4 层设置一个边界，让较便宜的 MHC 路径处于可重算分区中。</li>
+<li><code>save_input_every_n_layers=1</code>，每层建立跨层保存边界。</li>
 </ol>
-<p>整体来说，除了保存跨层输出，还同步保存了每个mhc的post模块的输入，保障前面的gmm2等不会进入重计算，以此提升性能</p>
+<p>当前不再保存 <code>layers.*.attention.wo_b</code> 或 mHC post 输入，attention 到 mHC post 保持连续重算；router 的 gate、归一化、top-k 和 dispatch metadata 也保持为一个完整重算区域。</p>
 <pre><code class="language-mermaid">flowchart TD
     A[&quot;FX node&quot;] --&gt; B{&quot;FSDP 强制保存?&quot;}
     B -- &quot;是&quot; --&gt; S[&quot;MUST_SAVE&quot;]
-    B -- &quot;否&quot; --&gt; C{&quot;命中 attention/MoE 出口?&quot;}
+    B -- &quot;否&quot; --&gt; C{&quot;命中 MoE 汇合?&quot;}
     C -- &quot;是&quot; --&gt; S
-    C -- &quot;否&quot; --&gt; D{&quot;到达 4 层边界?&quot;}
-    D -- &quot;是&quot; --&gt; R[&quot;建立重算边界&quot;]
-    D -- &quot;否&quot; --&gt; F[&quot;沿用 full 决策&quot;]
+    C -- &quot;否&quot; --&gt; D{&quot;输出跨越层边界?&quot;}
+    D -- &quot;是&quot; --&gt; S
+    D -- &quot;否&quot; --&gt; F[&quot;沿用 full 重算决策&quot;]
 </code></pre>
-<p>它的权衡是保存少量高成本出口，重算低成本节点，以降低显存并控制反向计算开销。规则依赖 FQN、算子 target 和 occurrence，模型重构后可能静默失配。</p>
-<h3 id="44">4.4 前向变异算子的重算保真</h3>
+<p>规则依赖 FQN、算子 target 和 occurrence，模型重构后可能静默失配。</p>
+<h3 id="44-dsv4-mhc-moe-save">4.4 <code>dsv4-mhc-moe-save</code> 策略</h3>
+<p>该策略继承 <code>dsv4-mhc</code>，并额外保存 shared/routed experts 的激活：</p>
+<ul>
+<li>开启 <code>swiglu_group</code> 时，保存 SwiGLU 实际接收的唯一 <code>2F</code> 输入，可兼容量化/反量化中间链；</li>
+<li>未开启 <code>swiglu_group</code> 时，分别保存 W1、W3 投影输出；</li>
+<li>不为 router 增加局部保存点，避免 expert 激活与 routing metadata 来自不同 replay 区域。</li>
+</ul>
+<p>保存点在 remat 和 EP chunk pass 之前识别。该策略以更多激活显存换取更少的 expert GEMM replay。</p>
+<h3 id="45">4.5 前向变异算子的重算保真</h3>
 <p>原生 SAR 按数据流回放重算节点，无数据输出的前向变异算子（如 partial-RoPE 对
 clone 的原地旋转）不会进入回放链，反向会读到未旋转的值（上游 issue
 <a href="https://github.com/pytorch/torchtitan/issues/4688">#4688</a>）。DSV4 GraphTrainer 默认
@@ -254,6 +268,8 @@ CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随�
 <h2 id="5">5. 支持边界与风险</h2>
 <ul>
 <li><code>dsv4-mhc</code> 依赖 FQN、FX target 和 occurrence，模型或编译器升级后必须检查规则命中数。</li>
+<li><code>dsv4-mhc-moe-save</code> 的融合路径要求 <code>swiglu_group</code> 有唯一的 <code>2F</code> 输入；未融合 fallback 依赖 W1/W3 FQN 或受支持的 GEMM target。</li>
+<li><code>dsv4-mhc-moe-save</code> 会提高激活显存，应同时比较峰值显存、吞吐和数值。</li>
 <li>变异算子重算保真依赖上游 #4708 的 functionalization 语义与原生 SAR 的交互；升级
   PyTorch 或 TorchTitan 后需重跑 <code>test_rope_recompute_integration.py</code> 的正/负对照。</li>
 <li>重计算链路依赖 FX tracer、AOTAutograd、Dynamo dynamic annotation 和 Inductor 私有 API，升级 PyTorch、torch-npu 或 TorchTitan 后需重新回归。</li>
@@ -280,7 +296,7 @@ CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随�
 <td><code>torchtitan_npu/patches/torchtitan/experiments/graph_trainer/memory_policy.py</code></td>
 </tr>
 <tr>
-<td><code>dsv4-mhc</code> 策略</td>
+<td><code>dsv4-mhc</code> / <code>dsv4-mhc-moe-save</code> 策略</td>
 <td><code>torchtitan_npu/models/deepseek_v4/memory_policy.py</code></td>
 </tr>
 <tr>
@@ -300,13 +316,13 @@ CPU offload 与 SAR 之前把变异写入显式化为数据流，原生 SAR 随�
 <td><code>torchtitan_npu/patches/torchtitan/experiments/graph_trainer/functionalize_recompute_mutations.py</code></td>
 </tr>
 <tr>
-<td>重算单测</td>
-<td><code>tests/unit_tests/compile/test_recompute_policy.py</code></td>
+<td>MoE 保存策略单测</td>
+<td><code>tests/unit_tests/compile/test_swiglu_memory_policy.py</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="7">7. 结论</h2>
-<p>DeepSeek-V4 GraphTrainer 重计算是在联合 FX 图上进行节点级 save/recompute 决策，并与 SimpleFSDP 参数通信协同。<code>full</code> 是显存优先的通用基线，<code>dsv4-mhc</code> 保存 attention/MoE 高成本出口以减少部分重算。实际启用前应同时验证数值、峰值显存、重编译次数和稳态吞吐；不能只以训练成功启动作为结论。</p>
+<p>DeepSeek-V4 GraphTrainer 重计算是在联合 FX 图上进行节点级 save/recompute 决策，并与 SimpleFSDP 参数通信协同。<code>full</code> 是显存优先的通用基线，<code>dsv4-mhc</code> 保存 MoE 汇合，<code>dsv4-mhc-moe-save</code> 再保存 expert W13 或 W1/W3 激活以减少 GEMM replay。实际启用前应同时验证数值、峰值显存、重编译次数和稳态吞吐；不能只以训练成功启动作为结论。</p>
               
             </div>
           </div><footer>
