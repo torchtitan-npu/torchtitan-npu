@@ -400,7 +400,7 @@ python3 scripts/parse_profiling_data.py path/to/save_traces_folder
   --profiler.extension.profile-ranks 0 \
   --profiler.extension.profile-with-memory
 </code></pre>
-<p>也可以通过原生周期参数显示拼接出相同的采集窗口：</p>
+<p>也可以通过原生周期参数显式拼接出相同的采集窗口：</p>
 <pre><code class="language-bash">NGPU=2 ./scripts/run_train.sh \
   --profiler.enable-profiling \
   --profiler.profile-freq 4 \
