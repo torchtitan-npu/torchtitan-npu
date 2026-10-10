@@ -1,0 +1,81 @@
+name: A3-8p-CI-Example
+
+run-name: "${{ github.workflow }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_cases:
+        description: 'JSON list of registered test_id or suite selectors'
+        type: string
+        required: true
+        default: '[{"suite":"a3_8p_tests"}]'
+
+permissions:
+  contents: read
+  actions: read
+
+# Per-Run concurrency only. Global training serialization is in Dispatcher.
+concurrency:
+  group: "${{ github.workflow }}-${{ github.run_id }}"
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare trusted CI Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      plan_digest: ${{ steps.plan.outputs.plan_digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate CI admission
+        env:
+          CI_ALLOWED_ACTOR: depeng1994
+          CI_REQUEST_ACTOR: ${{ github.actor }}
+          CI_REQUEST_REPOSITORY: ${{ github.repository }}
+          CI_REQUEST_REF: ${{ github.ref }}
+        run: |
+          test "$CI_REQUEST_ACTOR" = "$CI_ALLOWED_ACTOR" || exit 1
+          test "$CI_REQUEST_REPOSITORY" = "depeng1994/torchtitan-npu" || exit 1
+          case "$CI_REQUEST_REF" in
+            refs/heads/master) ;;
+            *) echo "CI branch not allowed" >&2; exit 1 ;;
+          esac
+      - name: Validate and expand trusted test plan
+        id: plan
+        env:
+          CI_TEST_CASES: ${{ inputs.test_cases }}
+          CI_MAX_SELECTORS: "2"
+          CI_MAX_CASES: "4"
+          CI_PROTOCOL_VERSION: "2"
+          CI_PIPELINE: "a3-8p"
+        run: PYTHONPATH="$PWD" python3 .github/scripts/lite_actions/prepare_request.py
+      - name: Upload immutable CI request
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-ci-request-${{ github.run_attempt }}
+          path: .ci-request/ci-request.json
+          retention-days: 1
+          if-no-files-found: error
+
+  case:
+    needs: prepare
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for internal a3-8p case
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_PLAN_DIGEST: ${{ needs.prepare.outputs.plan_digest }}
+          CI_WAIT_TIMEOUT_SECONDS: "16800"
+        run: |
+          python3 .github/scripts/lite_actions/wait_result.py \
+            --case a3-8p --test-id "${{ matrix.test_id }}"

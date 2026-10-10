@@ -27,6 +27,7 @@ class OverrideDefinitions:
     disabled: bool = False
     skip_rocm_test: bool = False
     timeout: int | None = None
+    nnodes: int = 1
     env_vars: Mapping[str, str] | None = None
     use_golden: bool = True
     check_loss: bool = True

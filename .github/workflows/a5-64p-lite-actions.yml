@@ -1,0 +1,67 @@
+name: A5-64p-CI
+
+run-name: "${{ github.workflow }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_cases:
+        description: 'JSON list of test_id or suite selectors (max 1 case)'
+        type: string
+        required: true
+        default: '[{"test_id":"dsv4_pro_a5_64p"}]'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: a5-64p-ci
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare CI request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate CI admission
+        env:
+          CI_ALLOWED_ACTOR: depeng1994
+          CI_REQUEST_ACTOR: ${{ github.actor }}
+          CI_REQUEST_REPOSITORY: ${{ github.repository }}
+          CI_REQUEST_REF: ${{ github.ref }}
+          CI_CHANNEL_ENABLED: "false"
+        run: |
+          test "$CI_REQUEST_ACTOR" = "$CI_ALLOWED_ACTOR" || exit 1
+          test "$CI_REQUEST_REPOSITORY" = "depeng1994/torchtitan-npu" || exit 1
+          case "$CI_REQUEST_REF" in
+            refs/heads/master) ;;
+            *) echo "CI branch not allowed" >&2; exit 1 ;;
+          esac
+          test "$CI_CHANNEL_ENABLED" = true || { echo "CI channel disabled" >&2; exit 1; }
+      - name: Validate workflow_dispatch inputs
+        env:
+          CI_TEST_CASES: ${{ inputs.test_cases }}
+          CI_MAX_CASES: "1"
+        run: python3 .github/scripts/lite_actions/prepare_request.py
+      - name: Upload CI request
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-ci-request-${{ github.run_attempt }}
+          path: .ci-request/ci-request.json
+          retention-days: 1
+          if-no-files-found: error
+  ci:
+    needs: prepare
+    name: CI tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for internal A5-64p-CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_WAIT_TIMEOUT_SECONDS: "16800"
+        run: python3 .github/scripts/lite_actions/wait_result.py --case a5-64p
