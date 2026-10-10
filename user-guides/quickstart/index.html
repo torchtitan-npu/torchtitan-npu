@@ -273,7 +273,7 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 <tr>
 <td><code>li-quantization</code></td>
 <td><code>fp8</code>、<code>mxfp8</code>、<code>mxfp4</code>、<code>hif8</code></td>
-<td>选择 DeepSeek-V4 LI Q/K 的量化类型，默认不启用。</td>
+<td>选择 LI Q/K 的量化类型，默认不启用；DeepSeek-V4.1 仅支持 <code>mxfp4</code>。</td>
 </tr>
 <tr>
 <td><code>kv-norm-quantization.format</code></td>
@@ -284,6 +284,11 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 <td><code>enable-fsdp-prequantize</code></td>
 <td><code>--enable-fsdp-prequantize</code> / <code>--no-enable-fsdp-prequantize</code></td>
 <td>在 FSDP all-gather 前预量化 Block FP8 权重，减少通信量，默认关闭。</td>
+</tr>
+<tr>
+<td><code>fsdp-prequantize-fqns</code></td>
+<td>FQN 后缀模式列表（默认 <code>None</code>）</td>
+<td>仅在 <code>enable-fsdp-prequantize</code> 下生效。白名单内的权重保留预量化、其余显式关闭；<code>None</code> 用 recipe 默认白名单，显式空表与开关开启冲突会报 <code>ValueError</code>。命中权重的分片若不满足对齐约束，运行时立即报错终止（不静默回退），并给出移除该 FQN 或调整并行度的提示。</td>
 </tr>
 <tr>
 <td><code>enable-hif8-save-quant-codes</code></td>
@@ -298,14 +303,18 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 </tbody>
 </table>
 <h3 id="deepseek-v41-torchao-npu">DeepSeek-V4.1 TorchAO-NPU 低精度训练</h3>
-<p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口，当前面向 A5（Ascend 950）硬件。稀疏 attention 量化的配置、依赖和限制见<a href="../../feature_guides/low_precision_training/#deepseek-v41-稀疏-attention-量化">低精度训练特性指南</a>。</p>
-<p>DeepSeek-V4.1 稀疏 attention 的 KV Cache 量化使用独立的
-<code>enable-sparse-attention-quantization</code> 开关。上述配置的默认值、组合限制和完整参数见<a href="../../feature_guides/low_precision_training/">低精度训练特性指南</a>。启动日志中出现 <code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用。</p>
-<p>deepseek v4.1 模型做低精预训练可运行以下脚本：</p>
+<p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口，当前面向 A5（Ascend 950）硬件。Lightning Indexer 与稀疏 attention 量化的配置、组合、依赖和限制见<a href="../../feature_guides/low_precision_training/#deepseek-v41-li-与稀疏-attention-量化">低精度训练特性指南</a>。</p>
+<p>DeepSeek-V4.1 使用 <code>li-quantization=mxfp4</code> 启用 Lightning Indexer量化，使用
+<code>enable-sparse-attention-quantization</code> 启用 KV source Compressor 与稀疏 attention 量化。两项可在
+标准 A5 融合路径提供 BF16 fallback 的前提下独立选择；<code>USE_GOLDEN=1</code> 不提供这些
+fallback。启动日志中出现
+<code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用。</p>
+<p>DeepSeek-V4.1 模型做 Block FP8 低精度预训练可运行以下脚本：</p>
 <pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
 bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_cpt_4k_a5.sh
 </code></pre>
-<p>deepseek v4.1 模型做QAT训练可运行以下脚本：</p>
+<p>DeepSeek-V4.1 模型做 QAT 训练可运行以下脚本。该入口同时启用 routed expert MXFP4
+fake quant、Lightning Indexer 和稀疏 attention/KV source Compressor 量化：</p>
 <pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
 bash examples/deepseek_v4_1/debug/deepseek_v4_1_flash_8p_qat_4k_a5.sh
 </code></pre>

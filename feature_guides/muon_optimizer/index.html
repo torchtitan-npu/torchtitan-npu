@@ -91,6 +91,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#muon">如何使用 Muon</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hsdp-replica-dedup">HSDP replica dedup</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#swap">如何开启 swap</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_2">能力边界</a>
@@ -202,6 +204,16 @@ bash scripts/run_train.sh \
 <p>DeepSeek-V4 示例脚本默认使用 Muon，并固定同一组 Muon 与 swap 参数。</p>
 <p>当前只验证并支持 TP=1、PP=1；routed experts 的 layout 同时声明 DP shard、EFSDP 和
 EP，以兼容当前 EP=8/EP=1 的 storage mesh。</p>
+<h2 id="hsdp-replica-dedup">HSDP replica dedup</h2>
+<p>HSDP 的 <code>dp_replicate</code> 轴保存相同的本地参数分片。开启 replica dedup 后，DistMuon 为每个
+参数 FQN 在该轴上选择一个确定的 owner；只有 owner 保留并更新该参数的 Muon momentum，随后将
+更新后的本地参数分片异步 broadcast 给同一 replica group 的其他坐标。该路径减少重复的
+storage-to-compute、Newton--Schulz 和参数更新计算，同时不改变模型参数的 storage layout。</p>
+<p>该功能仅作用于 <code>DistMuon</code>，默认关闭。使用 HSDP 且显式启用 Muon 时，在启动参数中增加：</p>
+<pre><code class="language-text">--optimizer.muon-enable-hsdp-replica-dedup
+</code></pre>
+<p>不使用 HSDP，或未启用该开关时，DistMuon 保持原有行为。DCP 保存和恢复沿用常规 checkpoint
+配置，无需增加 dedup 专用 checkpoint 参数。</p>
 <h2 id="swap">如何开启 swap</h2>
 <p>swap 是显式 opt-in override，不存在 <code>swap_optimizer=true</code> 配置字段。在同一条命令的
 <code>--override.imports</code> 末尾增加：</p>
