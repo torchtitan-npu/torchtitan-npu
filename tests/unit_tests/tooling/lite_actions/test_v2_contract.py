@@ -34,7 +34,7 @@ class V2Contract(unittest.TestCase):
                 env = {"CI_TEST_CASES": '[{"suite":"a3_8p_tests"}]',
                        "CI_PROTOCOL_VERSION": "2", "CI_MAX_SELECTORS": "2",
                        "CI_MAX_CASES": "4", "CI_PIPELINE": "a3-8p",
-                       "GITHUB_REPOSITORY": "depeng1994/torchtitan-npu",
+                       "GITHUB_REPOSITORY": "torchtitan-npu/torchtitan-npu",
                        "GITHUB_RUN_ID": "12345", "GITHUB_RUN_ATTEMPT": "1",
                        "GITHUB_SHA": "a"*40,
                        "GITHUB_OUTPUT": str(Path(td) / "gh-output.txt")}
@@ -61,7 +61,7 @@ class V2Contract(unittest.TestCase):
                                   {"test_id": "dsv4_flash_a3_8p_adamw"}], 4)
 
     def test_matrix_result_identity_and_failed_case_isolated(self):
-        ref={"schema":2,"repo":"depeng1994/torchtitan-npu",
+        ref={"schema":2,"repo":"torchtitan-npu/torchtitan-npu",
              "sha":"a"*40,"run_id":91,"attempt":1,"pipeline":"a3-8p",
              "test_id":"dsv4_flash_a3_8p_adamw","plan_digest":"b"*64,
              "status":"FAIL","exit_code":42,"last_20_lines":["OOM"]}
@@ -93,11 +93,14 @@ class V2Contract(unittest.TestCase):
     def test_workflow_is_untrusted_pr_closed_and_matrix_native(self):
         for file in ("a3-8p-lite-actions.yml", "a3-16p-lite-actions.yml"):
             data=(ROOT/".github/workflows"/file).read_text()
-            for expected in ("workflow_dispatch:", "refs/heads/master)",
+            for expected in ("workflow_dispatch:", "refs/heads/master|refs/heads/fix/lite-actions-pr-validation)",
                              "fromJSON(needs.prepare.outputs.matrix)", "fail-fast: false",
                              "CI_PROTOCOL_VERSION: \"2\"", "--test-id",
                              "actions/upload-artifact@v4"):
                 self.assertIn(expected,data)
+            self.assertIn("torchtitan-npu/torchtitan-npu", data)
+            self.assertIn("CI_ALLOWED_ACTOR: depeng1994", data)
+            self.assertNotIn("pull_request:", data)
             self.assertNotIn("runs-on: self-hosted",data)
 
     def test_a5_workflow_is_validly_disabled_without_nonstandard_concurrency_keys(self):
