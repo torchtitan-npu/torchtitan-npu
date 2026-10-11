@@ -1,0 +1,25 @@
+name: Dispatcher-Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a3-2p-ci
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  ci:
+    if: github.actor == 'depeng1994' && github.repository == 'depeng1994/torchtitan-npu' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for dispatcher-only npu-smi probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_WAIT_TIMEOUT_SECONDS: "1000"
+        run: python3 .github/scripts/lite_actions/wait_result.py --case a3-smoke
