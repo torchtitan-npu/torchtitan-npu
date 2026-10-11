@@ -35,7 +35,7 @@ jobs:
           CI_CHANNEL_ENABLED: "false"
         run: |
           test "$CI_REQUEST_ACTOR" = "$CI_ALLOWED_ACTOR" || exit 1
-          test "$CI_REQUEST_REPOSITORY" = "depeng1994/torchtitan-npu" || exit 1
+          test "$CI_REQUEST_REPOSITORY" = "torchtitan-npu/torchtitan-npu" || exit 1
           case "$CI_REQUEST_REF" in
             refs/heads/master) ;;
             *) echo "CI branch not allowed" >&2; exit 1 ;;
