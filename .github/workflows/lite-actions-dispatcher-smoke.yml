@@ -15,11 +15,12 @@ jobs:
   ci:
     if: github.actor == 'depeng1994' && github.repository == 'torchtitan-npu/torchtitan-npu' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Global Phase 1 serialization can queue this smoke behind full multi-case suites.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Wait for dispatcher-only npu-smi probe
         env:
           GH_TOKEN: ${{ github.token }}
-          CI_WAIT_TIMEOUT_SECONDS: "1000"
+          CI_WAIT_TIMEOUT_SECONDS: "4800"
         run: python3 .github/scripts/lite_actions/wait_result.py --case a3-smoke
