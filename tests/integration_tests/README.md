@@ -1,163 +1,218 @@
-# 集成测试基础设施
+# TorchTitan-NPU 集成测试指南
 
-本目录遵循 Torchtitan 的 `tests/integration_tests` 布局，负责维护集成测试定义、测试入口以及可选的 loss 精确比较。基础架构代码由
-torchtitan 迁移而来。
+本目录维护 TorchTitan-NPU 的集成测试（Integration Tests）定义、执行入口与校验逻辑。
 
-当前注册 DeepSeek-V4 与 DeepSeek-V3.2 模型的集成用例。
+集成测试分为两种运行模式：
+* **本地单机集成测试**：在本地开发或测试机上直接运行，使用本仓内置的集成测试 Runner；
+* **云端 Nightly CI 集群测试**：通过 GitHub Actions 触发，由内网 Lite Actions 调度机在 A3 / A5 真实集群上排队执行。
 
-## 测试矩阵
+---
 
-| Case 名称 | 模型 | 并行配置 | Rank 数 | 编译配置 | Check Loss | 不检查 Loss 原因 |
-|---|---|---|---|---:|---|---|
-| `dsv4_anticipatory_recovery` | DeepSeek-V4 | 1 Rank、原生 checkpoint 回滚 | 1 | - | 否 | 测试入口一次性扰动真实训练 loss，断言 override 和完整恢复周期 |
-| `dsv4_golden_1rank` | DeepSeek-V4 | 1 Rank 参考配置 | 1 | - | 是 | - |
-| `dsv4_golden_ep2_fsdp2` | DeepSeek-V4 | EP2 + FSDP2 | 2 | - | 是 | - |
-| `dsv4_muon_swap_ep2_fsdp2` | DeepSeek-V4 | NPU 融合算子 + DistMuon/AdamW NovaSwap、EP2 + FSDP2、2 steps | 2 | - | 否 | 两步训练 smoke；未生成 swap 数值 golden，也未单独断言 swap action |
-| `dsv4_lora_ep2_fsdp2` | DeepSeek-V4 LoRA | EP2 + FSDP2，固定基座，训练 LoRA A/B，2 steps | 2 | - | 否 | 检查冻结参数与 routing bias 不变、adapter 更新及最终 PEFT 导出；不做中间保存或恢复 |
-| `dsv4_checkpoint_resume_ep2_fsdp2` | DeepSeek-V4 | Golden recipe + AdamW NovaSwap、EP2 + FSDP2，step 2 恢复到 step 4 | 2 | - | 否，动态精确比较 loss/grad_norm | 与本次连续训练的 step 3、4 精确比较；不读取仓内 golden loss |
-| `dsv4_smla_1rank_aot_eager` | DeepSeek-V4 | 1 Rank | 1 | `aot_eager` | 否 | SMLA 暂不支持 `--debug.deterministic` |
-| `dsv4_smla_ep2_fsdp2` | DeepSeek-V4 | EP2 + FSDP2 | 2 | `aot_eager` | 否 | SMLA 暂不支持 `--debug.deterministic` |
-| `dsv4_smla_cp2_ep2_fsdp2` | DeepSeek-V4 | CP2 + EP2 + FSDP2 | 4 | `aot_eager` | 否 | SMLA 暂不支持 `--debug.deterministic` |
-| `dsv4_mtp_smla_cp2_headtail` | DeepSeek-V4 MTP | CP2 + headtail | 2 | - | 否 | SMLA 暂不支持 `--debug.deterministic` |
-| `dsv3_2_dsa_1rank` | DeepSeek-V3.2 | 1 Rank，DSA | 1 | - | 是 | - |
-| `dsv3_2_dsa_ep2_fsdp2` | DeepSeek-V3.2 | DSA + EP2/FSDP2 | 2 | - | 是 | - |
-| `dsv3_2_dsa_cp2` | DeepSeek-V3.2 | DSA + CP2 | 2 | - | 否 | ST 仅验证训练触发；CPU metadata oracle 单独覆盖，暂未生成 CP2 golden loss |
-| `dsv4_ema_ep2_fsdp2` | DeepSeek-V4 | Golden + EP2/FSDP2 + EMA CPU offload | 2 | - | 否 | 校验完整 DCP metadata 包含 `ema_optimizer.*` |
+## 1. 现有测试用例全景矩阵
 
-`use_golden` 与 `check_loss` 是两个独立维度：`use_golden` 仅决定使用 Golden 参考算子
-还是 SMLA/NPU override；`check_loss` 决定是否启用 deterministic、读取参考 loss 并执行
-精确数值比较。
+### 1.1 本地单机集成测试 Suite
 
-当前两个 Golden case（均为 V4）设置 `check_loss=True`，使用固定随机种子和 deterministic 模式，
-比较 TensorBoard 标量 `loss_metrics/global_avg_loss`，要求 step 集合和每个浮点值均精确相等。
-DeepSeek-V4.1 的常规训练验证使用 [A3/A5 示例入口](../../examples/deepseek_v4_1/readme.md)。Engram HF 验证使用下述独立 suite，不在默认 `models` 或 CI smoke 中执行。
+| Suite 名称 | 覆盖模型 / 场景 | 主要特性与说明 | 运行命令示例 |
+| :--- | :--- | :--- | :--- |
+| **`models`** | DeepSeek-V4、DeepSeek-V3.2 | 多卡基础训练冒烟与 Loss 对齐校验 | `--test_suite models` |
+| **`deepseek_v4_checkpoint`** | DeepSeek-V4 分布式续训 | 校验 DCP 状态、两阶段训练与续训 Loss 精确比对 | `--test_suite deepseek_v4_checkpoint` |
+| **`deepseek_v4_quantized`** | DeepSeek-V4 Block-FP8 | 量化冻结基座 + 浮点 Adapter 训练（需 Ascend 950） | `--test_suite deepseek_v4_quantized` |
+| **`deepseek_v4_1_engram_hf`** | DeepSeek-V4.1 Engram | Engram MXFP8 专项校验与 DCP/HF 权重回环测试 | `--test_suite deepseek_v4_1_engram_hf` |
 
-两个 DeepSeek-V3.2 case 同样设置 `check_loss=True`，使用 RoPE workaround、Ascend DSA
-metadata/attention override，并分别对 1-rank 和 EP2/FSDP2 的 100-step loss 做精确比较。
+#### 本地核心用例矩阵清单
 
-`dsv4_checkpoint_resume_ep2_fsdp2` 覆盖 AdamW NovaSwap 的 checkpoint 保存、恢复和精度对齐，已注册到
-独立的 `deepseek_v4_checkpoint` suite，不在默认 `models` suite 中执行。它使用两卡 EP2 + FSDP2、Golden recipe、`swap_optimizer` override 和
-`--optimizer.name=AdamW`，设置 `use_golden=True` 与 `check_resume=True`，
-固定 seed=42 并开启 deterministic。第一阶段连续训练 4 步，保留 step 2 的完整 checkpoint；
-第二阶段在新进程中通过 `--checkpoint.load-step=2` 恢复，再训练第 3、4 步。
-两阶段均设置 `--training.steps=4`，确保学习率调度一致，共用 checkpoint 目录，
-分别写入 `tb_phase_0` 和 `tb_phase_1`。检查 TensorBoard 的
-`loss_metrics/global_avg_loss` 和 `grad_norm`：步骤集合必须分别为 `(1, 2, 3, 4)` 和 `(3, 4)`，
-续训两步的两个标量必须与连续训练逐值精确相等，不舍入、不使用容差；缺失、重复步骤或
-非有限值均失败。本次连续训练是动态基准，不读取或更新仓内 golden loss 文件。
+| Case 名称 | 对应模型 | 并行配置 | 卡数 (ngpu) | Check Loss | 说明 |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| `dsv4_golden_1rank` | DeepSeek-V4 | 1 Rank 参考配置 | 1 | 是 | 校验 Deterministic 数值 loss |
+| `dsv4_golden_ep2_fsdp2` | DeepSeek-V4 | EP2 + FSDP2 | 2 | 是 | 校验分布式数值 loss |
+| `dsv4_muon_swap_ep2_fsdp2` | DeepSeek-V4 | DistMuon + NovaSwap | 2 | 否 | NPU 融合算子与 Swap 冒烟 |
+| `dsv4_lora_ep2_fsdp2` | DeepSeek-V4 LoRA | EP2 + FSDP2 | 2 | 否 | 验证基座冻结与 PEFT 导出 |
+| `dsv4_checkpoint_resume_ep2_fsdp2` | DeepSeek-V4 | EP2 + FSDP2 | 2 | 动态比对 | Step 2 恢复到 Step 4 精确比对 |
+| `dsv4_smla_ep2_fsdp2` | DeepSeek-V4 SMLA | EP2 + FSDP2 | 2 | 否 | SMLA 算子图构建与执行冒烟 |
+| `dsv3_2_dsa_ep2_fsdp2` | DeepSeek-V3.2 | DSA + EP2/FSDP2 | 2 | 是 | DSA 算子 100-step loss 比较 |
 
-单独执行此用例：
+---
 
-```bash
-python -m tests.integration_tests.run_tests /tmp/checkpoint_resume_output \
-  --test_suite deepseek_v4_checkpoint --test_name dsv4_checkpoint_resume_ep2_fsdp2 --ngpu 2
-```
+### 1.2 Nightly CI 集群用例 Suite（真实 NPU 集群看护）
 
-`dsv4_lora_ep2_fsdp2` 在实际模型并行化后冻结基座、训练 LoRA A/B。
-连续训练 2 步，检查冻结参数与 routing bias 不变、可训练 adapter 更新。
-最后一步通过实际 checkpointer 导出 PEFT，检查 adapter 文件的 key、shape、数值和配置中的 rank、alpha、target。
-该用例不做中间 checkpoint 保存或恢复。冻结 LoRA A、仅训练 B 的差异由 CPU 单元测试覆盖。
+Nightly CI 用例专为真实物理集群设计，由内网调度系统拉取并执行：
 
-四个 SMLA case 都设置 `check_loss=False`，因此不会启用 `--debug.deterministic`，也不会
-读取 golden loss。它们用于覆盖 SMLA/NPU override 在单卡、EP+FSDP、CP+EP+FSDP 以及
-MTP+CP 场景下的实际构图、编译和训练执行路径；单卡、EP2 和 CP2+EP2 场景均使用
-`aot_eager`，并默认覆盖 fused MoE token dispatcher。MTP+CP 用例固定使用
-`deepseek_v4_debugmodel`、CP2 和 headtail，在 C4 packed sequence 上执行完整的
-MTP forward、chunked loss 和 backward。
+| Suite 名称 | Case ID | 硬件规格 | 优化器与训练配置 | 验证指标 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`a3_8p_tests`** | `dsv4_flash_a3_8p_example` | A3 单机 8P | Muon，Eager，5 steps | Exit Code 0、TensorBoard 步数 |
+| **`a3_8p_tests`** | `dsv4_flash_a3_8p_adamw` | A3 单机 8P | AdamW + Virtual Optimizer，4K seq，5 steps | Exit Code 0、TensorBoard 步数 |
+| **`a3_16p_tests`** | `dsv4_flash_a3_16p_example` | A3 双机 16P | AdamW，EP16，Eager，双机各 8P，5 steps | Exit Code 0、双机通信与步数 |
+| **`a5_64p_tests`** | `dsv4_pro_a5_64p` | A5 八机 64P | DeepSeek-V4 Pro，八机各 8P | 待硬件环境验收后开放 |
 
-`dsv4_muon_swap_ep2_fsdp2` 保留 NPU 融合算子 recipe：Ascend RMSNorm、complex RoPE、sparse
-attention、MHC 和 MoE token dispatcher；两卡 EP2/FSDP2，显式选择 `--optimizer.name=Muon`
-并启用 `swap_optimizer` override。它运行两步，覆盖 DistMuon momentum state 与其 AdamW fallback
-state 的 NovaSwap 路径。该 case 同样只检查训练完成，不读取 golden loss，也不声称数值等价。
+---
 
-这里的 integration recipe 聚焦 sparse-attention / MHC 回归边界。端到端 example 脚本
-额外启用 Virtual Optimizer；checkpoint 保存兼容由 extension `CheckpointManager` 提供。
-这些 optimizer state/checkpoint 路径不属于当前 integration loss regression 的覆盖范围。
+## 2. 如何运行已有测试
 
-## 入口
+### 2.1 本地直接运行单机用例
 
-CI 通过以下脚本启动本目录的 integration ST：
+在具备 NPU 环境的开发机上执行：
 
 ```bash
-.ci/integration_test.sh
-```
-
-`.ci/smoke_test.sh` 只负责 `tests/smoke_tests` 的 smoke 阶段，不再触发本目录的 ST。
-两个入口都先 source `.ci/common.sh`，由它完成 CANN 环境、解释器 shim 和 torchtitan
-checkout 准备。
-
-或直接运行 Python 入口：
-
-
-```bash
-python -m tests.integration_tests.run_tests \
-  ./test_reports/integration \
+# 运行指定 suite（如 models）
+python -m tests.integration_tests.run_tests ./test_reports/integration \
   --test_suite models \
   --ngpu 4
+
+# 仅运行某一个特定用例
+python -m tests.integration_tests.run_tests ./test_reports/checkpoint \
+  --test_suite deepseek_v4_checkpoint \
+  --test_name dsv4_checkpoint_resume_ep2_fsdp2 \
+  --ngpu 2
 ```
-其中`./test_reports/integration` 是必填的测试输出目录，运行前需要确保该目录为空。
 
-直接运行上述 Python 命令仅执行 integration tests。`--test_suite models` 与 CI 的集成测试配置保持一致，覆盖 DeepSeek-V4 和 DeepSeek-V3.2。完整 CI 流程还会在此之前执行 `tests/smoke_tests`。
+> **参数说明**：
+> - `./test_reports/...` 为必填输出目录，运行前请确保为空；
+> - `--ngpu` 指定使用的卡数；如需串行运行可追加 `--no-parallel`。
 
-## 并行调度
+---
 
-runner 迁移自 torchtitan 的 GPUPool 机制：默认将用例并发打包到固定的 NPU 池上，
-每个用例通过 `ASCEND_RT_VISIBLE_DEVICES` 绑定到互不相交的物理 NPU 子集，
-任一时刻在用 NPU 数量不超过设备池大小。设备池从真实可见性构造：若运行环境已通过
-`ASCEND_RT_VISIBLE_DEVICES` 限定可用 NPU 子集（如 CI 按任务分配设备），池从该
-子集构造并对超出的 `--ngpu` 硬报错；否则用 `torch.npu.device_count()` 枚举运行时
-实际暴露的物理 ID，`--ngpu` 超出实际设备数时告警并截断——绝不按 `range(--ngpu)`
-伪造 ID（不存在的 ID 会让子进程在 CANN `GetVisibleDevices` 阶段即失败，torchtitan
-设备探测退回 "cuda" 后以 `torch._C._cuda_setDevice` AttributeError 崩溃）。池小于
-某用例需求时该用例被显式 skip 而非在 `acquire()` 中死锁。用例按 `ngpu` 从大到小
-提交以减少队头阻塞；并行结束后 runner 会输出两行调度遥测：池利用率
-（`[parallel] pool: window/utilization/busy histogram/allocations`）与
-用例重叠（`[parallel] overlap: sequential vs window、节省时长、并发度直方图`），
-统计窗口均为首次分配到最后一次释放，可直接用于核验 CI canary 的打包与重叠效果。
-各用例的输出被整体缓存，结束后以带 `[case 名]` 前缀的连续块输出，避免多用例
-日志交错。如需强制串行执行，传入 `--no-parallel`。用例可通过
-`OverrideDefinitions.timeout` 设置超时；超时后 runner 会向子进程所在进程组先发
-`SIGTERM`、宽限期后再发 `SIGKILL`，确保 `torchrun` 及各 rank 子进程全部退出，不会
-留下占用 NPU 的孤儿进程（超时按失败处理并输出已捕获日志）。
+### 2.2 触发云端 Nightly CI 测试
 
-- 同一台机器上并发运行两个 2 卡 case 时必须为每个 run 设置不同的
-  `HCCL_NPU_SOCKET_PORT_RANGE`（例如 `62000-62020`）；否则后启动的 run 会在 HCCL
-  建链时报 `Communication_Error_Bind_IP_Port`（一次并发验证即在同一端口上冲突）。
+可以通过两种方式触发在真实集群上的 CI 测试：
 
-调度器本身不设独立单元测试：其正确性（设备不重叠、失败/超时释放、并发打包、
-golden loss 等价）由集成测试自身的 canary 运行直接验证。
+#### 方式一：GitHub Actions 网页触发
+1. 打开仓库的 [Actions 页面](https://github.com/torchtitan-npu/torchtitan-npu/actions)；
+2. 在左侧列表中选择目标 Workflow（如 `A3-8p-CI-Example` 或 `A3-16p-CI-Example`）；
+3. 点击右侧 **Run workflow** 下拉框，选择分支并点击运行。
 
-### LoRA training and resume
-
-The default `models` suite includes `dsv4_lora_ep2_fsdp2` for training and PEFT export. The distributed DCP resume case, `dsv4_lora_resume_ep2_fsdp2`, runs separately in `deepseek_v4_checkpoint` (two NPUs each). The resume case compares optimizer state exactly before the first resumed update and checks resumed loss/gradient norm. The block-FP8 case requires `torchao==0.17.0` and the optional `experiments/torchao-npu` package (install with `pip install ./experiments/torchao-npu` from the repository root); it runs real forward/backward/optimizer updates with a quantized frozen base and trainable floating-point adapters. Quantization unit tests follow the repository convention and skip when the optional package is unavailable; explicitly running this NPU case requires the package.
-
-On Ascend 950 devices with the CANN 9.2.0 release runtime (2026-09-09 packages) and block-FP8 support, run the registered quantized case through the same runner:
+#### 方式二：命令行触发 (`gh CLI`)
 
 ```bash
-python -m tests.integration_tests.run_tests ./test_reports/lora-fp8 \
-  --test_suite deepseek_v4_quantized --test_name dsv4_lora_block_fp8_ep2_fsdp2 --ngpu 2
+# 执行 A3 8P Suite 下的全部用例（自动拆分为独立 Matrix Job）
+gh workflow run a3-8p-lite-actions.yml -R torchtitan-npu/torchtitan-npu --ref ci/lite-actions-validation \
+  -f 'test_cases=[{"suite":"a3_8p_tests"}]'
+
+# 仅执行特定的 16P 用例
+gh workflow run a3-16p-lite-actions.yml -R torchtitan-npu/torchtitan-npu --ref ci/lite-actions-validation \
+  -f 'test_cases=[{"test_id":"dsv4_flash_a3_16p_example"}]'
 ```
 
-The A3 CI `models` suite runs floating-point LoRA training and PEFT export. Distributed DCP resume stays in the dedicated checkpoint suite because the A3 CI runtime fails to load `libscatter_aicpu_kernel.so` during checkpoint planning. Run resume on a runtime that supports this distributed checkpoint path:
+---
+
+## 3. 如何新增一个 Nightly 集成用例（开发者实操）
+
+向 Nightly CI 系统添加新用例非常简单，**只需在模型仓修改 Python 代码，无需改动调度机配置**。
+
+### 步骤一：找到用例定义文件
+
+Nightly 用例统一存放于：
+`tests/integration_tests/nightly_all_models_test/`
+
+根据用例的卡数规格，选择对应文件编辑（或新建 `*_tests.py` 文件，由动态发现机制加载）：
+- 单机 8P 用例：`a3_8p_tests.py`
+- 双机 16P 用例：`a3_16p_tests.py`
+- 八机 64P 用例：`a5_64p_tests.py`
+
+---
+
+### 步骤二：编写 `OverrideDefinitions`
+
+每个用例都是一个 `OverrideDefinitions` 对象。核心字段说明如下：
+
+| 字段名称 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| **`test_name`** | `str` | 用例唯一标识（不可重复，用于 GitHub Matrix 调度命名与结果报告） |
+| **`nnodes`** | `int` | 所需节点数（单机写 `1`，双机写 `2`） |
+| **`ngpu`** | `int` | 单节点卡数（通常为 `8`） |
+| **`override_args`** | `dict` | 传给训练脚本的命令行参数（覆盖默认 toml 配置） |
+| **`env_vars`** | `dict` | 运行时环境变量（CANN 脚本路径、模型权重路径、优化器覆盖等） |
+| **`expected_steps`** | `int` | 预期训练步数（用于 TensorBoard 与日志断言） |
+
+---
+
+### 步骤三：代码编写模板
+
+打开对应的 `tests/integration_tests/nightly_all_models_test/a3_8p_tests.py`，在 `build_test_list()` 中添加新的用例定义：
+
+```python
+from torchtitan_npu.testing.framework import OverrideDefinitions
+
+def build_test_list():
+    tests = [
+        # 现有用例...
+
+        # 新增用例示例：
+        OverrideDefinitions(
+            test_name="dsv4_flash_a3_8p_my_feature",
+            nnodes=1,
+            ngpu=8,
+            override_args={
+                # 训练配置文件与步数
+                "--job.config_file": "torchtitan_npu/models/deepseek_v4/train_configs/dsv4_flash_8p.toml",
+                "--training.steps": "5",
+                # 如有需要可覆写模型或并行参数
+                "--training.batch_size": "1",
+            },
+            env_vars={
+                # 必填：执行机上的 CANN 环境配置脚本
+                "ASCEND_SET_ENV_PATH": "/mnt/share/Ascend/ascend-toolkit/latest/set_env.sh",
+                # 必填：Tokenizer 与模型资产路径
+                "HF_ASSETS_PATH": "/mnt/share/models/DeepSeek-V4-Flash-bf16",
+                # 必填：权重 Checkpoint 路径
+                "CKPT_INIT_LOAD_PATH": "/mnt/share/dsv4_ckpt_8rank",
+                # 可选：如果使用 Virtual Optimizer 优化 AdamW 显存占用
+                "OPTIMIZER_OVERRIDES": "torchtitan_npu.override.common.optimizer.virtual",
+                # 可选：设置共享 Hugging Face 缓存，防止 Docker 满盘
+                "HF_HOME": "/mnt/share/ci_tests/.lite-actions-hf-cache",
+            },
+            expected_steps=5,
+        ),
+    ]
+    return tests
+```
+
+---
+
+### 步骤四：本地静态语法与解析自测（无需 NPU）
+
+在提交代码前，可以在普通的 CPU / 开发机环境下执行 `inspect` 子命令，验证用例语法与参数是否合法：
 
 ```bash
-python -m tests.integration_tests.run_tests ./test_reports/lora-resume \
-  --test_suite deepseek_v4_checkpoint --test_name dsv4_lora_resume_ep2_fsdp2 --ngpu 2
+# 验证 8P suite 能够正确解析并包含你的新增用例
+python3 -m tests.integration_tests.tools.lite_actions.entrypoint inspect --suite a3_8p_tests
 ```
 
-The quantized suite requires the block-FP8 hardware/runtime.
+输出将以 JSON 格式打印出所有用例的 `test_id`、`nnodes`、`ngpu` 及环境变量。确认你的 `test_name` 正确显示且无 Python 报错即可。
 
-## Engram HF 专项验证（手动）
+---
 
-在支持 Engram MXFP8 Host 通信的超节点上激活 CANN、torch extension 和训练环境，准备 V4.1 tokenizer assets 后执行：
+### 步骤五：提交 PR 并在 GitHub 触发运行
 
-```bash
-HF_ASSETS_PATH=/path/to/v41-tokenizer \
-ASCEND_RT_VISIBLE_DEVICES=0,1,2,3 \
-python -m tests.integration_tests.run_tests /tmp/engram-hf-output \
-  --test_suite deepseek_v4_1_engram_hf --ngpu 4 --no-parallel
-```
+将代码推送到组织仓的 `ci/*` 验证分支，创建目标为 `master` 的 PR；在 PR 阶段使用 `gh workflow run --ref ci/<分支名>` 手动验证，完成回归后再合并。不要以个人仓 Actions 作为验收入口。
 
-输出目录使用新目录。该用例为 V4.1 debug text、四卡 EP4/FSDP4、eager、seq512、GBS4，启用 Engram MXFP8 override，关闭普通模型 FP8 和 optimizer CPU offload。使用仓内 C4 数据及自动生成的微型 HF fixture，不需要正式模型权重。
+---
 
-先训练两步并保存同一模型的原生 DCP 和 FP32 HF 权重，再各自通过真实 CheckpointManager 初始化模型，使用相同的新优化器和数据种子训练三步。每个 rank 校验加载后的 Engram 参数及 MXFP8 缓存/scale 有效行字节，随后对比 TensorBoard loss/grad_norm。失败会使测试返回非零，成功输出 `HF_ROUNDTRIP PASS`。不读取固定 golden，不验证优化器状态续训，也不覆盖正式整包非 Engram 量化权重的导入。
+### 2.3 在组织仓 PR 中调试 CI
+
+正式 Actions 仅部署于 [TorchTitan-NPU 组织仓](https://github.com/torchtitan-npu/torchtitan-npu)。个人 fork 的 Actions 已禁用，模型侧的 `prepare_request.py` 和 `wait_result.py` 对仓库身份实施组织仓白名单校验，其他仓库无法产生受信任的训练请求。
+
+调试时在组织仓建立 `ci/*` 分支并创建到 `master` 的 PR，在该分支使用 `workflow_dispatch` 触发。触发身份由 GitHub 的组织仓写入权限控制；调度机必须独立配置精确分支白名单（例如 `A3_CI_ALLOWED_BRANCHES=ci/lite-actions-validation`）。GitHub Waiter 还要求结果评论的作者与本次 Workflow 触发者一致，以防伪造 PASS。
+
+**验收原则：** PR 合并前分别确认 Matrix Prepare、Dispatcher 派单、NPU 真实训练、退出码、TensorBoard、资源释放与 GitHub 结果；A5 64P 在正式开放前只验证预期的禁用准入行为。不要用历史 Run 代替当前 PR SHA 的训练通过证明。
+
+---
+
+
+## 4. 测试断言与排障说明
+
+### 4.1 成功判定条件
+CI 判定用例 PASS 必须同时满足：
+1. 训练主进程 Exit Code 为 0；
+2. 实际完成步数达到 `expected_steps`；
+3. TensorBoard 正确记录且无 NaN / Inf 异常；
+4. 训练结束后 NPU 物理资源成功释放。
+
+### 4.2 常见错误与排查建议
+* **`ASCEND_SET_ENV_PATH` 或权重路径找不到**：
+  检查 `env_vars` 中的路径是否在所有执行机（如 `/mnt/share/...` 挂载点）均真实存在。
+* **显存 OOM**：
+  若在反向传播或优化器更新时 OOM，确认是否需要开启 `OPTIMIZER_OVERRIDES`（如 `virtual` 模式）。
+* **多机通信超时 (HCCL Timeout)**：
+  确认两台机器的通信小网 IP 是否连通，以及 CANN 环境变量是否完整。
+* **物理机器或调度故障**：
+  若任务一直排队未执行或出现网络异常，请联系集群运维或查阅 Lite Actions 调度系统运维文档。
