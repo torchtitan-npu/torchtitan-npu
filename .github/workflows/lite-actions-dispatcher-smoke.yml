@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   ci:
-    if: github.actor == 'depeng1994' && github.repository == 'depeng1994/torchtitan-npu' && github.ref == 'refs/heads/master'
+    if: github.actor == 'depeng1994' && github.repository == 'torchtitan-npu/torchtitan-npu' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

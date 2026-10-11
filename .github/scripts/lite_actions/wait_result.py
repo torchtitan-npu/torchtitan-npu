@@ -10,7 +10,7 @@ import time
 import urllib.parse
 import urllib.request
 
-REPO = "depeng1994/torchtitan-npu"
+REPO = "torchtitan-npu/torchtitan-npu"
 PIPELINES = {
     "a3-smoke": ("Dispatcher-Smoke", "npu-smi"),
     "a3-8p": ("A3-8p-CI-Example", "a3-8p"),
