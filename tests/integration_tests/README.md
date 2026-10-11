@@ -104,6 +104,8 @@ state 的 NovaSwap 路径。该 case 同样只检查训练完成，不读取 gol
 
 ## Nightly All Models（A3 / A5 CI 用例）
 
+**组织仓 PR 验证（PR #5）**：在 `torchtitan-npu/torchtitan-npu` 的特定可信分支 `fix/lite-actions-pr-validation` 使用 `workflow_dispatch --ref`，无需合并到 master。Lite Dispatcher 在调试期间须同时设置 `A3_CI_REPOSITORY=torchtitan-npu/torchtitan-npu` 及 `A3_CI_ALLOWED_BRANCHES=fix/lite-actions-pr-validation`；结束验证后恢复默认生产分支白名单。训练由请求绑定的不可变 commit SHA 决定，后续 PR 文档/单测变更不改变历史 Run 训练源码。A5 64P 当前只验收 disabled admission，拒绝执行为预期结果。旧个人 fork 的历史 PASS Run 仍保留为独立证据，不应混写成组织仓 Run。
+
 GitHub 的正式 `*-lite-actions.yml` Workflow 配合独立的 [lite-actions](https://github.com/depeng1994/lite-actions) 调度仓；每条模型测试由本仓的 `tests/integration_tests/nightly_all_models_test/` 中的 `OverrideDefinitions/build_test_list()` 定义，入口固定为 `tests.integration_tests.tools.lite_actions.entrypoint`。无需 `ci_registry.json`、为单个模型新增调度分支或复制 Workflow。
 
 | Suite / 测试用例 | 训练内容 | 当前验收状态 |
@@ -116,12 +118,12 @@ GitHub 的正式 `*-lite-actions.yml` Workflow 配合独立的 [lite-actions](ht
 `workflow_dispatch.inputs.test_cases` 只支持真实 test ID 或可信 suite；不接受自定义 Python 路径、CLI、`STEPS` 或 `params`：
 
 ```bash
-# 一次性依次执行 Muon、AdamW 两条 8P case
-gh workflow run a3-8p-lite-actions.yml -R depeng1994/torchtitan-npu --ref master \
+# PR 分支上依次执行 Muon、AdamW 两条 8P case
+gh workflow run a3-8p-lite-actions.yml -R torchtitan-npu/torchtitan-npu --ref fix/lite-actions-pr-validation \
   -f 'test_cases=[{"suite":"a3_8p_tests"}]'
 
-# 仅执行一个 16P case
-gh workflow run a3-16p-lite-actions.yml -R depeng1994/torchtitan-npu --ref master \
+# PR 分支仅执行一个 16P case
+gh workflow run a3-16p-lite-actions.yml -R torchtitan-npu/torchtitan-npu --ref fix/lite-actions-pr-validation \
   -f 'test_cases=[{"test_id":"dsv4_flash_a3_16p_example"}]'
 ```
 
