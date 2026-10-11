@@ -13,7 +13,7 @@ import re
 
 TEST = re.compile(r"[a-z][a-z0-9_]{0,79}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
-REPO = "depeng1994/torchtitan-npu"
+REPO = "torchtitan-npu/torchtitan-npu"
 PIPELINES = {"a3-8p", "a3-16p", "a5-64p"}
 
 
