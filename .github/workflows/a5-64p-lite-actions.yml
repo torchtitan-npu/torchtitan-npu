@@ -37,7 +37,7 @@ jobs:
           test "$CI_REQUEST_ACTOR" = "$CI_ALLOWED_ACTOR" || exit 1
           test "$CI_REQUEST_REPOSITORY" = "torchtitan-npu/torchtitan-npu" || exit 1
           case "$CI_REQUEST_REF" in
-            refs/heads/master) ;;
+            refs/heads/master|refs/heads/fix/lite-actions-pr-validation) ;;
             *) echo "CI branch not allowed" >&2; exit 1 ;;
           esac
           test "$CI_CHANNEL_ENABLED" = true || { echo "CI channel disabled" >&2; exit 1; }
