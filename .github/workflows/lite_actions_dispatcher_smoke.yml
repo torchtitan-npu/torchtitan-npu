@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: Dispatcher-Smoke
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/lite_actions_common.yml
+    with:
+      pipeline: dispatcher-smoke
+      wait_seconds: 4800

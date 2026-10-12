@@ -1,0 +1,29 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: A3-16p-CI-Example
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      test_cases:
+        description: JSON list of test_id or suite selectors
+        type: string
+        required: true
+        default: '[{"suite":"a3_16p_tests"}]'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/lite_actions_common.yml
+    with:
+      pipeline: a3-16p
+      default_cases: '[{"suite":"a3_16p_tests"}]'
+      test_cases: ${{ inputs.test_cases }}

@@ -1,0 +1,102 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+name: Lite Actions Common
+
+on:
+  workflow_call:
+    inputs:
+      pipeline:
+        required: true
+        type: string
+      default_cases:
+        type: string
+        default: ""
+      test_cases:
+        type: string
+        default: ""
+      wait_seconds:
+        type: number
+        default: 16800
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    # Only the organization may dispatch real training. PRs target master.
+    if: >-
+      inputs.pipeline != 'dispatcher-smoke' &&
+      github.repository == 'torchtitan-npu/torchtitan-npu' &&
+      ((github.event_name == 'pull_request' && github.base_ref == 'master') ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/master' ||
+         startsWith(github.ref, 'refs/heads/ci/'))))
+    name: Prepare trusted CI Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      plan_digest: ${{ steps.plan.outputs.plan_digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and expand trusted test plan
+        id: plan
+        env:
+          CI_TEST_CASES: ${{ github.event_name == 'pull_request' && inputs.default_cases || inputs.test_cases }}
+          CI_SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_PIPELINE: ${{ inputs.pipeline }}
+        run: PYTHONPATH="$PWD" python3 .github/scripts/lite_actions/prepare_request.py
+      - name: Upload immutable CI request
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-ci-request-${{ github.run_attempt }}
+          path: .ci-request/ci-request.json
+          retention-days: 1
+          if-no-files-found: error
+
+  case:
+    needs: prepare
+    # Smoke skips prepare; never expand a missing Matrix in that mode.
+    if: needs.prepare.result == 'success'
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for internal training Case
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_RESULT_AUTHOR: ${{ vars.LITE_CI_RESULT_ACTOR }}
+          CI_PLAN_DIGEST: ${{ needs.prepare.outputs.plan_digest }}
+          CI_WAIT_TIMEOUT_SECONDS: ${{ inputs.wait_seconds }}
+          CI_PIPELINE: ${{ inputs.pipeline }}
+        run: python3 .github/scripts/lite_actions/wait_result.py --case "$CI_PIPELINE" --test-id "${{ matrix.test_id }}"
+
+  smoke:
+    if: >-
+      inputs.pipeline == 'dispatcher-smoke' &&
+      github.repository == 'torchtitan-npu/torchtitan-npu' &&
+      ((github.event_name == 'pull_request' && github.base_ref == 'master') ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/master' ||
+         startsWith(github.ref, 'refs/heads/ci/'))))
+    name: Wait for dispatcher-only npu-smi probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for dispatcher-only npu-smi probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_RESULT_AUTHOR: ${{ vars.LITE_CI_RESULT_ACTOR }}
+          CI_WAIT_TIMEOUT_SECONDS: ${{ inputs.wait_seconds }}
+        run: python3 .github/scripts/lite_actions/wait_result.py --case dispatcher-smoke
