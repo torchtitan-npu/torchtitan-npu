@@ -52,6 +52,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
                   </li>
               </ul>
@@ -418,7 +420,7 @@ config.loss = MTPChunkedLossWrapper.Config(
 </table>
 <p>DeepSeek-V4 默认 recipe 使用 <code>mtp_scale=0.3</code>。</p>
 <h3 id="33-mtp">3.3 关闭 MTP</h3>
-<p>关闭 MTP 时需要让模型构造保持 <code>num_mtp_layers=0</code>，并使用普通 loss。此时 <code>config.mtp_layers</code> 为空列表，运行时 <code>model.mtp_layers is None</code>；模型不创建 MTP 参数，训练只计算主 NTP loss。</p>
+<p>关闭 MTP 时需要让模型构造保持 <code>num_mtp_layers=0</code>，并使用普通 loss。此时 <code>config.mtp_layers</code> 为空列表，运行时 <code>model.mtp_layers is None</code>；模型不创建 MTP 参数，训练只计算主 MTP loss。</p>
               
             </div>
           </div><footer>

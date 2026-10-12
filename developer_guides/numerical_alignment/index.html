@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>精度对齐开发指南 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u7cbe\u5ea6\u5bf9\u9f50\u5f00\u53d1\u6307\u5357";
+        var mkdocs_page_input_path = "developer_guides/numerical_alignment.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">精度对齐开发指南</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">1. 核心原则</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">2. 基线与对齐目标</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#21">2.1 基线</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#22">2.2 对齐目标</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#_2">比特一致</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#_3">数值近似</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#_4">精度指标</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">3. 精度对齐流程</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#31-vs">3.1 推理基线 vs 小算子基线</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#32">3.2 改动局部精度对比</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#33-vs">3.3 小算子基线 vs 被测实现</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#34">3.4 修改前后训练精度对比</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4">4. 验证范围</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer guides</li>
+      <li class="breadcrumb-item active">精度对齐开发指南</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">精度对齐开发指南</h1>
+<p>本文档定义模型、算子、训练流程和并行策略变更时统一使用的精度对齐方法。</p>
+<h2 id="1">1. 核心原则</h2>
+<ul>
+<li>先明确对齐目标，再选择基线和指标。</li>
+<li>比较双方必须使用 <code>相同权重、输入、随机状态和运行模式</code>。</li>
+<li>基线必须说明来源和适用范围。</li>
+<li>先检查 <code>局部模块</code> 前向和反向，再检查 <code>模型整网</code> 单步前反向和多步训练。</li>
+</ul>
+<h2 id="2">2. 基线与对齐目标</h2>
+<h3 id="21">2.1 基线</h3>
+<table>
+<thead>
+<tr>
+<th>基线</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>推理基线</td>
+<td>官方发布的 HuggingFace 推理脚本或者 Transformers 推理库作为推理基线</td>
+</tr>
+<tr>
+<td>小算子基线(golden)</td>
+<td>仓内高精度小算子实现，为融合算子、模型组件或训练路径提供稳定参考</td>
+</tr>
+<tr>
+<td>修改前基线</td>
+<td>判断改动是否改变模型或训练行为，修改前后精度需要对齐</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22">2.2 对齐目标</h3>
+<h4 id="_2">比特一致</h4>
+<p>适用情况：模型重构、权重或 checkpoint 格式转换、metadata、layout 或 packed 等只改变存储形式的变更、其他明确要求的场景。</p>
+<h4 id="_3">数值近似</h4>
+<p>适用情况：不同算子实现、不同归约顺序、不同并行策略以及混合精度等之间的比较。</p>
+<h4 id="_4">精度指标</h4>
+<p>比较前先确认两组张量的 <code>shape</code> 相同、张量非空，且有效元素不包含 NaN 或 Inf。使用平均绝对误差（Mean Absolute Error，MEAN_AE）、最大相对误差（Max Relative Error，MAX_RE）、平均相对误差（Mean Relative Error，MEAN_RE）和余弦相似度（Cosine Similarity，COS）作为精度指标。</p>
+<p>MEAN_AE 提供稳定的绝对误差尺度，尤其适用于 <code>loss</code> 和 <code>grad_norm</code> 等标量；MEAN_RE 提供相对误差约束，COS 反映整体方向一致性。</p>
+<p>设参考张量为 $r$，被测张量为 $a$，两者均包含 $N$ 个元素。令 $\rho = 10^{-4}$ 表示相对误差下限，用于避免接近零的参考值放大逐元素相对误差；$\varepsilon$ 表示避免范数除零的浮点极小值。</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>计算公式</th>
+<th style="text-align: right;">比特一致阈值</th>
+<th style="text-align: right;"><code>logits</code> 数值近似阈值</th>
+<th style="text-align: right;"><code>loss</code> 数值近似阈值</th>
+<th style="text-align: right;"><code>grad_norm</code> 数值近似阈值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MEAN_AE</td>
+<td>$\displaystyle \frac{1}{N}\sum_{i=1}^{N}\lvert a_i-r_i \rvert$</td>
+<td style="text-align: right;"><code>0</code></td>
+<td style="text-align: right;"><code>&lt;= 0.02</code></td>
+<td style="text-align: right;"><code>&lt;= 0.02</code></td>
+<td style="text-align: right;"><code>&lt;= 0.02</code></td>
+</tr>
+<tr>
+<td>MAX_RE</td>
+<td>$\displaystyle \max_{1 \le i \le N}\frac{\lvert a_i-r_i \rvert}{\max(\lvert r_i \rvert,\rho)}$</td>
+<td style="text-align: right;"><code>0</code></td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;"><code>&lt;= 0.005</code></td>
+<td style="text-align: right;"><code>&lt;= 0.005</code></td>
+</tr>
+<tr>
+<td>MEAN_RE</td>
+<td>$\displaystyle \frac{1}{N}\sum_{i=1}^{N}\frac{\lvert a_i-r_i \rvert}{\max(\lvert r_i \rvert,\rho)}$</td>
+<td style="text-align: right;"><code>0</code></td>
+<td style="text-align: right;"><code>&lt;= 0.02</code></td>
+<td style="text-align: right;"><code>&lt;= 0.005</code></td>
+<td style="text-align: right;"><code>&lt;= 0.005</code></td>
+</tr>
+<tr>
+<td>COS</td>
+<td>$\displaystyle \frac{a \cdot r}{\max(\lVert a \rVert_2,\varepsilon)\max(\lVert r \rVert_2,\varepsilon)}$</td>
+<td style="text-align: right;"><code>1</code></td>
+<td style="text-align: right;"><code>&gt;= 0.9999</code></td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3">3. 精度对齐流程</h2>
+<p>非数值改动，例如纯文档、日志文案或不参与计算的重构，可以在 PR 中说明后跳过。
+凡是可能改变模型输出、梯度、loss、参数更新或随机行为的改动，都必须按需完成以下验证。</p>
+<h3 id="31-vs">3.1 推理基线 vs 小算子基线</h3>
+<p>目的：使小算子基线与推理基线始终保持 <code>比特一致</code> 对齐。</p>
+<p>对比方法：</p>
+<ul>
+<li>选取典型 case，使用相同的权重、输入，并开启确定性计算；</li>
+<li>运行一次推理和小算子基线的一次前向计算；</li>
+<li>判断推理和训练 logits 是否 <code>比特一致</code>。</li>
+</ul>
+<h3 id="32">3.2 改动局部精度对比</h3>
+<p>目的：确认被修改的算子或模块本身没有公式、边界、索引或梯度错误。</p>
+<p>对比方法：</p>
+<ul>
+<li>抽取改动的部分模块固定输入，覆盖正常 shape、最小 shape、边界 shape；</li>
+<li>比较小算子基线和被测实现模块输出精度，至少需要满足 <code>数值近似</code> 的要求（参考 <code>logits</code> 数值近似阈值）；</li>
+<li>存在反向时，还需对比梯度。</li>
+</ul>
+<p>示例：<a href="../../scripts/numerical_alignment/compare_module_example.py">局部模块前向和反向精度对比脚本</a>，使用相同输入、权重和上游梯度比较 Torch RMSNorm 与 AscRMSNorm。</p>
+<h3 id="33-vs">3.3 小算子基线 vs 被测实现</h3>
+<p>目的：确认融合算子、自定义算子或其他实现接入模型后，其数值结果相对于小算子基线满足对应的精度要求。</p>
+<p>对比方法：</p>
+<ul>
+<li>选取典型 case，使用相同的权重、输入，并开启确定性计算；</li>
+<li>分别运行小算子基线和被测实现的前向计算；</li>
+<li>判断两种实现的 <code>logits</code> 和 <code>loss</code> 是否满足对应的精度要求，若被测实现为对小算子路径的修改，需满足 <code>比特一致</code>。</li>
+</ul>
+<p>示例：<a href="../../scripts/numerical_alignment/loss_compare.py">小算子基线和被测实现比较脚本</a>。使用 <code>--baseline-options</code> / <code>--test-options</code> 传入两组 <code>override.imports</code>，或使用 <code>--baseline-env</code> / <code>--test-env</code> 切换 runner 的 override 组。</p>
+<h3 id="34">3.4 修改前后训练精度对比</h3>
+<p>目的：发现单步指标无法暴露的误差累积、梯度偏移和 optimizer update 异常等。</p>
+<p>对比方法：</p>
+<ul>
+<li>使用修改前后 commit，选取典型 case，使用相同的权重、输入，并开启确定性计算；</li>
+<li>至少运行 <code>100</code> 个训练 step；</li>
+<li>声明不改变计算结果时，<code>loss</code> 和 <code>grad_norm</code> 必须 <code>比特一致</code>；涉及计算变化时，需满足 <code>数值近似</code>。</li>
+</ul>
+<p>示例：<a href="../../scripts/numerical_alignment/loss_compare.py">修改前后训练精度比较脚本</a>，通过两个 Git ref 指定比较对象，使用 <code>--steps 100</code> 运行两侧训练。</p>
+<h2 id="4">4. 验证范围</h2>
+<p>以 PR 的文件变更列表确定验证范围。</p>
+<table>
+<thead>
+<tr>
+<th>改动目录或文件</th>
+<th>必做验证</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torchtitan_npu/**</code></td>
+<td><code>3.1</code>、<code>3.2</code>、<code>3.3</code>、<code>3.4</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/override/common</code></td>
+<td><code>3.1</code>、<code>3.2</code>、<code>3.4</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/override/&lt;golden.py&gt;</code></td>
+<td><code>3.1</code>、<code>3.2</code>、<code>3.4</code></td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/override/&lt;非common\非golden.py&gt;</code></td>
+<td><code>3.2</code>、<code>3.3</code>、<code>3.4</code></td>
+</tr>
+<tr>
+<td><code>scripts/checkpoint_conversion/**</code></td>
+<td><code>3.1</code>、<code>3.4</code></td>
+</tr>
+<tr>
+<td><code>scripts/numerical_alignment/**</code></td>
+<td><code>3.1</code>、<code>3.2</code>、<code>3.3</code></td>
+</tr>
+<tr>
+<td><code>scripts/run_train.sh</code></td>
+<td><code>3.4</code></td>
+</tr>
+<tr>
+<td><code>docs/**</code>、README和其他文档类</td>
+<td>可跳过</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../metrics_and_debugging/" class="btn btn-neutral float-left" title="调试支持特性"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../unit-test-architecture/" class="btn btn-neutral float-right" title="Unit Test 架构与迁移方案">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../metrics_and_debugging/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../unit-test-architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
