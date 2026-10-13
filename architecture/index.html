@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>torchtitan-npu 架构边界 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "torchtitan-npu \u67b6\u6784\u8fb9\u754c";
+        var mkdocs_page_input_path = "architecture.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">torchtitan-npu 架构边界</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#repository-layout">Repository layout</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_1">插件主体</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">导入与启用</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#_3">两阶段时序语义</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">目标子层</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#patches">patches</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#extensions">extensions</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#overridemodels-ops">override、models 与 ops</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">验证</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/aux_loss/">辅助损失框架（AuxLoss）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">torchtitan-npu 架构边界</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="torchtitan-npu">torchtitan-npu 架构边界</h1>
+<p>本文区分当前实现、禁止新增的依赖与后续目标。当前行为以源码为准；迁移状态和历史债务记录在<a href="../.agents/notes/proposed/architecture/2026-09-02-plugin-layout-and-injection-boundaries.md">目录与注入边界提案</a>。</p>
+<h2 id="repository-layout">Repository layout</h2>
+<pre><code class="language-text">torchtitan_npu/  Ascend NPU 插件主体
+experiments/     独立实验包；当前包含 torchao-npu distribution
+docs/            架构、开发者、功能和用户文档
+examples/        可运行 recipe、模型配置与示例 launcher
+scripts/         训练、转换、合规检查与辅助脚本
+tests/           CPU UT、NPU ST 与 tooling 自测
+.agents/         Agent Notes 与可复用 skills
+</code></pre>
+<p>根目录只保留工程配置、包/训练入口及上述目录。<code>third_party/</code> 的普通内容默认忽略；已跟踪的 <code>third_party/agent-skills/KPBot</code> 是 submodule。不新增其他生产代码落点。</p>
+<h2 id="_1">插件主体</h2>
+<p><code>torchtitan_npu/</code> 的正式生产子包为 <code>config/</code>、<code>patches/</code>、<code>extensions/</code>、<code>override/</code>、<code>models/</code>、<code>ops/</code> 与 <code>tools/</code>。可选外部包适配位于 <code>extensions/adaptor/</code>。</p>
+<table>
+<thead>
+<tr>
+<th>子包</th>
+<th>职责</th>
+<th>直接依赖边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config/</code></td>
+<td>NPU config schema、纯转换器和显式注册 API</td>
+<td>当前包导入会安装 ConfigManager loader wrapper；目标是移至 extension 激活入口且不反向导入具体 extension</td>
+</tr>
+<tr>
+<td><code>patches/</code></td>
+<td>上游 <code>torchtitan</code> 或 <code>torch_npu</code> 的待合入补丁</td>
+<td>不得新增对 <code>extensions/</code> 的依赖；现有反向边记录为迁移债务</td>
+</tr>
+<tr>
+<td><code>models/</code></td>
+<td>尚未上游化的模型定义、配置、并行化与 checkpoint 适配</td>
+<td>现有跨层依赖为迁移债务，不以本文宣称已清零</td>
+</tr>
+<tr>
+<td><code>extensions/</code></td>
+<td>本仓永久额外扩展、组件集成与图编译注册</td>
+<td>可以依赖 <code>patches/</code> 提供的定义；不得新增对 <code>models/</code>、<code>override/</code> 或 <code>ops/</code> 的依赖</td>
+</tr>
+<tr>
+<td><code>extensions/adaptor/</code></td>
+<td>可选外部 distribution 的适配器</td>
+<td>使用公开配置、模型、算子或 extension API；对 patch 私有符号的现有使用为迁移债务</td>
+</tr>
+<tr>
+<td><code>override/</code></td>
+<td><code>override.imports</code> 显式启用的 NPU/CANN 组件替换</td>
+<td>可使用 <code>ops/</code>；现有对 <code>extensions/</code> 的依赖为迁移债务</td>
+</tr>
+<tr>
+<td><code>ops/</code></td>
+<td>设备后端 kernel、最小启动封装与 <code>torch.library</code> 注册</td>
+<td>仅保留实现算子所需的后端代码</td>
+</tr>
+<tr>
+<td><code>tools/</code></td>
+<td>随 package 分发的 checkpoint 转换与导出工具</td>
+<td>依赖公开模型与 integration API，不承载训练期自动注入</td>
+</tr>
+</tbody>
+</table>
+<p>模型无关能力放在最通用的适用位置。完整的开发约束见 <a href="../torchtitan_npu/AGENTS.md">主包规则</a> 及其目录级规则。</p>
+<h2 id="_2">导入与启用</h2>
+<p>当前 <code>torchtitan_npu/__init__.py</code> 的自动导入顺序是：</p>
+<pre><code class="language-text">patches → config → extensions → ops
+</code></pre>
+<p>这是当前运行时行为，不是目标顺序。<code>patches</code> 先替换上游实现；<code>extensions</code> 可从 <code>torchtitan_npu.patches.*</code> 复用 patch 提供的定义，也可经 <code>torchtitan.*</code>、<code>torch.*</code> 或 <code>torch_npu.*</code> 使用已替换结果。反向的 <code>patches → extensions</code> 依赖不得新增。</p>
+<p><code>config</code> 当前导入 <code>manager</code> 时会安装 <code>ConfigManager._load_config</code> 的转换 wrapper；该副作用是现有配置转换链的一部分。将其改为仅由 extension 激活入口安装是后续目标，不是当前行为。</p>
+<p><code>override</code> 不自动加载；一次训练由 <code>override.imports</code> 显式选择。将自动导入收敛为下列顺序是后续目标，不能据此描述当前行为：</p>
+<pre><code class="language-text">patches → extensions → selected override
+</code></pre>
+<blockquote>
+<p><strong>当前未实现。</strong> <code>TORCHTITAN_NPU_DISABLE_EXTENSIONS</code> 与 <code>TORCHTITAN_NPU_DISABLE_COMPONENTS</code> 仅是目标加载接口，当前包入口仍会无条件加载已有 extension；不得将它们作为可用运行时配置。</p>
+</blockquote>
+<p>实现后，<code>TORCHTITAN_NPU_DISABLE_EXTENSIONS=1</code> 只禁用 extensions。<code>TORCHTITAN_NPU_DISABLE_COMPONENTS=1</code> 禁用全部已声明组件，逗号分隔组件名只禁用对应组件；两个开关都不得破坏 patches、models、override 或 ops 的可导入性。</p>
+<h3 id="_3">两阶段时序语义</h3>
+<p><code>patches</code> 与 <code>extensions</code> 是不同的注入阶段。<code>patches</code> 承载尚未合入上游的替身，能够在显式激活顺序中替换类、函数和 <code>.Config</code> schema；影响 dataclass schema 或默认工厂的替换必须早于依赖该符号的模块。<code>patches/torchtitan/__init__.py</code> 的现有导入顺序是运行时契约，必须通过显式列表和测试维护，不以「trainer 必须最后导入」这类与当前实现不符的绝对规则约束。</p>
+<p>patch 替换后必须刷新或说明上游 <code>from ... import ...</code> 已捕获的绑定；无法穷尽捕获点时，改用公开注册机制或 extension。extensions 默认上游模块和 dataclass 都已存在，因此不依赖早期导入，也不替换被上游 dataclass 捕获的 <code>.Config</code>。它只使用配置外包装、运行期方法 seam、单目标 hook 注册组件或公开注册 API（例如 <code>torch.library</code>、graph-pass registry）。不属于 patches 且无法通过这些机制实现的能力，不以 monkey-patch 落地，而应提出稳定扩展点或扩展本仓配置外包装。</p>
+<h2 id="_4">目标子层</h2>
+<h3 id="patches">patches</h3>
+<p><code>patches/torchtitan/</code> 镜像上游模块路径。新增实际 patch 模块在许可证头后的固定头部区域使用 <code>Upstream-PR:</code> 记录上游依据；<code>__init__.py</code> 与 <code>patches/torch_npu/</code> runtime compatibility patch 不适用该要求。当前 architecture ratchet 同时兼容历史 <code>Pending upstream PR</code>/<code>Upstream PR</code> 标记，并允许基线中已登记的缺失项，因此它只阻止新增元数据债务。上游合入并升级 pinned 依赖后删除该 patch 和激活入口。强制 eager 的上游行为兼容放 <code>extensions/torchtitan/</code>。</p>
+<p>带副作用的 monkey-patch 模块把变更收敛至 <code>apply()</code> 并在模块末尾调用，由所属 <code>__init__.py</code> 显式导入激活。其他模块不得导入带 <code>apply()</code> 的模块；定义型无副作用模块可按需复用。替换必须使用完整点路径赋值。</p>
+<h3 id="extensions">extensions</h3>
+<p><code>extensions/torchtitan/</code> 放镜像上游结构的 monkey-patch 激活模块；新增替换必须声明 owner 和顺序。现有 <code>MetricsProcessor.log</code>、<code>CheckpointManager</code> 与 <code>ConfigManager._load_config</code> 的多层包装保留为历史例外，包装顺序由对应测试保护，本轮不合并其业务行为。<code>extensions/components/</code> 放带声明名称的自包含集成；当前 TrainerEx、checkpoint extension 和 DeepSeek-V4.1 配置仍存在组件顶层接线或反向使用，这是迁移债务，不是新组件约束。<code>extensions/compile/</code> 放 graph-pass 注册基础设施和具体 pattern。</p>
+<p><code>extensions/</code> 当前还包含 <code>adaptor/</code>、<code>cpu_offload/</code>、<code>distributed/</code>、<code>mx_storage_reader/</code>、<code>novaswap/</code> 与 <code>experiment/</code>。其中仅包入口显式列出的模块自动加载；其余目录由调用路径按需导入。各目录的职责和加载方式见 <a href="../torchtitan_npu/extensions/AGENTS.md">extensions 规则</a>。</p>
+<h3 id="overridemodels-ops">override、models 与 ops</h3>
+<p>override 使用 <code>@override</code> 注册并由完整 <code>module.function</code> 选择；它保持输入输出、DTensor、sharding、checkpoint 与 <code>torch.compile</code> 语义。依赖 extension 的 override 显式声明此前提；extension 禁用时 warn-once 是禁用开关落地后的目标行为。</p>
+<p>目标上 models 保持对 NPU 实现细节的零直接依赖，需要 kernel 时经上游或 override 注入。当前 DeepSeek-V4/V4.1 与 Qwen3.5 仍有 extension 或 override 的直接导入，属于已登记的迁移债务；新增模型代码不得复制这种模式。ops 按后端或语言组织，后端目录声明 token，算子命名为 <code>torchtitan_npu::{backend}_{kernel}</code>。ops 不放上游替换或组件封装，反向通过 <code>register_autograd</code> 注册，且 <code>ops/__init__.py</code> 不批量导入子模块。</p>
+<h2 id="_5">验证</h2>
+<p>架构迁移阶段同步更新代码、根与受影响目录的 <code>AGENTS.md</code>、本文及 Agent Note。使用 CPU UT、NPU ST 和数值验证证明训练入口、override 选择、checkpoint 语义与已验证数值行为不回归。具体测试与数值要求见 <a href="../.agents/AGENTS.md">根开发规则</a> 和 <a href="../tests/AGENTS.md">测试规则</a>。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../AGENTS/" class="btn btn-neutral float-left" title="文档规则"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../community/governance/" class="btn btn-neutral float-right" title="社区治理">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../AGENTS/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../community/governance/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

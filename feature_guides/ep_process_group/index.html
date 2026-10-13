@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -60,6 +68,8 @@
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -184,7 +194,7 @@ EP 通信域分离只替换 <code>ep</code> 轴对应的 process group，其他�
 </tr>
 <tr>
 <td>DeepEP</td>
-<td>继承上述 dispatcher wiring；按 <code>ElasticBuffer</code> 容量配置，显式调用 <code>get_deepep_group()</code></td>
+<td>继承上述 dispatcher wiring；NPU override 显式调用 <code>get_deepep_group()</code> 创建专用通信组</td>
 <td>不创建独立 group</td>
 </tr>
 </tbody>
@@ -238,20 +248,22 @@ HybridEP 和 MinimalAsyncEP 路径。</p>
 <p>若 dispatcher 设置 <code>_uses_custom_ep_process_group = True</code>，wrapper 会保留该
 dispatcher 自己的 EP mesh，不再创建通用的独立 mesh。</p>
 <h3 id="3-deepep-group">3. DeepEP 专用 group</h3>
-<p><code>get_deepep_group()</code> 为需要按 buffer 容量配置通信组的 NPU DeepEP 调用方提供显式
-接口：</p>
+<p><code>get_deepep_group(ep_mesh)</code> 统一完成校验、缓存查询和专用 HCCL group 创建：</p>
 <ol>
-<li>使用 <code>ElasticBuffer.get_moe_ep_ccl_buffer_size()</code> 根据 EP world size、
-   <code>num_max_tokens_per_rank</code>、hidden dim、expert 数量和 <code>top_k</code> 计算容量。</li>
-<li>使用 <code>ProcessGroupHCCL.Options()</code> 设置
-   <code>{"hccl_buffer_size": &lt;capacity_mb&gt;}</code>。</li>
-<li>通过 <code>dist.new_group(..., backend="hccl", group_desc="npu_deepep")</code> 创建
-   HCCL process group。</li>
-<li>按源 EP group 的 <code>group_name</code> 缓存 group。后续调用复用同一 group；如果请求的
-   buffer 容量更大，则报错，要求共享同一 EP group 的 dispatcher 使用共同的最大配置。</li>
+<li>EP size ≤ 1 时抛出 <code>ValueError</code>，不创建通信组。</li>
+<li>按源 EP group 的 <code>group_name</code> 缓存，命中即复用；缓存键与 mesh 对象或 ranks 无关。</li>
+<li>未命中时以相同 ranks 创建 group，设置 <code>group_desc="asc_deepep"</code> 和
+   <code>use_local_synchronization=True</code>，缓存后返回。</li>
 </ol>
+<p>通信组使用默认 HCCL 选项，不配置 <code>hccl_buffer_size</code>；算子通信 buffer 的创建与复用
+由 NPU dispatcher 中的 <code>ElasticBuffer</code> 单独管理。</p>
+<p><code>ops-transformer</code> 的 <code>ElasticBuffer.get_moe_ep_ccl_buffer_size()</code> 仅返回默认值
+200 MB，不代表 dispatch/combine 实际所需的通信 buffer 大小。实际容量由内部
+<code>_get_moe_ep_window_bytes()</code> 根据 EP world size、<code>num_max_tokens_per_rank</code>、
+hidden dim、expert 数量和 <code>top_k</code> 计算，并由内部运行时申请和注册。
+本仓不调用该私有函数，也不将默认值作为实际容量写入 HCCL 配置。</p>
 <p>当前上游 <code>DeepEPTokenDispatcher</code> 通过 <code>BaseEPTokenDispatcher.wire_meshes()</code> 获取
-独立 EP mesh；<code>get_deepep_group()</code> 是按 <code>ElasticBuffer</code> 需求创建专用 group 的显式
+独立 EP mesh；<code>get_deepep_group()</code> 是为 NPU <code>ElasticBuffer</code> 创建专用 group 的显式
 API，不会额外 patch dispatcher 的底层算子。</p>
               
             </div>

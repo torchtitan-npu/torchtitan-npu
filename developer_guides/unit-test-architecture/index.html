@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -70,6 +78,8 @@
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -147,7 +157,7 @@
 <p><code>tests/unit_tests/</code> 是 CPU 测试的统一执行根目录。生产语义测试按 <code>torchtitan_npu/</code> 的职责镜像放置：</p>
 <ul>
 <li><code>tests/unit_tests/compile/</code>、<code>config/</code>、<code>models/</code>、<code>ops/</code> 和 <code>override/</code> 分别保护对应的生产模块；</li>
-<li><code>tests/unit_tests/patches/torchtitan/</code> 只镜像有上游依据的临时 patch；<code>tests/unit_tests/patches/torch_npu/</code> 和 <code>tests/unit_tests/patches/workaround/</code> 镜像当前有效的 NPU runtime compatibility patch；</li>
+<li><code>tests/unit_tests/patches/torchtitan/</code> 只镜像有上游依据的临时 patch；<code>tests/unit_tests/patches/torch_npu/</code> 镜像当前有效的 NPU runtime compatibility patch；</li>
 <li><code>tests/unit_tests/tooling/</code> 放仓库脚本和 skill 的自测，便于沿用现有 unit-test 入口执行，但这类测试不计入产品行为覆盖；</li>
 <li>多进程 worker 与启动它的测试放在同一个语义目录；</li>
 <li><code>tests/integration_tests/</code> 只放进入真实 <code>torchtitan.train</code> 的 NPU 模型 ST，不把 CPU UT、kernel pytest 或 runner 自测计入 ST。</li>
@@ -159,7 +169,7 @@ tests/unit_tests/tooling/training_log_visualization/test_training_log_visualizat
 <p>它们不再散落在 <code>scripts/tests/</code> 或 <code>.agents/skills/.../tests/</code>，也不因此变成产品 UT。产品 UT 统计和报告必须按语义归属排除 <code>tooling/</code>。</p>
 <h2 id="patches"><code>patches/</code> 的职责和边界</h2>
 <p><code>torchtitan_npu/patches/torchtitan/</code> 只保存当前固定上游版本尚未包含、且已有上游 PR 或 commit 依据的临时 patch。上游版本吸收对应改动后，应删除 patch、导入入口和专用测试。</p>
-<p><code>torchtitan_npu/patches/torch_npu/</code> 与 <code>torchtitan_npu/patches/workaround/</code> 的现有文件不是「上游 torchtitan 临时 patch」：它们改变 PyTorch、Inductor 或 <code>torch_npu</code> 的运行时行为，例如 <code>determinism.py</code> 替换 <code>torch.use_deterministic_algorithms</code>，<code>device_copy.py</code> 修改 Inductor 的 <code>DeviceCopy</code> 和 <code>prims.device_put</code>。这两个目录是当前有效的 runtime compatibility 归属，可以继续维护；本次测试目录整理不移动生产代码，也不要求新增 <code>runtime/compat</code> 层。若未来要迁移，必须另开包含导入时机、兼容别名和真实激活测试的原子架构变更。</p>
+<p><code>torchtitan_npu/patches/torch_npu/</code> 中的文件不是「上游 torchtitan 临时 patch」：它们改变 PyTorch、Inductor 或 <code>torch_npu</code> 的 NPU 运行时行为，例如 <code>determinism.py</code> 替换 <code>torch.use_deterministic_algorithms</code>，<code>device_copy.py</code> 修改 Inductor 的 <code>DeviceCopy</code> 和 <code>prims.device_put</code>。对应测试镜像到 <code>tests/unit_tests/patches/torch_npu/</code>；强制 eager 的 TorchTitan 兼容行为则归 <code>extensions/torchtitan/</code>。</p>
 <h2 id="_3">执行归属</h2>
 <p>只要测试放在 <code>tests/unit_tests/</code>，现有 <code>.ci/unit_test.sh</code> 的 <code>pytest tests/unit_tests</code> 就能发现它；报告仍须单独标注 <code>tooling</code>，避免把 tooling 通过数写成产品覆盖。后续若保留其他目录外的测试，必须在对应 CI suite 显式列出执行路径，不能依赖开发者手工运行。</p>
               

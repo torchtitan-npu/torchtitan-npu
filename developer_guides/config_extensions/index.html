@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -70,6 +78,8 @@
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -193,7 +203,7 @@ class TrainingExtensionConfig:
 <ol>
 <li>在 <code>torchtitan_npu/config/configs.py</code> 中定义 NPU 配置类型，并继承对应的上游类型。</li>
 <li>在 <code>TrainerEx.Config</code> 中将该字段声明为 NPU 配置类型。</li>
-<li>在 <code>torchtitan_npu/extensions/trainer.py</code> 的 <code>component_types</code> 中加入字段名和配置类型。</li>
+<li>在 <code>torchtitan_npu/extensions/torchtitan/trainer.py</code> 的 <code>component_types</code> 中加入字段名和配置类型。</li>
 <li>在对应 Trainer 或组件中读取并应用新增字段。</li>
 </ol>
 <p>字段需要独立的 NPU 命名空间时，优先增加 <code>extension</code> 子配置；字段本身属于组件的公开

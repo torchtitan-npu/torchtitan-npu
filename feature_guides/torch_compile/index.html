@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -60,6 +68,8 @@
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -440,10 +450,10 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 <h3 id="51">5.1 启动和包初始化</h3>
 <p><code>scripts/run_train.sh</code> 与 <code>scripts/run_train_multinodes.sh</code> 最终通过 <code>torchrun</code> 启动
 <code>torchtitan_npu.train</code>。训练入口复用上游 <code>torchtitan.train.main</code>，同时导入 <code>torchtitan_npu</code> 触发插件初始化。</p>
-<p>包初始化顺序为：</p>
-<pre><code class="language-text">patches → compile → config → extensions → ops
+<p>当前包初始化顺序为：</p>
+<pre><code class="language-text">patches → config → extensions → ops
 </code></pre>
-<p>该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效。新增初始化逻辑不能随意调整此顺序。</p>
+<p><code>compile</code> 已迁入 <code>extensions/compile/</code>，不再是顶层自动导入阶段。该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效。新增初始化逻辑不能随意调整此顺序。</p>
 <h3 id="52-loss">5.2 模型和 loss 编译</h3>
 <p>标准 DeepSeek/Qwen 模型路径通常遵循：</p>
 <pre><code class="language-text">模型构建与 override
@@ -474,7 +484,7 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 </thead>
 <tbody>
 <tr>
-<td><code>patches/workaround/device_copy.py</code></td>
+<td><code>patches/torch_npu/device_copy.py</code></td>
 <td>non-blocking NPU-to-CPU copy 的 Host 可见性</td>
 <td>只修正 NPU D2H 和 <code>prims.device_put</code>，不把 NPU 全局伪装为 GPU，避免误选 Triton 路径</td>
 </tr>
@@ -597,11 +607,11 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 <tr>
 <td>本仓</td>
 <td><code>torchtitan_npu/__init__.py</code></td>
-<td>固定 patches、compile、config、extensions 和 ops 的加载顺序</td>
+<td>固定 patches、config、extensions 和 ops 的加载顺序</td>
 </tr>
 <tr>
 <td>本仓</td>
-<td><code>torchtitan_npu/patches/workaround/device_copy.py</code></td>
+<td><code>torchtitan_npu/patches/torch_npu/device_copy.py</code></td>
 <td>NPU 异步 D2H 和 <code>device_put</code> 兼容</td>
 </tr>
 <tr>
@@ -611,7 +621,7 @@ SimpleFSDP 顺序，不适用上述标准路径。</p>
 </tr>
 <tr>
 <td>本仓</td>
-<td><code>torchtitan_npu/extensions/trainer.py</code></td>
+<td><code>torchtitan_npu/extensions/torchtitan/trainer.py</code></td>
 <td>编译感知的 NPU Trainer 与量化转换</td>
 </tr>
 <tr>

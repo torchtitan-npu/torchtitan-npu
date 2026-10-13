@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>文档规则 - torchtitan-npu</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u6587\u6863\u89c4\u5219";
+        var mkdocs_page_input_path = "AGENTS.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">文档规则</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_2">文档归属</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_3">写作规则</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">验证与交付</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/aux_loss/">辅助损失框架（AuxLoss）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../feature_guides/virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">文档规则</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="_1">文档规则</h1>
+<p>撰写、改写或审阅本目录的 README、架构说明、功能说明、操作指南、设计计划或验证报告时，使用 <a href="../.agents/skills/write-torchtitan-npu-docs/SKILL.md">write-torchtitan-npu-docs</a>。本文件规定文档归属和边界；skill 负责事实核对、中文技术表达、命令校验与交付检查。</p>
+<h2 id="_2">文档归属</h2>
+<p>每个事实只在一个文档中完整解释，其他位置链接到它。文档树位置决定允许的细节，子文档拥有的实现细节不要复制到上层。</p>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>architecture.md</code></td>
+<td>正式目标架构：目标布局、目录职责、导入/启用关系和验证边界；迁移阶段同步更新</td>
+</tr>
+<tr>
+<td><code>developer_guides/</code></td>
+<td>开发者使用的配置、lint、测试、checkpoint、指标与调试规则</td>
+</tr>
+<tr>
+<td><code>feature_guides/</code></td>
+<td>某项模型、并行、算子或优化能力的行为、启用方式、限制和验证</td>
+</tr>
+<tr>
+<td><code>user-guides/</code></td>
+<td>安装、快速开始和面向使用者的操作说明</td>
+</tr>
+<tr>
+<td><code>community/</code></td>
+<td>治理、贡献和版本等社区规则</td>
+</tr>
+<tr>
+<td><code>.agents/notes/</code></td>
+<td>迁移步骤、替代方案、风险、决策取舍和当前阶段状态；不替代目标架构说明</td>
+</tr>
+</tbody>
+</table>
+<p>教程应按完成目标所需的前提顺序组织；参考文档定义稳定的查询范围和当前行为，不按教学步骤叙述。文档类型不扩大其负责范围。</p>
+<h2 id="_3">写作规则</h2>
+<ul>
+<li><code>architecture.md</code> 可以规定目标正式结构；功能、开发者和用户文档只描述当前已实现事实，不将 PR、提交、迁移进度或未来目录写成当前行为。设计背景和阶段状态链接到 Agent Note。</li>
+<li>首先说明读者需要的启用方式、适用条件和限制，再展开内部实现。能力受硬件、runtime、dtype、shape、layout、并行方式或激活模块影响时，明确这些边界。</li>
+<li>中文优先；路径、命令、配置键、模块名、环境变量和其他机器可读标识符保持原样。命令必须有源码、配置、脚本或测试依据。</li>
+<li>不宣称未经测量的性能或数值结论；区分已实现、已验证、有限支持、未验证和计划中。</li>
+<li>不复制完整源码、文件清单、测试清单或另一个文档已拥有的细节。关系复杂时才使用表格、流程图或目录树。</li>
+<li>文档变更如影响目标架构、功能启用、支持范围或命令，同步更新拥有该事实的当前态文档；非局部架构决定同时更新或新增 Agent Note。</li>
+</ul>
+<h2 id="_4">验证与交付</h2>
+<p>按 skill 的“验证交付”流程核对链接、路径、配置、注册名、命令、支持范围和验证状态。运行成本可控的相关检查；不为文档校对无理由触发昂贵 NPU 训练，也不把未执行或替代命令写成已通过。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../architecture/" class="btn btn-neutral float-right" title="torchtitan-npu 架构边界">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+      <span><a href="../architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

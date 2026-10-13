@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -60,6 +68,8 @@
               <p class="caption"><span class="caption-text">Feature guides</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -295,7 +305,7 @@ SDC 使用进程级 torch-npu 和 Inductor 状态，不提供运行期重配置�
 的训练图即包含由 <code>checker.checksum_enable</code> 控制的 checksum custom op。Gradient checker
 达到阈值后只打开 native gate，后续 step 直接在原图执行 checksum，不调用
 <code>torch.compiler.reset()</code>。</p>
-<p>checksum pass 对训练图中的 BF16 NPU <code>aten.mm.default</code>、<code>aten.matmul.default</code> 和
+<p>checksum pass 对训练图中的 BF16/FP32 NPU <code>aten.mm.default</code>、<code>aten.matmul.default</code> 和
 <code>aten.bmm.default</code> 插入 checksum custom op。</p>
 <p><code>SDC.finalize_sdc_step()</code> 只在成功 step 后执行 gradient accumulation 边界提交。HCCL 状态不会在
 step 结束时恢复或切换；失败 step 的异常直接向上传播，不执行后处理。</p>
@@ -309,7 +319,7 @@ step 结束时恢复或切换；失败 step 的异常直接向上传播，不执
 </thead>
 <tbody>
 <tr>
-<td><code>torchtitan_npu/extensions/trainer.py</code></td>
+<td><code>torchtitan_npu/extensions/torchtitan/trainer.py</code></td>
 <td>编排标准 Trainer 与 SDC 生命周期。</td>
 </tr>
 <tr>
@@ -317,19 +327,15 @@ step 结束时恢复或切换；失败 step 的异常直接向上传播，不执
 <td>一次完成配置校验、HCCL、checksum 和 gradient 初始化；在 accumulation 边界直接提交梯度。</td>
 </tr>
 <tr>
-<td><code>torchtitan_npu/compile/sdc_checksum.py</code>、<code>torchtitan_npu/ops/misc/sdc_checksum.py</code></td>
+<td><code>torchtitan_npu/extensions/compile/sdc_checksum.py</code>、<code>torchtitan_npu/ops/misc/sdc_checksum.py</code></td>
 <td>安装 checksum pass 并注册 custom op。</td>
 </tr>
 </tbody>
 </table>
 <h2 id="_5">验证范围</h2>
-<p><code>tests/unit_tests/test_sdc.py</code> 覆盖 config、gradient 和 HCCL 的 CPU 可观察契约，
-通过 native checker 替身验证 typed tuning、参数筛选和累积提交，并检查 <code>TrainerEx</code>
-在模型构建后一次初始化 SDC，失败 backward 不提交梯度。</p>
-<p><code>tests/smoke_tests/sdc/test_sdc.py</code> 为每个场景启动独立 Python worker，覆盖 Eager/compiled
-控制与无效配置、BF16 gradient、checksum custom-op 输出修改、编译图 consumer、初始化通信后
-启用 HCCL 的训练路径，以及 three-strikes 后不重新编译的 checksum 激活。该文件是专项 NPU
-冒烟测试，不替代 <code>tests/integration_tests</code> 中的完整模型训练验证。</p>
+<p><code>tests/unit_tests/test_sdc.py</code> 覆盖配置校验、运行时初始化、梯度累积提交及 checksum 图插桩的 CPU 可观察契约。</p>
+<p><code>tests/smoke_tests/sdc/test_sdc_smoke.py</code> 在独立 NPU worker 中验证 Eager/compiled 控制、gradient/checksum/HCCL
+联动及 checksum 激活不触发重新编译，不替代 <code>tests/integration_tests</code> 中的完整模型训练验证。</p>
               
             </div>
           </div><footer>

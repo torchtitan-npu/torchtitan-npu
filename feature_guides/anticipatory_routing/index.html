@@ -35,6 +35,14 @@
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
               <p class="caption"><span class="caption-text">Community</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
@@ -78,6 +86,8 @@
     <li class="toctree-l2"><a class="reference internal" href="#_8">恢复边界与执行时序</a>
     </li>
     </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
@@ -360,7 +370,7 @@ token 计数及 Python、NumPy、PyTorch CPU/device RNG，随后重置 FSDP 迭�
 </thead>
 <tbody>
 <tr>
-<td><code>torchtitan_npu/extensions/trainer.py</code></td>
+<td><code>torchtitan_npu/extensions/torchtitan/trainer.py</code></td>
 <td>配置接入、一次初始化及训练上下文编排。</td>
 </tr>
 <tr>
@@ -405,7 +415,7 @@ token 计数及 Python、NumPy、PyTorch CPU/device RNG，随后重置 FSDP 迭�
 </ul>
 <p><code>tests/unit_tests/extensions/experiment/anticipatory_routing/test_detector.py</code> 覆盖持续水平漂移、恒定 loss 后的微小噪声、
 跨回滚及 ACTIVE/DRAIN 更新的冷却计数、非有限阈值校验、零回滚预算的 checkpoint 校验、PP 拒绝和 ID 存储类型边界。</p>
-<p><code>tests/smoke_tests/anticipatory_routing/test_anticipatory_routing.py</code> 使用小型 NPU 路由模型和上游训练步，覆盖以下场景：</p>
+<p><code>tests/smoke_tests/anticipatory_routing/test_anticipatory_routing_smoke.py</code> 使用小型 NPU 路由模型和上游训练步，覆盖以下场景：</p>
 <ul>
 <li>一次性扰动 labels 引起真实 loss 升高，由自动检测器识别 spike 并触发回滚。</li>
 <li>选择并加载磁盘 DCP checkpoint，恢复模型、optimizer、LR scheduler、训练进度及 dataloader 状态。</li>
@@ -437,7 +447,7 @@ profiler 仍按实际执行的外层迭代推进，结构化日志的 step 标�
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../../developer_guides/unit-test-architecture/" class="btn btn-neutral float-left" title="Unit Test 架构与迁移方案"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../cpu_offload/" class="btn btn-neutral float-right" title="CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../aux_loss/" class="btn btn-neutral float-right" title="辅助损失框架（AuxLoss）">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -463,7 +473,7 @@ profiler 仍按实际执行的外层迭代推进，结构化日志的 step 标�
       <span><a href="../../developer_guides/unit-test-architecture/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../cpu_offload/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../aux_loss/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

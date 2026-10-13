@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>辅助损失框架（AuxLoss） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "\u8f85\u52a9\u635f\u5931\u6846\u67b6\uff08AuxLoss\uff09";
+        var mkdocs_page_input_path = "feature_guides/aux_loss.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">辅助损失框架（AuxLoss）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">两条实现路径的指标口径</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">已知限制</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">辅助损失框架（AuxLoss）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="auxloss">辅助损失框架（AuxLoss）</h1>
+<p>torchtitan-npu 通过 <code>torchtitan_npu/patches/torchtitan/models/common/aux_loss.py</code> backport 上游 torchtitan 的 <code>AuxLoss</code>（对应上游 PR <a href="https://github.com/pytorch/torchtitan/pull/3864">#3864</a>）。辅助损失的梯度按 carrier 注入前向图，归一化分母取本步全局有效 token 数，与主 loss 同一分母，使各并行度下的贡献可比。DeepSeek-V3.2 的稀疏 indexer 损失是目前的使用者。</p>
+<h2 id="_1">两条实现路径的指标口径</h2>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>指标名</th>
+<th>累加时机</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>参考路径（<code>SparseIndexerLoss</code>）</td>
+<td><code>sparse_indexer_loss/mean</code></td>
+<td>前向，<code>_accumulate_and_inject</code></td>
+</tr>
+<tr>
+<td>融合路径（<code>AscSparseIndexerLoss</code>，由 <code>sparse_attn.asc</code> override 替换）</td>
+<td><code>asc_sparse_indexer_loss/mean</code></td>
+<td>反向，<code>ctx.acc_buffer.add_(...)</code></td>
+</tr>
+</tbody>
+</table>
+<p>源码位置：参考路径为 <code>torchtitan_npu/models/deepseek_v3_2/model.py</code>，融合路径为 <code>torchtitan_npu/override/deepseek_v3_2/sparse_attn/ascendc.py</code>。</p>
+<p>融合算子在反向才产出求和后的 KL 值，两条路径的累加时机因此不同，激活检查点（AC）策略对日志值的影响也不同：</p>
+<ul>
+<li><code>FullAC</code> 在反向重放所属 block 的前向，参考路径的累加随之重复执行，其指标高于融合路径；两条路径的指标不能直接比较。</li>
+<li>本仓 backport 未引入保留累加区域的 <code>torch_remat</code>（上游用保留区域避免重放，当前 pinned TorchTitan 未提供该机制），重复累加只在 <code>FullAC</code> 下确认过，不能推广到 <code>SelectiveAC</code>、<code>RegionAC</code> 等其他 AC 配置。跨 AC 策略比较日志时应说明两侧策略，必要时按重放次数换算。</li>
+<li>该差异只影响日志指标：<code>loss</code> 与 <code>grad_norm</code> 不受 AC 重放影响。</li>
+</ul>
+<p>比较参考路径与融合路径时，以 <code>loss</code> 与 <code>grad_norm</code> 作为一致性判据；indexer loss 指标只在相同 AC 策略下比较。具体测量条件与数值由改动方记录在对应 PR 的验证说明中。</p>
+<h2 id="_2">已知限制</h2>
+<p><strong>与 graph_trainer 图捕获的组合暂时不支持。</strong> <code>AuxLoss</code> 的每步归一化分母当前保存在类级状态上，<code>minimal_fx_tracer</code> 捕获时会把它当作 trace 期常量折叠进图，后续步骤继续用首步分母缩放注入梯度。因此在该路径上启用辅助损失时，aux loss 的梯度与日志值都可能有精度差异，请勿在 graph_trainer 路径上依赖辅助损失结果；相关能力待分母改为运行时输入（或受管理 buffer 且能作为图输入重采样）后另行设计。graph_trainer 的接入方式见 <a href="../deepseek_v4_graph_trainer/">graph_trainer 说明</a>。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../anticipatory_routing/" class="btn btn-neutral float-left" title="Loss spike 检测与路由重放（Anticipatory Routing）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../cpu_offload/" class="btn btn-neutral float-right" title="CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../anticipatory_routing/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../cpu_offload/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
