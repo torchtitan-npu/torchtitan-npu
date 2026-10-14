@@ -186,7 +186,7 @@
 <ul>
 <li><code>--parallelism.context-parallel-degree &gt; 1</code> 时即启用 CP；必须配合 <code>--parallelism.spmd-backend spmd_types</code>（<code>spmd_types</code> 后端是压缩容器 <code>S(1) -&gt; R</code> 声明式 all-gather 的前提）。</li>
 <li><code>--parallelism.context-parallel-load-balancer</code> 支持 <code>headtail</code>（默认）与 <code>None</code>（plain 顺序切分）。headtail 要求 <code>seq_len</code> 整除 <code>2 * context_parallel_degree</code>，plain 要求整除 <code>context_parallel_degree</code>，不满足时 <code>_build_cp_metadata</code> 直接报错。</li>
-<li>需要完整 NPU 环境：<code>torch_npu</code>、CANN、HCCL 与匹配的 <code>cann_ops_transformer</code>。CP 只在融合路径生效，参考 tier 与 golden 限定无 CP（对 <code>cu_seq_q != cu_seq_k</code> 报错）。</li>
+<li>需要完整 NPU 环境：<code>torch_npu</code>、CANN、HCCL 与匹配的 <code>cann_ops_transformer</code>。CP 只在融合路径生效：分片帧由融合 metadata 承载，模型目录自带的默认内核与 golden 读不了这些帧，因而都只支持无 CP。</li>
 <li><code>local_batch_size == 1</code> 是当前文档打包约定（增大批数据应提高 <code>seq_len</code>）；DSA 路径 TP 固定为 1。</li>
 </ul>
 <h2 id="_2">设计要点</h2>
