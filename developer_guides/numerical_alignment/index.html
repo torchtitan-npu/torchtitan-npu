@@ -107,6 +107,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
@@ -272,6 +274,7 @@
 <li>运行一次推理和小算子基线的一次前向计算；</li>
 <li>判断推理和训练 logits 是否 <code>比特一致</code>。</li>
 </ul>
+<p>示例：<a href="../../scripts/numerical_alignment/deepseek_v4/README.md">DeepSeek-V4 推理前向对比</a>。基线固定为 <code>transformers==5.13.0</code>；可选数值补丁存在时默认启用，验收记录必须区分原生与打补丁的 Transformers。</p>
 <h3 id="32">3.2 改动局部精度对比</h3>
 <p>目的：确认被修改的算子或模块本身没有公式、边界、索引或梯度错误。</p>
 <p>对比方法：</p>

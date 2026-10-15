@@ -79,6 +79,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_5">数据、路由与状态隔离</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#torchcompile">torch.compile 与路由重放</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#_6">模块职责</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_7">验证范围</a>
@@ -90,6 +92,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
@@ -360,6 +364,40 @@ token 计数及 Python、NumPy、PyTorch CPU/device RNG，随后重置 FSDP 迭�
 <p>engine 在初始化时包装当前 checkpointer 实例的 <code>save()</code>。恢复阶段暂停保存，训练失败时也不保存；
 允许保存时仍调用原始方法。队列未排空时 dataloader 进度领先参数更新，且 checkpoint 不保存预取队列，
 因此此时保存会在恢复后跳过未训练的数据。回到 NORMAL 后解除限制，由上游按原有策略决定保存时机。</p>
+<h2 id="torchcompile">torch.compile 与路由重放</h2>
+<p>开启 model 编译时，训练继续使用上游的 block 编译流程。每个动态 router 持有一个本地专家 ID Tensor，
+所有 router 共享一个标量 bool Tensor，表示是否重放。图内使用 <code>torch.where()</code> 在实时 top-k ID 和本地
+缓存 ID 之间选择；NORMAL 与 REPLAY 执行相同的 Tensor 运算，不根据 Python 路由模式生成不同的训练图。
+REPLAY 仍计算实时 top-k，但选择结果使用缓存 ID，路由分数继续从当前参数的 gate 输出中 gather。</p>
+<p>首次训练前，使用已经取出的第一个 microbatch 执行一次隔离的 eager 仅前向，按实际本地路由形状初始化
+运行时 Tensor，不额外推进 dataloader、训练 step 或训练统计。所有实际训练 microbatch 均使用上游编译流程。
+训练每个重放 microbatch 前，在图外根据 router 路径查找对应 slot，
+校验形状并将专家 ID 写入已有 Tensor。该 Tensor 保持到 backward 结束，包括 activation checkpoint
+重计算。这样图内不访问 slot 字典和层名字符串，不会因为各层路径或 microbatch slot 不同而逐层重编译。</p>
+<p>WARMUP 和 ACTIVE 的仅前向录制保持 training 状态并使用 <code>no_grad()</code>，直接调用模型的原有入口。
+已经由上游编译的 block 沿用其编译 callable、backend 和选项，未编译的 block 保持 eager。
+录制不替换模块的 <code>forward</code> 或 <code>_compiled_call_impl</code>，FSDP hooks 和 AC 包装沿用上游调用流程。
+由于录制与训练的梯度状态和路由操作不同，同一个上游入口可能缓存不同的编译变体。
+本特性不修改 <code>recompile_limit</code>；多层模型的实际编译变体数量由上游编译入口及 Dynamo guards 决定。</p>
+<p>eager 和 compile 使用相同的 <code>RoutingReplayBuffer</code> 流程。每个 router 持有两个独立的 int64 Tensor：
+<code>indices</code> 供重放读取，<code>capture_indices</code> 供录制写入。通过显式方法设置 <code>INITIALIZE</code>、<code>CAPTURE</code>、
+<code>TRAIN</code> 和 <code>OFF</code> 操作，不使用梯度开关、模块的 training 属性或是否正在编译来推断录制与重放。
+<code>TRAIN</code> 操作在 NORMAL 与 REPLAY 之间保持不变，仅通过 Tensor 开关选择实时或缓存 ID；
+<code>CAPTURE</code> 操作将实时 top-k 写入 <code>capture_indices</code>。录制和训练分别使用明确的操作分支，
+局部 <code>no_grad()</code> 或 <code>enable_grad()</code> 不改变路由操作。<code>begin_training()</code> 设置的状态覆盖完整训练 step
+的前向和反向，包括 AC 重计算；结束后 <code>reset()</code> 切回 <code>OFF</code>，直接返回实时 ID，验证输入不受运行时 buffer 形状约束。
+图内不写 Python slot 字典。<code>begin_capture()</code> 设置录制状态，前向成功后调用 <code>save_captured_routes()</code>，
+在图外将每层录制结果复制、转换为 <code>index_store_dtype</code>，写入当前 microbatch 的 slot。
+队列项拥有独立存储，后续录制覆盖运行时 Tensor 不会改变历史路由；录制 Tensor 也不覆盖重放 Tensor。
+这两个运行时 Tensor 不注册为模型 buffer，不写入 checkpoint，也不会被仅前向状态恢复覆盖。</p>
+<p>首次缓冲区形状初始化先调用 <code>begin_initialization()</code>，再执行隔离的 eager 前向。
+初始化、录制和训练依次执行，调用方均通过 <code>try/finally</code> 保证正常结束或异常时调用 <code>reset()</code>，
+清除路由状态与 slot 引用，但保留已分配的 Tensor。trainer 使用的 <code>training_step_context()</code> 保持不变。
+已编译模块与 eager 模块使用同一套路由 buffer 和操作状态，无需安装额外的录制编译入口。
+首次遇到录制图时发生编译，后续满足相同 guards 的执行复用缓存。
+eager 重放也会计算实时 top-k，再通过 Tensor 开关选择缓存 ID；每层额外持有两个固定 ID buffer。
+<code>_isolated_forward()</code> 仍在图外保存、恢复训练 buffer、辅助统计、RNG 和
+token 计数，并重置 FSDP 临时状态；编译本身不负责撤销额外前向的副作用。</p>
 <h2 id="_6">模块职责</h2>
 <table>
 <thead>
@@ -412,6 +450,12 @@ token 计数及 Python、NumPy、PyTorch CPU/device RNG，随后重置 FSDP 迭�
 <li>WARMUP 不推进参数、scheduler、token 计数或注册 buffer；ACTIVE 和 DRAIN 均消费对应的缓存路由，队列排空后恢复正常路由。</li>
 <li>恢复期间暂停 checkpoint 保存，恢复 NORMAL 后允许保存；实际 REPLAY 前向异常原样传播、清理队列和路由上下文，并禁止后续保存。</li>
 <li>新 checkpoint 缺少 optimizer 元数据前缀时选择旧的完整 checkpoint；拒绝其他 dataloader 和可广播但形状不匹配的路由缓存。</li>
+<li>eager 与编译 router 在不同梯度开关和 train/eval 属性下按内部上下文录制、重放，NORMAL 不覆盖录制结果。</li>
+<li>40 层 router 全部编译或交替使用 eager/compile，并分别开启、关闭 AC 时，输出及梯度与 eager 路径对齐，重复录制和重放复用编译缓存。</li>
+<li>40 层动态 router 在默认重编译预算下复用训练图，覆盖普通训练、仅前向录制、多 microbatch 重放、再次恢复普通训练和 checkpoint 加载。</li>
+<li>无 AC 和 FullAC 场景下，编译路径与 eager 路径的输出、梯度和录制 ID 一致；录制图与训练图分别缓存，重复录制、模式切换及 checkpoint 加载不新增编译图，重放前检查路由缺失及形状错误。</li>
+<li>多个录制 slot 不共享运行时存储，后续录制不覆盖历史专家 ID；录制编译失败时保留原有编译入口并恢复路由上下文，模型 buffer、RNG 和 token 计数保持不变。</li>
+<li>录制沿用上游模块编译入口及 forward hooks；录制前后保持 RNG、模型 buffer 和 token 计数不变。</li>
 </ul>
 <p><code>tests/unit_tests/extensions/experiment/anticipatory_routing/test_detector.py</code> 覆盖持续水平漂移、恒定 loss 后的微小噪声、
 跨回滚及 ACTIVE/DRAIN 更新的冷却计数、非有限阈值校验、零回滚预算的 checkpoint 校验、PP 拒绝和 ID 存储类型边界。</p>

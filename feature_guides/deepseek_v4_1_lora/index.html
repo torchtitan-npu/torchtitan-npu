@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4.1 LoRA - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4.1 LoRA";
+        var mkdocs_page_input_path = "feature_guides/deepseek_v4_1_lora.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4.1 LoRA</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#_1">训练</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#checkpoint">Checkpoint 与导出</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_2">验证命令</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4.1 LoRA</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v41-lora">DeepSeek-V4.1 LoRA</h1>
+<p>V4.1 复用已有的 dense、batched 和 routed-expert LoRA 实现。训练时冻结基座、Engram 表和视觉编码器，保留 Engram 查表路径。AdamW 和 Muon 仅更新 adapter；Muon 使用逐头布局和独立的 gate/up 专家因子，输出头和 indexer 沿用 AdamW fallback。</p>
+<h2 id="_1">训练</h2>
+<p>LoRA 脚本复用现有 CPT 入口，默认选择多模态 <code>deepseek_v4_1_flash_lora</code>、参考算子和 eager 执行，并清空 optimizer swap override，与下述 LoRA 集成用例的执行方式一致。基座权重、tokenizer、Engram token map 和模型配置需要匹配，节点数和并行参数按实际资源设置：</p>
+<pre><code class="language-sh">NODE_IPS=&quot;${NODE_IPS}&quot; \
+HF_ASSETS_PATH=/path/to/tokenizer \
+CKPT_INIT_LOAD_PATH=/path/to/v41-hf-base \
+CKPT_SAVE_LOAD_PATH=/path/to/run/checkpoint \
+bash examples/deepseek_v4_1/deepseek_v4_1_flash_lora_4k_a3.sh \
+  --optimizer.name Muon \
+  --training.steps 150 --checkpoint.interval 50
+</code></pre>
+<p>使用 <code>--optimizer.name AdamW</code> 选择 AdamW。默认 rank 为 16、alpha 为 32，专家 rank 为 16。通过 <code>CONFIG=deepseek_v4_1_flash_text_lora</code> 使用同一脚本训练正式纯文本模型：脚本将默认数据集切换为 <code>c4_test</code>，也可用 <code>DATASET</code>、<code>DATASET_PATH</code> 选择文本数据。多模态默认数据集为 <code>cc12m-test</code>。用户环境变量与末尾 CLI 参数可覆盖脚本默认值。</p>
+<p><code>deepseek_v4_1_debugmodel_lora</code> 为纯文本调试配置。设备数量应满足模型内存需求，仅缩小并行度不会缩小模型。</p>
+<p>从 native DCP 基座初始化时增加 <code>--checkpoint.no-initial-load-in-hf</code>。恢复 native checkpoint 时，保持 EP 度数、Engram 表结构、tokenizer 映射和 LoRA 配置一致。</p>
+<h2 id="checkpoint">Checkpoint 与导出</h2>
+<p>初始化加载基座时保留新建的 adapter。周期 checkpoint 默认保存 adapter、持久化模型 buffer 和训练状态；恢复时先加载固定基座，再恢复这些状态，因此需要保留 <code>initial_load_path</code>。使用 <code>--checkpoint.no-periodic-save-adapter-only</code> 可将基座和 Engram 分片一并写入周期 DCP。恢复路径中的 checkpoint 必须包含 adapter。</p>
+<p>最后一步保存 <code>adapter_model.safetensors</code> 和 <code>adapter_config.json</code>。Engram 权重保留在所引用的基座中，PEFT 仅导出训练的 adapter。使用 <code>--checkpoint.no-last-save-in-peft</code> 可改为保存 native checkpoint。<code>last_save_in_hf</code> 会被拒绝，因为普通全模型 HF 导出不保留 LoRA adapter。</p>
+<p>将 adapter 合并到浮点 V4.1 HF 基座：</p>
+<pre><code class="language-sh">python -m scripts.lora.merge_adapter \
+  --base-model /path/to/v41-floating-point-base \
+  --adapter /path/to/run/checkpoint/step-150 \
+  --output /path/to/v41-merged
+</code></pre>
+<p>共享合并工具保留基座 dtype、分片索引及配套文件，包括 Engram 映射和模型配置；Engram 权重不参与增量合并。输出目录必须不存在，且不能位于任一输入目录内。量化 checkpoint 需要先通过对应后端解码为普通 FP16/BF16/FP32 逻辑权重。</p>
+<p>参数量化 LoRA 可组合已有 TorchAO-NPU recipe：adapter 保持浮点，基座保持冻结。block-FP8 专项测试适用于支持该格式的硬件和运行时；A3 上的 BF16 验证不作为 block-FP8 的执行验证。</p>
+<h2 id="_2">验证命令</h2>
+<pre><code class="language-sh">python -m pytest -q tests/unit_tests/models/deepseek_v4_1/test_v41_lora.py
+python -m tests.integration_tests.run_tests /tmp/v41-lora-training \
+  --test_suite deepseek_v4_1 --ngpu 2
+python -m tests.integration_tests.run_tests /tmp/v41-lora-resume \
+  --test_suite deepseek_v4_1_checkpoint --ngpu 2
+</code></pre>
+<p>默认 <code>models</code> suite 包含纯文本和带图像输入的短程 AdamW 训练及 PEFT 导出。与 DeepSeek-V4 一致，分布式 checkpoint 恢复保留在独立 suite 中，因为 A3 CI 运行时在分布式 checkpoint planning 阶段存在 <code>libscatter_aicpu_kernel.so</code> 加载问题。checkpoint suite 对 AdamW 的 adapter-only DCP 和 Muon 的完整 DCP，分别比较连续训练第 1–4 步与从第 2 步恢复后的第 3–4 步，检查 adapter 更新、基座和 routing bias 冻结、Engram 无稀疏梯度、优化器状态恢复、PEFT 张量以及恢复前后 loss 和梯度范数一致性。独立的 <code>deepseek_v4_1_quantized</code> suite 对 block-FP8 应用同样的恢复检查。</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../cpu_offload/" class="btn btn-neutral float-left" title="CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_cp/" class="btn btn-neutral float-right" title="DeepSeek-V4 上下文并行（CP）">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../cpu_offload/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../deepseek_v4_cp/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

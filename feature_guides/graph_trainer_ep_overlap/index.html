@@ -73,6 +73,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
@@ -433,17 +435,11 @@ return (*chunked, *moved), tuple(user for user in full if user not in moved_set)
 <p>第二个 patch 的标签清理发生在后续 schedule pass，晚于这里的 live-out 分类，因此第四个问题不是删除标签引起的。</p>
 <p>父模块、其他 root 或缺失 FQN 的 dim-0 query 仍可能被归为 full；若未来要支持这些场景，需要额外定义重建方案，不能将当前补丁的适用范围外推为所有 AllToAll shape live-out 都受支持。</p>
 <h2 id="_4">启用方式</h2>
-<p>EP overlap 通过 <code>--compile.ep_overlap.*</code> 打开。满足前述条件的 GraphTrainer MoE recipe 均通过同一组配置项启用；模型入口、dispatcher、并行配置和算子 override 仍由各模型 recipe 负责。</p>
-<p>下面仅给出本文整网验证使用的 DSV4 示例：flash 43layers/16experts、8 卡、EP=8，复用仓内 DSV4 GraphTrainer 入口脚本。</p>
+<p>EP overlap 通过 <code>--compile.ep_overlap.*</code> 打开。满足前述条件的 GraphTrainer MoE recipe 均通过同一组配置项启用；模型入口、dispatcher、并行配置和算子 override 仍由各模型 recipe 负责。当前 A3 GraphTrainer debug 脚本已设置 <code>seq</code> 分块、<code>graph</code> 策略和 NPU auto overlap pipeline，调用它时无需重复传这些配置项。自动调度机制见 <a href="../graph_trainer_auto_overlap/"><code>graph_trainer_auto_overlap.md</code></a>。</p>
+<p>下面给出当前 DSV4 A3 GraphTrainer 入口脚本的调用示例：flash 43layers/16experts、8 卡、EP=8。此脚本默认启用 NPU auto overlap；下文 2026-09-16 的整网验证对应旧提交和固定调度，不是此命令的验证结果。</p>
 <pre><code class="language-bash">NGPU=8 \
 HF_ASSETS_PATH=/path/to/DeepSeekV4_tokenizer \
-bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
-  --optimizer.name native \
-  --compile.disable_passes cudagraph_pass,annotate_flex_attention_for_regional_inductor_pass,regional_inductor_pass \
-  --compile.ep_overlap.enabled \
-  --compile.ep_overlap.strategy graph \
-  --compile.ep_overlap.chunk_dim seq \
-  --compile.ep_overlap.module_fqn 'layers.*.moe'
+bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh
 </code></pre>
 <p><code>EpOverlapConfig</code>（<code>torchtitan/experiments/graph_trainer/configs.py</code>）字段：</p>
 <table>
@@ -488,7 +484,6 @@ bash examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh \
 <h2 id="dsv4-2026-09-16">DSV4 整网实跑验证（2026-09-16）</h2>
 <p>本节只记录 DSV4 作为验证载体的结果，用于证明通用 EP overlap 能力及临时补丁在这一具体组合上可以完成整网训练。</p>
 <p>在同一台机器上按“关闭 EP overlap -&gt; 开启 EP overlap”的顺序各运行 10 step。两组均使用 8 张 Ascend 910、CANN 9.2.0、TorchTitan <code>v0.3.0</code>（<code>086bf6c166ec85c1298eb5596fa9bf95f6a2d840</code>）和本仓库 HEAD <code>ec98b86809e024e105958b50c7714666c8c65ff2</code>。模型为 flash 43 layers / 16 experts，EP=8、DP shard=8、TP/CP/PP=1，local/global batch size 为 1/64，sequence length 为 4096，seed 为 42。</p>
-<p>开启组再追加“启用方式”中的四个 <code>--compile.ep_overlap.*</code> 参数；关闭组不追加这些参数。</p>
 <table>
 <thead>
 <tr>

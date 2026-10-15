@@ -73,6 +73,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
@@ -199,7 +201,7 @@
 <li>设置 <code>TORCHINDUCTOR_USE_EXPERIMENTAL_BENCHMARKER=0</code>；</li>
 <li>开启 EP overlap，并选择对应的 Auto Overlap pipeline。</li>
 </ol>
-<p>完整配置参考 <a href="../../examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_auto_overlap.sh"><code>deepseek_v4_flash_8p_cpt_4k_a3_auto_overlap.sh</code></a>。</p>
+<p>完整配置参考 <a href="../../examples/deepseek_v4/debug/deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh"><code>deepseek_v4_flash_8p_cpt_4k_a3_graphtrainer.sh</code></a>：该脚本同时设置 EP overlap、两个 Inductor benchmark 环境变量和 NPU auto overlap pipeline。</p>
 <h2 id="1">1. 整体流程</h2>
 <h3 id="11-ep-overlap">1.1 与原生 EP overlap 的关系</h3>
 <p>原生 EP overlap 将目标 MoE 区域切成两个 chunk，并以固定规则重排节点。NPU Auto Overlap 保留切图结果，等动态 shape 具体化后再根据 NPU 实测 cost 调度：</p>
