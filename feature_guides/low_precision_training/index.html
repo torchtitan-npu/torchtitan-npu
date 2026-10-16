@@ -119,6 +119,8 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_4">工作原理</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#moe">MoE 专家低精度通信</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_5">配置与生效检查</a>
@@ -346,7 +348,7 @@
 </code></pre>
 <p>未启用时，recipe 仍会量化匹配的线性层和专家模块，稀疏 attention 保持原始路径。此开关仅用于 V4.1，若没有对应的匹配节点，会记录警告并跳过替换。</p>
 <h2 id="fsdp">FSDP 权重预量化</h2>
-<p><code>--extension.quantization.enable-fsdp-prequantize</code> 将 Block FP8 权重的量化提前到 FSDP all-gather 之前。all-gather 传输量化后的 FP8 权重与 scale，前向和反向复用量化数据，以减少通信量和重复量化计算。</p>
+<p><code>--extension.quantization.enable-fsdp-prequantize</code> 将 Block FP8 权重的量化提前到 FSDP all-gather 之前：各 rank 先量化本地权重分片，再传输 FP8 权重与 scale，前向和反向在同一次 unshard 周期内复用量化结果。相较于先聚合高精度权重、再在各 rank 上量化完整权重，该方式减少了参数通信量和重复量化计算，主要用于 attention 等 dense 权重的 FP8 训练优化。</p>
 <h3 id="_4">工作原理</h3>
 <p>FSDP 的参数通信和梯度通信是两个阶段：参数在模块计算前通过 all-gather 恢复，反向结束后通过 reduce-scatter 规约并重新分片。预量化只改变参数 all-gather 的 payload，不改变梯度 reduce-scatter 使用的 <code>reduce_dtype</code>：</p>
 <pre><code class="language-text">本地权重 shard
@@ -378,6 +380,21 @@
 <li><strong>对齐失败（报错，不回退）</strong>：分片后的量化维（axis=-2）须为 64 的倍数、最后一维须为 32 的倍数，不满足时抛 <code>ValueError</code> 立即终止，报错信息给出本地/全局分片形状与 mesh size，并提示从 <code>fsdp-prequantize-fqns</code> 移除该权重或调整并行度。按专家轴分片（Shard(0)）的 3D 专家权重本地量化维完整，不受 64 对齐约束。静默回退会让训练行为偏离配置，因此对齐失败是硬错误。</li>
 </ul>
 <p>典型示例：默认白名单包含 <code>.attention.wkv</code>（dim0=512）。<code>dp_shard=8</code> 时每卡分片 64 行，满足对齐、正常预量化；<code>dp_shard=16</code> 时每卡 32 行，启动即报错，需把 <code>.attention.wkv</code> 从 <code>fsdp-prequantize-fqns</code> 中排除（列出默认白名单的其余模式）。更高并行度会成批触发：如 <code>dp_shard=128</code> 时要求 dim0 为 8192 的倍数，均分切分的 <code>wq_a</code>/<code>wkv</code>/<code>wo_b</code>/shared experts（dim0 为 512–4096）全部违规，仅按 head/group 块切分的 <code>wq_b</code>/<code>wo_a</code>/<code>indexer.wq_b</code> 与按专家轴切分的 routed experts 仍可预量化。</p>
+<h3 id="moe">MoE 专家低精度通信</h3>
+<p>专家存在 EFSDP 分片时，也支持 FP8 或 MXFP4 参数通信。该能力主要用于功能支持，不以增加 EFSDP 并行度来获取训练加速为目标。
+专家参数 all-gather 在 <code>EFSDP&gt;1</code> 时发生，EP 切分本身不产生该通信。</p>
+<p>默认专家通信格式为 <code>fp8</code>。在 <code>all_block_fp8</code> recipe 下，以下配置将启用 MXFP4 QAT 的 routed experts 切换为 MXFP4 通信，同时保留 attention 等 dense 权重的 FP8 通信：</p>
+<pre><code class="language-bash">--extension.quantization.enable-quantized-training \
+--extension.quantization.recipe all_block_fp8 \
+--extension.quantization.enable-mxfp4-qat \
+--extension.quantization.enable-fsdp-prequantize \
+--extension.quantization.fsdp-prequantize-dtype mxfp4
+</code></pre>
+<p><code>enable-fsdp-prequantize</code> 启用参数通信预量化；<code>fsdp-prequantize-dtype mxfp4</code> 只将 routed experts 的通信格式切换为 MXFP4，
+attention 等 dense 权重仍使用 FP8。专家在 <code>[E, N, K]</code> 布局下沿 K 轴量化，通信完成后转换为计算所需的 Block FP8；梯度通信仍使用 FSDP 原有配置。</p>
+<p>该模式要求 routed experts 启用 MXFP4 QAT，并使用均匀的 <code>Shard(0)</code> 分片、2D/3D 权重和 block size 32；不支持非均匀分片或 <code>Shard(1)</code>。
+未显式设置 <code>fsdp-prequantize-fqns</code> 时使用 recipe 默认白名单；若只指定 <code>.moe.routed_experts.inner_experts</code>，则只启用专家预量化通信，attention 的 FP8 预量化通信也会关闭。白名单不影响原有计算量化。</p>
+<p>该功能基于 FSDP2，当前不支持 FSDP1 低精度通信。<code>EFSDP=1</code> 时不会进入专家预量化通信路径。</p>
 <h2 id="_5">配置与生效检查</h2>
 <p>以下字段均位于 <code>--extension.quantization</code> 下，表中省略公共前缀：</p>
 <table>
@@ -422,7 +439,12 @@
 <tr>
 <td><code>enable-fsdp-prequantize</code></td>
 <td><code>False</code></td>
-<td>Block FP8 权重在 FSDP all-gather 前预量化</td>
+<td>启用 FSDP 参数 all-gather 前预量化</td>
+</tr>
+<tr>
+<td><code>fsdp-prequantize-dtype</code></td>
+<td><code>fp8</code></td>
+<td>Routed experts 的预量化通信格式；<code>mxfp4</code> 要求专家启用 MXFP4 QAT。<code>all_block_fp8</code> 下 attention 等 dense 权重仍使用 FP8 通信，启用范围由白名单决定</td>
 </tr>
 <tr>
 <td><code>fsdp-prequantize-fqns</code></td>

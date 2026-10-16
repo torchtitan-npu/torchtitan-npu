@@ -285,17 +285,20 @@
   <code>ops</code> 对接后端算子」的主接入方式。</li>
 <li><code>torch.library.custom_op</code> 使用仓库 namespace，例如
   <code>torchtitan_npu::npu_moe_token_unpermute</code>；CANN 原生算子保留其 vendor namespace。</li>
-<li>算子需要的 TND 或其他 vendor metadata 应由独立的 metadata extension 预计算，再传给
-  replacement。不要把模型公共 metadata 改成只适用于某个后端的类型。</li>
+<li>算子需要的 TND 或其他 vendor metadata 由该 attention backend 自己的
+  <code>Config.build_attention_metadata</code> 预计算：decoder 每个 microbatch 只构建一次，同几何的层共享
+  同一份（upstream PR #4897 的接缝）。metadata 要把模型公共 metadata 包在里面，而不是把公共
+  metadata 改成只适用于某个后端的类型。</li>
 </ul>
 <p>当前实现示例：</p>
 <ul>
-<li>DeepSeek-V3.2 在 <code>sparse_attn.asc_metadata</code> 中提取 TND 序列长度，在
-  <code>sparse_attn.asc</code> 中调用 <code>torch_npu.npu_lightning_indexer</code> 和
-  <code>torch_npu.npu_sparse_flash_attention</code>。</li>
+<li>DeepSeek-V3.2 的 <code>AscSparseInnerAttention.Config.build_attention_metadata</code> 把公共的 varlen
+  layout 包成 <code>AscVarlenMetadata</code> 并读出 TND 需要的 host 序列长度；<code>sparse_attn.asc</code> 调用
+  <code>torch_npu.npu_lightning_indexer</code> 和 <code>torch_npu.npu_sparse_flash_attention</code>。</li>
 <li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 生成 CANN <code>*_metadata</code>，
   <code>sparse_attn.asc</code> 桥接 LightningIndexer/SparseFlashMLA 的正反向；<code>sparse_attn.pypto</code> 用
-  PyPTO 实现 LI/LIG，并复用 AscendC 的其余 attention kernel。</li>
+  PyPTO 实现 LI/LIG，并复用 AscendC 的其余 attention kernel。（V4/V4.1 尚未迁移到 backend-owned
+  接缝，仍由 <code>metadata_extension</code> 预计算。）</li>
 <li>MoE token dispatcher 的 <code>npu_moe_token_unpermute</code> 与 <code>npu_moe_re_routing</code> 在
   <code>torchtitan_npu/ops/ascendc/</code> 中以 <code>torch.library.custom_op</code> 做编译兼容封装，并提供 Fake 和
   Autograd；
@@ -356,8 +359,8 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 <h3 id="5">5. 处理配套和冲突</h3>
 <p>多个 override 是否能同时启用取决于实际声明的配置节点，而不是模块路径是否不同：</p>
 <ul>
-<li>DeepSeek-V3.2 的 <code>sparse_attn.asc_metadata</code> 和 <code>sparse_attn.asc</code> 分别替换 metadata
-  extension 与 attention；DSA 融合路径需要成对启用。</li>
+<li>DeepSeek-V3.2 只需启用 <code>sparse_attn.asc</code>：attention 与它自己的 TND metadata 同属一个
+  backend，metadata 由被替换的 config 直接构建，不再有单独的 metadata 入口。</li>
 <li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 必须与 <code>sparse_attn.asc</code> 或 <code>sparse_attn.pypto</code> 配套；
   <code>sparse_attn.asc</code>、<code>sparse_attn.pypto</code>、<code>sparse_attn.golden</code> 声明同一 attention target，
   三者只能选一个。<code>golden</code> 是数值参考，不是融合性能路径。</li>

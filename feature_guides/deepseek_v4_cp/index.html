@@ -209,7 +209,7 @@
 <p>以下决策是当前方案的设计依据，接手开发时应保持，不做反向重构。</p>
 <ol>
 <li>
-<p><strong>单一 metadata 接缝</strong>。模型以 <code>build_attention_masks(inputs, labels, extra_kwargs, *, cp_mesh, load_balancer_type)</code> 统一构建每 batch 的 metadata：CP 时在其中完成输入切分与计划推导，vendor 内核张量由配置解析的 <code>metadata_extension</code>（<code>AscMetadataExtension</code>）在最后一步填充。接缝只有一处，dsv3.2 走同一机制。</p>
+<p><strong>单一 metadata 接缝</strong>。模型以 <code>build_attention_masks(inputs, labels, extra_kwargs, *, cp_mesh, load_balancer_type)</code> 统一构建每 batch 的 metadata：CP 时在其中完成输入切分与计划推导，vendor 内核张量由配置解析的 <code>metadata_extension</code>（<code>AscMetadataExtension</code>）在最后一步填充。接缝只有一处。DeepSeek-V3.2 已迁到上游 backend-owned 接缝（attention backend 自己的 <code>Config.build_attention_metadata</code> 与 <code>prepare_cp_metadata</code>，见<a href="../fused_ops/">多后端算子接入</a>）；V4/V4.1 收敛到同一接缝的工作另行推进。</p>
 </li>
 <li>
 <p><strong>纯本地计划</strong>。<code>build_cp_plan</code> 输入 <code>(global_varlen, load_balancer, rank, cp_size, shard_len, window_size, ratios)</code>，用 <code>_RankMesh</code> 垫片逐 rank 调用 <code>CPVarlenMetadata.from_global</code>，返回 <code>(rank-local varlen, plans, window)</code>。全局上下文（切分前的文档结构 + 置换）在 <code>build_attention_masks</code> 帧内即可获得，因此计划阶段零通信，且推导出的 rank-local varlen 与 shard 路径的产物一致。</p>

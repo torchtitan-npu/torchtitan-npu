@@ -274,7 +274,10 @@
 <li>运行一次推理和小算子基线的一次前向计算；</li>
 <li>判断推理和训练 logits 是否 <code>比特一致</code>。</li>
 </ul>
-<p>示例：<a href="../../scripts/numerical_alignment/deepseek_v4/README.md">DeepSeek-V4 推理前向对比</a>。基线固定为 <code>transformers==5.13.0</code>；可选数值补丁存在时默认启用，验收记录必须区分原生与打补丁的 Transformers。</p>
+<p>示例：<a href="../../scripts/numerical_alignment/README.md#步骤三transformers-和-torchtitan-前向对比">DeepSeek-V4 推理基线与小算子基线前向对齐方法</a>。权重准备与转换见同一文档的步骤一、二。</p>
+<p>DeepSeek-V4 的 Transformers 基线固定为 <code>transformers==5.13.0</code>，默认启用数值对齐补丁。验收记录必须区分原生与打补丁的 Transformers。
+脚本在前向计算前调用 <code>set_allow_hf32(False)</code>，关闭 NPU matmul、conv 和 ACLNN 的 HF32。
+Routed expert 在 <code>w2</code> 投影前乘 router score，并回到 BF16；将乘法延后到投影后会改变舍入位置。</p>
 <h3 id="32">3.2 改动局部精度对比</h3>
 <p>目的：确认被修改的算子或模块本身没有公式、边界、索引或梯度错误。</p>
 <p>对比方法：</p>
@@ -283,7 +286,7 @@
 <li>比较小算子基线和被测实现模块输出精度，至少需要满足 <code>数值近似</code> 的要求（参考 <code>logits</code> 数值近似阈值）；</li>
 <li>存在反向时，还需对比梯度。</li>
 </ul>
-<p>示例：<a href="../../scripts/numerical_alignment/compare_module_example.py">局部模块前向和反向精度对比脚本</a>，使用相同输入、权重和上游梯度比较 Torch RMSNorm 与 AscRMSNorm。</p>
+<p>示例：<a href="../../scripts/numerical_alignment/README.md#局部模块对比">局部模块前向和反向精度对比方法</a>，使用相同输入、权重和上游梯度比较 Torch RMSNorm 与 AscRMSNorm。</p>
 <h3 id="33-vs">3.3 小算子基线 vs 被测实现</h3>
 <p>目的：确认融合算子、自定义算子或其他实现接入模型后，其数值结果相对于小算子基线满足对应的精度要求。</p>
 <p>对比方法：</p>
@@ -292,7 +295,8 @@
 <li>分别运行小算子基线和被测实现的前向计算；</li>
 <li>判断两种实现的 <code>logits</code> 和 <code>loss</code> 是否满足对应的精度要求，若被测实现为对小算子路径的修改，需满足 <code>比特一致</code>。</li>
 </ul>
-<p>示例：<a href="../../scripts/numerical_alignment/loss_compare.py">小算子基线和被测实现比较脚本</a>。使用 <code>--baseline-options</code> / <code>--test-options</code> 传入两组 <code>override.imports</code>，或使用 <code>--baseline-env</code> / <code>--test-env</code> 切换 runner 的 override 组。</p>
+<p>示例：<a href="../../scripts/numerical_alignment/README.md#数值近似对比">DeepSeek-V4 小算子基线与被测实现训练指标对齐方法</a>，通过 runner 的 <code>USE_GOLDEN</code> 比较 Golden 和融合实现的 <code>loss</code>、<code>grad_norm</code>。</p>
+<p>训练对比默认使用 <code>seq_len=4096</code>；其他长度通过 <code>--seq-len</code> 统一指定。</p>
 <h3 id="34">3.4 修改前后训练精度对比</h3>
 <p>目的：发现单步指标无法暴露的误差累积、梯度偏移和 optimizer update 异常等。</p>
 <p>对比方法：</p>
@@ -301,7 +305,7 @@
 <li>至少运行 <code>100</code> 个训练 step；</li>
 <li>声明不改变计算结果时，<code>loss</code> 和 <code>grad_norm</code> 必须 <code>比特一致</code>；涉及计算变化时，需满足 <code>数值近似</code>。</li>
 </ul>
-<p>示例：<a href="../../scripts/numerical_alignment/loss_compare.py">修改前后训练精度比较脚本</a>，通过两个 Git ref 指定比较对象，使用 <code>--steps 100</code> 运行两侧训练。</p>
+<p>示例：<a href="../../scripts/numerical_alignment/README.md#步骤四训练-loss-和-grad_norm-对比">修改前后训练精度对齐方法</a>，通过两个 Git ref 指定比较对象，使用 <code>--steps 100</code> 运行两侧训练。</p>
 <h2 id="4">4. 验证范围</h2>
 <p>以 PR 的文件变更列表确定验证范围。</p>
 <table>
