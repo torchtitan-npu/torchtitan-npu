@@ -455,7 +455,8 @@ Codegen、C++ wrapper 和 AscendC Kernel 编译，不能用于稳态性能结论
 <p>当前包初始化顺序为：</p>
 <pre><code class="language-text">patches → config → extensions → ops
 </code></pre>
-<p><code>compile</code> 已迁入 <code>extensions/compile/</code>，不再是顶层自动导入阶段。该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效。新增初始化逻辑不能随意调整此顺序。</p>
+<p><code>compile</code> 已迁入 <code>extensions/compile/</code>，不再是顶层自动导入阶段。该顺序是运行时契约。NPU patch 必须在模型构建和首次编译前生效。新增初始化逻辑不能随意调整此顺序。
+<code>extensions/compile/dynamo_config.py</code> 随该阶段无条件设置 Dynamo 的 <code>use_recursive_dict_tags_for_guards</code>：guard 管理器在构建 guard 树时标记 tag safe root，之后每次调用命中 tag 即跳过该子树下的完整 guard 检查，从而缩短 guard 求值耗时。该设置只改变 guard 的检查路径，不改变捕获内容与特化行为，也没有关闭开关；<code>specialize_float</code> 保持 torch 默认值，避免编译区域内逐步变化的 Python float 每步触发重编译。</p>
 <h3 id="52-loss">5.2 模型和 loss 编译</h3>
 <p>标准 DeepSeek/Qwen 模型路径通常遵循：</p>
 <pre><code class="language-text">模型构建与 override
