@@ -93,11 +93,11 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_3">压缩与索引规则</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#golden">参考路径（默认内核与 golden）</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">参考路径（默认内核）</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#ascendc">AscendC 融合路径</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#_4">当前边界</a>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">当前边界</a>
     </li>
     </ul>
                   </li>
@@ -164,9 +164,8 @@
 <pre><code class="language-bash">bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh
 </code></pre>
 <p>DeepSeek-V4 的示例 wrapper 有两种可切换的 recipe（<code>USE_GOLDEN</code> 选择；<code>--override.imports</code> 是显式覆盖入口）。<code>scripts/run_train.sh</code> 只负责通用启动和参数透传，不定义这些 recipe：</p>
-<pre><code class="language-text">USE_GOLDEN=1  # wrapper 里的 Golden 组合：
+<pre><code class="language-text">USE_GOLDEN=1  # wrapper 里的参考组合（模型默认内核 = attn-gym gather_attn）：
               #   override.common.rope.workaround
-              #   override.deepseek_v4.sparse_attn.golden
               #   (the MoE is the normal clamped bf16 path on both sides)
 USE_GOLDEN=0  # wrapper 里的默认测试组合：
               #   override.common.rms_norm.asc
@@ -174,8 +173,8 @@ USE_GOLDEN=0  # wrapper 里的默认测试组合：
               #   override.deepseek_v4.sparse_attn.asc_metadata
               #   override.deepseek_v4.sparse_attn.asc
 </code></pre>
-<p>Golden DSA 参考（eager 逐文档、FP32、与 <code>dsv4-infer-npu</code> 比特一致）用于双层数值校验：
-golden 与 patched transformers 比特一致，AscendC 融合内核与 golden 在容差内一致
+<p>参考路径（模型默认内核：Attention Gym 的 <code>gather_attn</code>，eager 逐文档、FP32）用于数值校验：
+参考路径与 patched transformers 做逐 step 容差对比，AscendC 融合内核与参考路径在容差内一致
 这些组合定义在 <code>examples/deepseek_v4/*.sh</code> 中；通用 launcher <code>scripts/run_train.sh</code> 只接收并透传 <code>--override.imports</code>，不会自动注入 DeepSeek-V4 override 组。</p>
 <h2 id="_2">数据流</h2>
 <pre><code class="language-text">模型张量 [B, S, ...]
@@ -188,9 +187,6 @@ golden 与 patched transformers 比特一致，AscendC 融合内核与 golden �
         │
         ├─ 默认内核（CompressedSparseInnerAttention）
         │     gather_attn(q, swa_k, cmp_k 容器, 选择) + sink；选择由 LightningIndexer 给出
-        │
-        ├─ golden override（eager 逐文档 FP32，比特级数值参考）
-        │     逐文档 gather-matmul + 逐文档 indexer top-k
         │
         └─ AscendC 融合内核（AscCompressedSparseInnerAttention）
              q/swa_k flatten → [T, N, D] / [T, 1, D]
@@ -270,9 +266,11 @@ overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
 <li><code>r=4</code>（CSA）：启用重叠压缩和 LightningIndexer；前驱块必须属于同一文档（<code>overlap_valid</code>）。</li>
 <li><code>r=128</code>（HCA）：生成连续压缩 KV，不执行 LightningIndexer TopK。</li>
 </ul>
-<h2 id="golden">参考路径（默认内核与 golden）</h2>
+<h2 id="_4">参考路径（默认内核）</h2>
 <p>模型目录默认内核是 <code>CompressedSparseInnerAttention</code>：它只读公共 metadata 的 packed 偏移（<code>cu_seq_q</code> 与 <code>plans[ratio].cu_seqlens_cmp_k</code>），用 Attention Gym 的 <code>gather_attn</code> 在 <code>cat([swa_k, cmp_k 容器])</code> 上做滑窗 + sink，并按 ratio 取选择——<code>r=4</code> 走 <code>LightningIndexer</code> 给出的逐文档 TopK，<code>r=128</code> 直接取本查询本自然段内因果可达的全部压缩槽。选择与 <code>gather_attn</code> 都按“文档内”下标寻址（见 <code>models/common/document_intervals.py</code>），因此不再需要文档感知的 BlockMask，也不再需要 <code>metadata_extension</code> 预计算参考 tier。</p>
-<p><code>golden</code> override 用 eager 逐文档 FP32（gather-matmul + 逐文档 indexer top-k）实现同一层，是当前唯一的比特级数值参考：<code>test_dsv4.py</code> 用它锚定默认内核（残差在 fp32 舍入底噪内），融合内核则与它做容差对照。</p>
+<p>默认内核就是唯一的参考路径，不再有独立的 golden override：<code>test_dsv4.py</code> 以形状/有限值和 pool 梯度的可复现性守护它，融合内核与它做容差对照。</p>
+<p>参考组合不训练 indexer：<code>r=4</code> 层的 <code>LightningIndexer</code> 只提供 TopK 选择（不可导），它的 KL 蒸馏目标由融合组合的 <code>asc_li</code> / SLIG 承担，参考核心本身不产生 indexer loss。因此用参考组合与融合组合对比 <code>loss</code> / <code>grad_norm</code> 时，indexer 相关参数在参考组合下没有梯度属于预期；<code>test_dsv4.py</code> 与 <code>dsv4_golden_*</code> 用例只校验注意力数值，不覆盖 indexer 的训练目标。</p>
+<p>因此参考组合目前只能用 AdamW：<code>DistMuon</code> 在 step 前要求每个配置的参数都有梯度，会以 <code>missing gradients: layers.&lt;n&gt;.attention.indexer.*</code> 报错（<code>USE_GOLDEN=1</code> 搭配示例里的 Muon 参数即属此情况）。</p>
 <h2 id="ascendc">AscendC 融合路径</h2>
 <p><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn/ascendc.py"><code>sparse_attn/ascendc.py</code></a> 中的 <code>AscCompressedSparseInnerAttention</code> 执行以下步骤：</p>
 <ol>
@@ -312,7 +310,7 @@ overlap_valid    = [F, T, F, T, T, T]  # 文档起始块没有前驱
 </tr>
 </tbody>
 </table>
-<h2 id="_4">当前边界</h2>
+<h2 id="_5">当前边界</h2>
 <table>
 <thead>
 <tr>

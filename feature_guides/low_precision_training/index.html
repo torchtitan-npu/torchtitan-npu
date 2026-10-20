@@ -328,11 +328,25 @@
 </tbody>
 </table>
 <p>候选池保存 key 的块索引，每块包含 <code>candidate_block_size</code> 个位置，最多保留 <code>candidate_topk_blocks</code> 个块。它与最终的 <code>index_topk</code> 个 key 是两级筛选：QLI 候选源层先确定候选块，后续 QSLI 层使用各自的 query 和权重在这些块内重新选分。Reuse 层直接沿用已有选择，不调用 QLI 或 QSLI。</p>
+<p>QLI/QSLI 的 metadata（一条 QLI schedule、一条 QSLI schedule 以及 QSLI 被约束的 per-row 候选数
+<code>sparse_length</code>）在每 microbatch 的 eager 边界预计算，随 attention metadata 下发、全层共享；候选数
+按本 rank 的 frames 推导而不是回读 QLI 的输出，所以这些 metadata 在 forward 之前就绪，层内不再
+调用任何 metadata 算子。量化后的 sparse attention 是<strong>另一个 backend</strong>：<code>li-quantization</code> 只在
+<code>enable-sparse-attention-quantization</code> 同开时可用（converter 直接报错），由量化适配层
+（<code>torchtitan_npu/extensions/adaptor/torchao/converter.py</code>）安装它自己的 attention config，该 config
+用 <code>torchao_npu</code> 的 provider（<code>quantized_modules/deepseek_v4_1/attention_metadata.py</code>）建整份 entry
+——SMLA 前后向、QLI schedule、QSLI schedule + 候选数、BF16 SLIKG 的 backward metadata，字段分组与
+非量化路径同一套（<code>sparse_attn</code> / <code>lightning_indexer</code>，各按 <code>fwd</code> / <code>bwd</code> 取值）。候选池的容量与块大小
+取自模型 config（<code>candidate_topk_blocks</code> / <code>candidate_block_size</code>，参考 selector 建池、搜池用的就是它们），
+只作为 <strong>launch 参数</strong>与候选数推导的输入；QLI metadata 本身与池宽度无关（实测三组宽度逐字节相同），
+所以一个几何只有一条 QLI schedule，建池层和 pool-free 层共用它。<code>sparse_attn.asc</code> 上没有任何池参数，
+在这条路径上也不生效；只跑 BF16 selector 的配方不装量化 attention，<code>fwd_sparse</code> / <code>sparse_length</code>
+保持为空（字段存在，值 <code>None</code>）。</p>
 <p><code>li-quantization=mxfp4</code> 同时启用这两种实现，由模型层的角色和候选池配置自动选择，无需分别指定。两者输出的索引交给 sparse attention 计算注意力；训练反向均使用 BF16 SLIKG 消费教师信号，QLI/QSLI 本身不替代 sparse attention。</p>
-<p>V4.1 的 indexer 训练目标通过 sparse attention 反向提供 teacher（教师信号），再由 selector 的 SLIKG 反向消费。标准 A5 融合路径会同时导入两侧 BF16 override 作为 fallback；在此前提下，以下两个配置可以独立替换对应一侧：</p>
+<p>V4.1 的 indexer 训练目标通过 sparse attention 反向提供 teacher（教师信号），再由 selector 的 SLIKG 反向消费。目标侧可以通过 <code>enable-sparse-attention-quantization</code> 单独量化；选分侧则不能单独量化，因为量化 selector 启动的是量化 attention 建的 schedule（单独开启 <code>li-quantization</code> 会被 converter 拒绝）：</p>
 <ul>
-<li><code>--extension.quantization.li-quantization mxfp4</code>：将 BF16 LI selector 替换为 MXFP4 QLI/QSLI，SLIKG 反向保持 BF16。</li>
-<li><code>--extension.quantization.enable-sparse-attention-quantization</code>：同时替换 KV source Compressor 和 sparse attention；sparse attention 反向继续提供 indexer teacher。</li>
+<li><code>--extension.quantization.li-quantization mxfp4</code>：将 BF16 LI selector 替换为 MXFP4 QLI/QSLI，SLIKG 反向保持 BF16；必须与下一条同开。</li>
+<li><code>--extension.quantization.enable-sparse-attention-quantization</code>：同时替换 KV source Compressor 和 sparse attention；sparse attention 反向继续提供 indexer teacher。该开关本身也决定 entry 由哪个 backend 建——开着就是量化 attention 自建，关着就是 <code>sparse_attn.asc</code> 那份。</li>
 </ul>
 <p>稀疏 attention 量化路径中，swa_kv 使用 <code>mxfp8_bf16</code>，cmp_kv 使用 <code>mxfp4_bf16</code>。该路径对 KV 量化再反量化后调用 sparse attention 算子，以引入对应的量化误差。</p>
 <p>该缓存布局使用按组保存的 BF16 scale：滑窗 KV 为 8 bit E4M3 数据，每 32 个元素共享一个 BF16 scale；压缩 KV 为 4 bit E2M1 数据，每 16 个元素共享一个 BF16 scale。MXFP4 数据以 <code>uint8</code> 打包，每个字节包含两个 4 bit 值。V4.1 的反向计算使用量化反量化的 <code>swa_kv</code> 和 <code>cmp_kv</code>，并结合量化前向的输出和 LSE 计算梯度。</p>
@@ -470,7 +484,7 @@ attention 等 dense 权重仍使用 FP8。专家在 <code>[E, N, K]</code> 布�
 </table>
 <p>布尔开关可通过对应的 <code>no-</code> 形式显式关闭，例如 <code>--extension.quantization.no-enable-mxfp4-qat</code>、<code>--extension.quantization.no-enable-fsdp-prequantize</code>。使用 <code>--extension.quantization.no-enable-quantized-training</code> 可关闭量化训练总开关。</p>
 <p>启动日志中的 <code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用；同时检查 <code>mxfp4_qat</code>、<code>li_quantization</code>、<code>sparse_attention_quantization</code> 和 <code>enable_fsdp_prequantize</code> 是否符合预期。预量化白名单的生效来源由 <code>fsdp_prequantize whitelist = recipe default ...</code>（默认白名单）或 <code>fsdp_prequantize whitelist = user ...</code>（用户白名单）日志行确认。该日志用于确认配置应用情况，不能替代训练精度和性能验证。</p>
-<p>需要采集性能信息时，可增加 <code>--profiler.enable-profiling</code>。示例脚本中的 <code>USE_GOLDEN=1</code> 用于选择数值基线 attention override，默认使用 Ascend 融合路径；该变量不控制低精度训练总开关。</p>
+<p>需要采集性能信息时，可增加 <code>--profiler.enable-profiling</code>。示例脚本中的 <code>USE_GOLDEN=1</code> 用于选择参考 recipe（模型目录默认 attention，attn-gym 的 <code>gather_attn</code>），默认使用 Ascend 融合路径；该变量不控制低精度训练总开关。</p>
 <h2 id="_6">实现与验证入口</h2>
 <p>量化入口根据模型类型选择匹配规则，通过 converter 转换模型配置节点，并在模块构建时应用 TorchAO-NPU 量化。本文依据当前配置、转换逻辑和启动脚本整理，未在本文档重构中执行 NPU 训练；不同并行配置的精度与性能需在目标环境中验证。</p>
 <ul>

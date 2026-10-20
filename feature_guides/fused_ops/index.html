@@ -223,10 +223,6 @@
 </thead>
 <tbody>
 <tr>
-<td><code>golden</code></td>
-<td>标准 PyTorch 算子实现的数值基线</td>
-</tr>
-<tr>
 <td><code>asc</code></td>
 <td>AscendC 融合算子</td>
 </tr>
@@ -252,7 +248,7 @@
 </li>
 <li>
 <p>replacement 类采用「variant + target」命名，并保留标准缩写大小写，例如
-<code>AscRMSNorm</code>、<code>AscCompressedSparseInnerAttention</code>、<code>GoldenCompressedSparseInnerAttention</code>。</p>
+<code>AscRMSNorm</code>、<code>AscCompressedSparseInnerAttention</code>。</p>
 </li>
 </ul>
 <h3 id="_5">文件组织</h3>
@@ -260,7 +256,6 @@
 <pre><code class="language-text">torchtitan_npu/override/&lt;scope&gt;/&lt;target&gt;/
 ├── __init__.py       # @override 注册入口
 ├── ascendc.py        # AscendC 实现
-├── golden.py         # 可选的数值基线
 └── triton.py         # 可选的 Triton 实现
 </code></pre>
 <h2 id="_6">接入流程</h2>
@@ -300,13 +295,22 @@
   （池化轴，折一次，消费者不再除），端口在这两个 grid 上加自己的三个 kernel frame（<code>q</code> /
   <code>swa_k</code> / <code>cmp_k</code>）与 <code>aicpu_metadata</code>——按自身几何调用 CANN <code>sparse_flash_mla_metadata</code> /
   <code>sparse_flash_mla_grad_metadata</code> 与 <code>lightning_indexer_metadata</code> /
-  <code>sparse_lightning_indexer_kl_loss_grad_metadata</code> 得到的四条记录（每 microbatch 一次）。
+  <code>sparse_lightning_indexer_kl_loss_grad_metadata</code> 得到的四条 metadata（每 microbatch 一次），
+  在 <code>aicpu_metadata</code> 下按消费它的 kernel 分组、按方向取值：<code>sparse_attn.fwd</code> /
+  <code>sparse_attn.bwd</code> 与 <code>lightning_indexer.fwd</code> / <code>lightning_indexer.bwd</code>。就这些——一方向一份。
   <code>sparse_attn.asc</code> 逐层按 <code>(端口类, compress_ratio)</code> 取自己的 entry，直接读
-  <code>aicpu_metadata.sparse_attn</code> 等字段：一条 entry 就是一个几何，没有按 topk 或按几何查表的步骤。
+  <code>aicpu_metadata.sparse_attn.fwd</code> 等字段：一条 entry 就是一个几何，没有按 topk 或按几何查表的步骤。
   几何（heads/head dim/indexer 三数）是该 config 自己的必填字段、无默认值，由 override 的五个参数
-  一次写入，默认值即 V4.1-Flash 的发布形状，因此没有单独的 metadata 入口。记录是内核 metadata
-  的唯一来源——没有 inline 回退：拿着没经过端口构建的 metadata 前向会直接失败。
-  CP 下由 <code>AscV41Metadata.prepare_cp_metadata</code> 用 rank-local frames 重建记录。</li>
+  一次写入，默认值即 V4.1-Flash 的发布形状，因此没有单独的 metadata 入口。这些 metadata 是内核的
+  唯一来源——没有 inline 回退：拿着没经过 override 构建的 metadata 前向会直接失败。
+  CP 下由 <code>AscV41Metadata.prepare_cp_metadata</code> 用 rank-local frames 重建。
+  attention override 不声明任何量化：量化后的 attention 是<strong>另一个 backend</strong>，由量化适配层
+  （<code>torchtitan_npu/extensions/adaptor/torchao/converter.py</code>）安装自己的 config 替换本节点，并由
+  <code>torchao_npu</code> 的 provider（<code>quantized_modules/deepseek_v4_1/attention_metadata.py</code>）建自己的 entry
+  ——字段名与上面同一套（<code>sparse_attn.fwd</code>/<code>.bwd</code>、<code>lightning_indexer.fwd</code>/<code>.bwd</code>），但 selector
+  那一组换成量化 selector 的 QLI schedule 并多出 <code>fwd_sparse</code>（QSLI）与 <code>sparse_length</code>（逐行候选数）；
+  候选池的容量与块大小从模型 config 读取，只作为 launch 参数与候选数推导的输入。因此 <code>asc</code> 在这条路径上
+  不生效，非量化 entry 的 <code>fwd_sparse</code>/<code>sparse_length</code> 保持为空，等带 candidate 的非量化算子落地后由端口填。</li>
 <li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 生成 CANN <code>*_metadata</code>，
   <code>sparse_attn.asc</code> 桥接 LightningIndexer/SparseFlashMLA 的正反向；<code>sparse_attn.pypto</code> 用
   PyPTO 实现 LI/LIG，并复用 AscendC 的其余 attention kernel。（V4 尚未迁移到 backend-owned
@@ -373,14 +377,13 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 <ul>
 <li>DeepSeek-V3.2 只需启用 <code>sparse_attn.asc</code>：attention 与它自己的 TND metadata 同属一个
   backend，metadata 由被替换的 config 直接构建，不再有单独的 metadata 入口。</li>
-<li>DeepSeek-V4.1 的 <code>sparse_attn.asc</code> 同时替换 attention 并构建它自己的 metadata 记录，
+<li>DeepSeek-V4.1 的 <code>sparse_attn.asc</code> 同时替换 attention 并构建它自己的 metadata，
   没有单独的 metadata 入口；五个几何数是替换后 config 的必填字段，由该入口的参数写入
-  （默认值为 V4.1-Flash 形状），
-  与 <code>lightning_indexer.asc</code> 必须同开（教师边只有两侧都在时才存在），
-  见 <code>torchtitan_npu/override/README.md#deepseek-v41</code>。</li>
+  （默认值为 V4.1-Flash 形状）。本入口不声明量化：量化 selector 的 metadata 由量化后的 attention
+  自己建（另一条 backend，见上文），池的容量与块大小取自模型 config。它与 <code>lightning_indexer.asc</code>
+  必须同开（教师边只有两侧都在时才存在），见 <code>torchtitan_npu/override/README.md#deepseek-v41</code>。</li>
 <li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 必须与 <code>sparse_attn.asc</code> 或 <code>sparse_attn.pypto</code> 配套；
-  <code>sparse_attn.asc</code>、<code>sparse_attn.pypto</code>、<code>sparse_attn.golden</code> 声明同一 attention target，
-  三者只能选一。<code>golden</code> 是数值参考，不是融合性能路径。</li>
+  <code>sparse_attn.asc</code> 与 <code>sparse_attn.pypto</code> 声明同一 attention target，二者只能选一。</li>
 <li>DeepSeek-V4 MHC 的 AscendC 入口声明 <code>HcPre.Config</code>/<code>HcPost.Config</code>，Triton 入口还包含
   <code>HcHead.Config</code>；同一节点只能选择一个实现。</li>
 <li>两个 override 声明同一节点，或一个声明另一个的祖先/后代节点时会冲突；可移除互斥入口，
@@ -401,7 +404,7 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
    参数梯度和输入梯度；用 <code>torch.compile(backend="aot_eager")</code> 覆盖编译正反向。</li>
 <li><strong>模型层</strong>：执行相关 smoke/integration case，确认 override 日志、kernel 调用、
    <code>DTensor</code> sharding、context parallel 和 checkpoint 行为。</li>
-<li><strong>数值层</strong>：需要基线时使用 <code>golden</code> 或上游 eager/reference 实现；比较 TensorBoard 中
+<li><strong>数值层</strong>：需要基线时使用上游 eager/reference 实现（如 Attention Gym 的 <code>gather_attn</code>）；比较 TensorBoard 中
    未截断的逐 step <code>loss</code> 和 <code>grad_norm</code>，不要只使用 stdout 的有限精度。未在目标设备、
    runtime 或并行配置上验证的组合标记为「未验证」。</li>
 <li><strong>静态检查</strong>：提交前执行 <code>git diff --check</code>，核对入口路径、配置 target、相对链接和
@@ -430,7 +433,7 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 </tr>
 <tr>
 <td>同节点或嵌套节点冲突</td>
-<td>是否同时启用了 fused、PyPTO、Triton 或 golden 替代实现</td>
+<td>是否同时启用了 fused、PyPTO 或 Triton 替代实现</td>
 </tr>
 <tr>
 <td>训练继续但 replacement 未生效</td>
@@ -450,7 +453,7 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 <ul>
 <li><a href="../../torchtitan_npu/override/README.md"><code>override/README.md</code></a>：override 机制、入口和当前清单。</li>
 <li><a href="../../torchtitan_npu/override/deepseek_v3_2/sparse_attn"><code>deepseek_v3_2/sparse_attn</code></a>：TND metadata 与 AscendC DSA。</li>
-<li><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn"><code>deepseek_v4/sparse_attn</code></a>：AscendC、PyPTO 与 golden DSA。</li>
+<li><a href="../../torchtitan_npu/override/deepseek_v4/sparse_attn"><code>deepseek_v4/sparse_attn</code></a>：AscendC 与 PyPTO DSA。</li>
 <li><a href="../../torchtitan_npu/override/deepseek_v4/mhc"><code>deepseek_v4/mhc</code></a>：AscendC 与 Triton 多后端替换。</li>
 <li><a href="../../torchtitan_npu/override/common/token_dispatcher.py"><code>torchtitan_npu/override/common/token_dispatcher.py</code></a>：<code>token_dispatcher.asc</code> 在 <code>AllToAllTokenDispatcher</code> 中替换局部 dispatch/combine 计算。</li>
 <li><a href="../../torchtitan_npu/override/common/rope.py"><code>torchtitan_npu/override/common/rope.py</code></a>：<code>rope.asc_partial</code> 整体替换 partial-RoPE 站点，含可选 CANN 依赖的惰性加载。</li>

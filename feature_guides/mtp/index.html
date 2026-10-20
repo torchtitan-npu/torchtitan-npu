@@ -111,6 +111,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#15-chunked-loss">1.5 Chunked loss</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#16-deepseek-v4">1.6 DeepSeek-V4 梯度隔离</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#2">2. 代码结构</a>
@@ -242,6 +244,11 @@ outputs[k]     第 k 个 MTP 深度的 logits 或 hidden state
 <p>DeepSeek-V4 的默认 recipe 使用 <code>MTPChunkedLossWrapper</code>。它继承并逐预测分支调用 TorchTitan 原生 <code>ChunkedLossWrapper</code>，因此复用其 sequence chunk、LM head FSDP、梯度累加和 decoder backward bridge。主分支权重为 <code>1</code>，每个 MTP 分支权重为 <code>mtp_scale / K</code>。</p>
 <p>分支权重在分块 loss 内部、内部 <code>backward()</code> 之前应用，而不是在最终标量上事后相乘。这样 LM head 和 decoder hidden gradient 都与未分块 MTP loss 保持相同缩放，同时避免构造完整 <code>[batch, sequence, vocab]</code> logits。</p>
 <p>DeepSeek-V3.2 不适配 chunk loss，直接复用社区 <code>list[logits] + MTPLoss</code> 训练路径。</p>
+<h3 id="16-deepseek-v4">1.6 DeepSeek-V4 梯度隔离</h3>
+<p>当前主要用于强化学习（RL）场景：需要继续训练 MTP，同时避免 MTP 辅助损失直接改变主模型的策略梯度时开启。需要 MTP 辅助损失共同训练主模型时保持关闭。</p>
+<p>已启用 MTP 的 recipe 可通过 <code>--loss.mtp-isolate-gradients</code> 开启梯度隔离，默认关闭。该开关截断主干 hidden state 到 MTP 的梯度，并阻止 MTP 更新共享 token Embedding 和 LM head；LM head 仍向 MTP hidden state 传递梯度，主预测正常更新共享参数。前向输出和 loss 计算公式不变，checkpoint 参数名称与形状不变。</p>
+<p><code>mtp_isolate_gradients</code> 在 <code>MTPChunkedLossWrapper.Config</code> 中配置，模型在 <code>update_from_config</code> 时读取同一设置，统一控制三处梯度边界。</p>
+<p>此开关适用于原生 Linear LM head 和 <code>MTPChunkedLossWrapper</code>。仅隔离直接梯度，仍使用现有全局梯度裁剪，主模型与 MTP 的裁剪系数仍然关联。</p>
 <h2 id="2">2. 代码结构</h2>
 <h3 id="21-mtp">2.1 公共 MTP 模块</h3>
 <p>公共能力由社区 <code>torchtitan.models.deepseek_v3.mtp</code> 提供：</p>
@@ -287,6 +294,10 @@ outputs[k]     第 k 个 MTP 深度的 logits 或 hidden state
 <tr>
 <td><code>MTPChunkedLossWrapper</code></td>
 <td>为 DeepSeek-V4 将原生 chunked loss 扩展到主预测和各 MTP 预测</td>
+</tr>
+<tr>
+<td><code>SharedLinear</code></td>
+<td>MTP 投影期间使用 detached 权重，保留输入梯度及原模块的 FSDP 调用路径</td>
 </tr>
 </tbody>
 </table>
@@ -415,6 +426,10 @@ config.loss = MTPChunkedLossWrapper.Config(
 <tr>
 <td><code>mtp_scale</code></td>
 <td>所有 MTP 辅助损失的总权重</td>
+</tr>
+<tr>
+<td><code>mtp_isolate_gradients</code></td>
+<td>默认 <code>False</code>；隔离 MTP 对主干、共享 Embedding 和 LM head 的直接梯度</td>
 </tr>
 <tr>
 <td><code>global_vocab_size</code></td>
