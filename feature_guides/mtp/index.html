@@ -231,15 +231,15 @@ outputs[k]     第 k 个 MTP 深度的 logits 或 hidden state
 </ol>
 <p>DeepSeek-V4 MTP 保留 mHC 多流状态，但其 attention 使用非压缩形式，不启用主干 DSA 的 compressor 和 indexer。</p>
 <h3 id="14-deepseek-v4-context-parallel">1.4 DeepSeek-V4 Context Parallel</h3>
-<p>MTP 的 future-token shift 不能在 CP rank-local 序列上执行：<code>headtail</code> 等负载均衡会让一个 rank 持有不连续的前缀和后缀，局部移动会在 rank 边界读取错误token。实现因此在 <code>cp_shard</code> 之前对完整序列统一生成：</p>
+<p>MTP 的 future-token shift 不能在 CP rank-local 序列上执行：局部移动会在 rank 边界读到不属于本 rank 的 token。V4 的 CP 只支持连续切片（<code>--parallelism.context-parallel-load-balancer None</code>，见<a href="../deepseek_v4_cp/">Context Parallel</a>），但实现仍保持在 <code>cp_shard</code> 之前对完整序列统一生成：</p>
 <ul>
 <li>每个 MTP 深度的 future token；</li>
 <li>packed sequence 感知的有效位置 mask；</li>
 <li>每个 MTP 深度的监督 label。</li>
 </ul>
-<p>这些张量与普通 <code>inputs</code>、<code>labels</code>、<code>positions</code> 一起进入 TorchTitan 原生 <code>cp_shard</code>，复用相同的 load balancer 和 sequence 维切分。这样既保留普通 CP 路径，也保证 token、label 和 mask 在每个 rank 上严格同位。</p>
-<p>该流程只接入 DeepSeek-V4：继续复用已有压缩 metadata 和 CP plan 构造，只把 MTP 张量加入同一次通用 tensor shard。DeepSeek-V3 和 DeepSeek-V3.2 保留社区 MTP 的原有限制，<code>context_parallel_degree &gt; 1</code> 时在配置更新阶段报错；两者已有的非 MTP CP 路径不变。</p>
-<p>该处理与 Megatron-LM MTP 在 CP 边界交换 future token/label 的数学目标一致；区别是 TorchTitan 的模型 metadata hook 位于 CP 切分之前，因此可直接在全局序列上生成并统一切分，无需额外点对点通信。</p>
+<p>这些张量在 <code>preprocess_inputs</code> 中先于基座切分、在全局行上构建；随后 <code>super().preprocess_inputs()</code> 完成 <code>inputs</code>/<code>labels</code>/<code>positions</code> 的切分，MTP 三个张量再用<strong>同一把连续切片</strong>单独 <code>cp_shard</code>（本地切片，无通信），保证 token、label 和 mask 与 <code>inputs</code> 在每个 rank 上严格同位。</p>
+<p>该流程只接入 DeepSeek-V4：继续复用已有压缩 metadata 和 CP plan 构造；MTP 张量的切分是独立的一次 <code>cp_shard</code> 调用，与 <code>inputs</code>/<code>labels</code>/<code>positions</code> 的切分使用同一把连续切片。DeepSeek-V3 和 DeepSeek-V3.2 保留社区 MTP 的原有限制，<code>context_parallel_degree &gt; 1</code> 时在配置更新阶段报错；两者已有的非 MTP CP 路径不变。</p>
+<p>该处理与 Megatron-LM MTP 在 CP 边界交换 future token/label 的数学目标一致；区别是 TorchTitan 的模型 metadata hook 位于 CP 切分之前，因此可直接在全局序列上生成，再按和输入相同的连续切法单独切分，无需额外点对点通信。</p>
 <h3 id="15-chunked-loss">1.5 Chunked loss</h3>
 <p>DeepSeek-V4 的默认 recipe 使用 <code>MTPChunkedLossWrapper</code>。它继承并逐预测分支调用 TorchTitan 原生 <code>ChunkedLossWrapper</code>，因此复用其 sequence chunk、LM head FSDP、梯度累加和 decoder backward bridge。主分支权重为 <code>1</code>，每个 MTP 分支权重为 <code>mtp_scale / K</code>。</p>
 <p>分支权重在分块 loss 内部、内部 <code>backward()</code> 之前应用，而不是在最终标量上事后相乘。这样 LM head 和 decoder hidden gradient 都与未分块 MTP loss 保持相同缩放，同时避免构造完整 <code>[batch, sequence, vocab]</code> logits。</p>
