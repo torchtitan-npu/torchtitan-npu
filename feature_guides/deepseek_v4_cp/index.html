@@ -182,7 +182,6 @@
 <pre><code class="language-bash">NGPU=2 \
   bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh \
   --parallelism.context-parallel-degree 2 \
-  --parallelism.context-parallel-load-balancer None \
   --parallelism.spmd-backend spmd_types \
   --training.steps 2
 </code></pre>
@@ -202,19 +201,19 @@
 </ol>
 <p>方案的整体原则是「<strong>计划吸收全部不规则性，数据路径保持单一</strong>」：</p>
 <ul>
-<li><strong>纯本地推导</strong>：<a href="../../torchtitan_npu/models/deepseek_v4/token_dispatcher.py"><code>build_cp_plan</code></a> 从切分前的全局文档结构（<code>get_attention_masks</code> 的 varlen）在 frame 内推导每个 rank 的 rank-local varlen（复用 <code>CPVarlenMetadata.from_global</code>）与全部计划，计划阶段零通信。</li>
+<li><strong>纯本地推导</strong>：<a href="../../torchtitan_npu/models/deepseek_v4/token_dispatcher.py"><code>build_cp_plan</code></a> 从切分前的全局文档结构（<code>get_attention_masks</code> 的 varlen）在 frame 内推导每个 rank 的 rank-local varlen（<code>_slab_segments</code> + <code>_local_varlen</code>）与全部计划，计划阶段零通信。</li>
 <li><strong>文档切片</strong>：全部计划行都是 <code>docs[doc]</code> 的切片（文档按全局坐标存储，键为文档起点）。每个 rank 持有全局序列的一段连续 slab，计划行就是文档在这段 slab 内的切片。</li>
-<li><strong>双计划</strong>：ratio 无关的 <code>WindowPlan</code>（窗口交换路由、ori 流 <code>gather_indices</code>、<code>cu_seqlens_ori_kv</code>）与每 ratio 一份的块计划 <code>CompressedBlockLayout</code>（内核与压缩器契约 + 块交换路由 + 容器打包 + <code>cmp_k_global_gather_indices</code>），分别挂于 <code>CompressedVarlenMetadata</code> 的 <code>window</code> 与 <code>plans[ratio]</code>。非 CP 时块计划的 <code>gather_indices</code> 即文档序本地 gather，其余 dispatcher 字段为空，前向路径不区分 CP。</li>
+<li><strong>双计划</strong>：ratio 无关的 <code>WindowPlan</code>（窗口交换路由、ori 流 <code>gather_indices</code>、<code>cu_seqlens_ori_kv</code>）与每 ratio 一份的块计划 <code>CompressedBlockLayout</code>（内核与压缩器契约 + 块交换路由 + 容器打包 + <code>cmp_k_global_gather_indices</code>），分别挂于每个 entry 的 <code>window</code> 与 <code>plan</code>。非 CP 时块计划的 <code>gather_indices</code> 即文档序本地 gather，其余 dispatcher 字段为空，前向路径不区分 CP。</li>
 <li><strong>块区间</strong>：每段的计划块区间 <code>[A, B)</code> 覆盖本段完整块加借入源（段首前驱块、段尾跨块、case-C 前驱头），<code>strip</code> 记借入源块数；段尾不足一块的余数不产生压缩条目（全局流对齐后文档余数恒 0，CP 段内只来自 slab 截断）。</li>
 </ul>
 <h2 id="_3">关键设计决策</h2>
 <p>以下决策是当前方案的设计依据，接手开发时应保持，不做反向重构。</p>
 <ol>
 <li>
-<p><strong>单一 metadata 接缝</strong>。模型以 <code>build_attention_masks(inputs, labels, extra_kwargs, *, cp_mesh, load_balancer_type)</code> 统一构建每 batch 的 metadata：CP 时在其中完成输入切分与计划推导，vendor 内核张量由配置解析的 <code>metadata_extension</code>（<code>AscMetadataExtension</code>）在最后一步填充。接缝只有一处。DeepSeek-V3.2 已迁到上游 backend-owned 接缝（attention backend 自己的 <code>Config.build_attention_metadata</code> 与 <code>prepare_cp_metadata</code>，见<a href="../fused_ops/">多后端算子接入</a>）；V4.1 也已迁入该接缝（entry 由 <code>AscV41SparseAttention.Config.build_attention_metadata</code> 构建：参考后端在这一步给出整行的 document 边界，并按自己的 <code>compress_ratio</code> 一次折成 <code>cu_seq_k</code>（池化轴），端口在这两个 grid 上加自己的 kernel frame 与 <code>aicpu_metadata</code> 里的四条记录；CP 由 <code>AscV41Metadata.prepare_cp_metadata</code> 用 rank-local frames 重建；V4.1 的 map key 是 <code>(端口类, compress_ratio)</code>，一层一个几何、每个几何一份 entry，参考核直接读 <code>cu_seq_q</code> / <code>cu_seq_k</code>，不再自己除 ratio，本文描述的 V4 路径仍待迁移）。</p>
+<p><strong>单一 metadata 接缝</strong>。每条 metadata 由 attention backend 自己的 config 构建（upstream #4897），CP 半边由 metadata 自己的 <code>prepare_cp_metadata</code> 承载（upstream #4617）。V3.2、V4.1 与 V4 都已迁到这条接缝。V4 的 entry 由 <code>CompressedSparseInnerAttention.Config.build_attention_metadata</code> 按 <code>(端口类, compress_ratio)</code> 构建（一个几何一份 plan），融合端口在这份 plan 上加四个算子的记录；参考契约的 hook 直接拒绝 CP，融合 entry（<code>AscV4Metadata.prepare_cp_metadata</code>）调 <code>shard_compressed_varlen_metadata</code> 用 rank-local 行重建 plan，再在其上重填记录。模型不再对 map 做模型级后处理：fused compressor 的状态表由融合 attention 的 metadata 构建器在 eager 边界写进 plan；CV 实验的重切在它自己的 trainer hook 里完成。</p>
 </li>
 <li>
-<p><strong>纯本地计划</strong>。<code>build_cp_plan</code> 输入 <code>(global_varlen, *, rank, cp_size, shard_len, window_size, ratios)</code>，把每个 rank 的 slab 与全局文档边界求交得到段结构（<code>_slab_segments</code>：每文档一个区间，连续切片下不需要通用 shard 元数据推导），本地 varlen 由同一套算术直接构造（<code>_local_varlen</code>，与 <code>CPVarlenMetadata.from_global</code> 在连续切片下逐位一致，由 gloo worker 断言），返回 <code>(rank-local varlen, plans, window)</code>。全局上下文在 <code>build_attention_masks</code> 帧内即可获得，因此计划阶段零通信。</p>
+<p><strong>纯本地计划</strong>。<code>build_cp_plan</code> 输入 <code>(global_varlen, *, rank, cp_size, shard_len, window_size, ratios)</code>，把每个 rank 的 slab 与全局文档边界求交得到段结构（<code>_slab_segments</code>：每文档一个区间，连续切片下不需要通用 shard 元数据推导），本地 varlen 由同一套算术直接构造（<code>_local_varlen</code>，与 <code>CPVarlenMetadata.from_global</code> 在连续切片下逐位一致，由 gloo worker 断言），返回 <code>(rank-local varlen, plans, window)</code>。全局上下文在 <code>preprocess_inputs</code> 的 metadata 构建帧内即可获得，因此计划阶段零通信。</p>
 </li>
 <li>
 <p><strong>文档切片表达</strong>。文档在全局流里是连续区间，连续切片下它与 rank slab 的交仍是一个区间，所以所有计划行都是文档全局坐标上的 <code>range</code> 偏移：窗口行 <code>range(doc + win_start, doc + win_start + win_len)</code>，块行 <code>range(doc + A, doc + block_end)</code>（<code>doc</code> 为文档起点）。压缩器契约由块区间直接推导：<code>block_positions</code> = 每段 <code>arange(A, block_end, ratio)</code>，<code>first_indices</code> = 每段池化起点。</p>
@@ -245,7 +244,7 @@
 <p><code>Attention.forward</code> 在本地流上完成 Q 侧投影与 <code>swa_k</code> 的投影 + RoPE（按文档相对位置），随后：</p>
 <ol>
 <li><strong>窗口 gather</strong>：<code>dispatcher.gather(swa_k, metadata.window)</code> 交换 RoPE 后的 <code>swa_k</code> 行，组装为打包 ori 流（每段窗口行，<code>cu_seqlens_ori_kv</code> 给出边界）。</li>
-<li><strong>块 gather</strong>：每个 <code>Compressor</code> 内部对投影后的 kv/score 执行 <code>dispatcher.gather(·, plans[ratio])</code>，得到池化块流；<code>dispatcher.select</code> 将保留块装入等宽填充容器。ratio-4 层的索引器 Compressor 走同一机制。</li>
+<li><strong>块 gather</strong>：每个 <code>Compressor</code> 内部对投影后的 kv/score 执行 <code>dispatcher.gather(·, plan)</code>，得到池化块流；<code>dispatcher.select</code> 将保留块装入等宽填充容器。ratio-4 层的索引器 Compressor 走同一机制。</li>
 <li><strong>压缩级 all-gather</strong>：容器按 <code>cp: S(1) -&gt; R</code> 声明式 all-gather（<code>sharding.py</code>），AscendC 内核内用 <code>cmp_k_global_gather_indices</code> 组装每段前缀压缩流，再调用 LI/SMLA。</li>
 </ol>
 <p>每层 alltoallv 次数：ratio-1 层 1 次（窗口）；ratio-128 层 3 次（窗口 + kv + score）；ratio-4 层 5 次（再加索引器 Compressor 的 kv/score）。反向梯度沿同一路由回传。</p>
@@ -323,11 +322,15 @@
 </tr>
 <tr>
 <td><code>torchtitan_npu/models/deepseek_v4/metadata.py</code></td>
-<td>公共契约：<code>CompressedBlockLayout</code>（内核与压缩器契约 + dispatcher 字段）、<code>CompressedVarlenMetadata</code>（<code>varlen</code> / <code>plans</code> / <code>window</code>）、非 CP 的 <code>build_kernel_layout</code></td>
+<td>公共契约：<code>CompressedBlockLayout</code>（内核与压缩器契约 + dispatcher 字段）、<code>DeepSeekV4Metadata</code>（<code>varlen</code> / <code>ratio</code> / <code>plan</code> / <code>window</code>）、非 CP 的 <code>_build_plan</code></td>
 </tr>
 <tr>
 <td><code>torchtitan_npu/models/deepseek_v4/model.py</code></td>
-<td><code>build_attention_masks</code> 单入口；<code>_build_cp_metadata</code> 切分输入并调用 <code>build_cp_plan</code></td>
+<td><code>preprocess_inputs</code>：把 CP 网格交给 metadata 接缝、单独切分 MTP batch</td>
+</tr>
+<tr>
+<td><code>torchtitan_npu/models/deepseek_v4/attention.py</code></td>
+<td><code>CompressedSparseInnerAttention.Config.build_attention_metadata</code>（backend-owned 接缝）；<code>AscCompressedSparseInnerAttention.Config</code> 在 <code>override/deepseek_v4/sparse_attn/ascendc.py</code> 里补记录</td>
 </tr>
 <tr>
 <td><code>torchtitan_npu/models/deepseek_v4/attention.py</code>、<code>compressor.py</code></td>
@@ -339,7 +342,7 @@
 </tr>
 <tr>
 <td><code>torchtitan_npu/override/deepseek_v4/sparse_attn/ascendc.py</code></td>
-<td><code>AscMetadataExtension</code>（按窗口打包的 <code>cu_seqlens_ori_kv</code> 填充 <code>*_metadata</code> 内核）、<code>_assemble_tnd</code>（<code>cmp_k_global_gather_indices</code> 组装）</td>
+<td><code>build_aicpu_metadata</code>（按窗口打包的 <code>cu_seqlens_ori_kv</code> 填充 <code>*_metadata</code> 内核）、<code>AscV4Metadata.prepare_cp_metadata</code>（CP 下重建记录）、<code>_assemble_tnd</code>（<code>cmp_k_global_gather_indices</code> 组装）</td>
 </tr>
 <tr>
 <td><code>torchtitan_npu/patches/torchtitan/distributed/varlen_cp.py</code></td>
@@ -418,7 +421,7 @@
 <p>NPU 一致性验收（改动数据路径后建议执行）：加载同一固定初始权重 checkpoint，CP=1 / CP=2 连续切片各跑相同步数，期望两种配置的逐 step 损失与 grad_norm 在打印精度内一致；发散量级见「已知数值边界」。每次运行必须使用全新 <code>--checkpoint.folder</code>。</p>
 <p>接手开发的默认路径：</p>
 <ol>
-<li>只改计划推导（<code>token_dispatcher.py</code>）时，<code>build_cp_plan</code> 必须保持纯函数与零通信，传入的 ratios 需去重（<code>sorted(set(ratios))</code>）；以 CPU 单测的 plan-vs-oracle 比对为逐张量护栏。</li>
+<li>只改计划推导（<code>token_dispatcher.py</code>）时，<code>build_cp_plan</code> 必须保持纯函数与零通信；以 CPU 单测的 plan-vs-oracle 比对为逐张量护栏。</li>
 <li>改动数据路径（<code>attention.py</code> / <code>compressor.py</code> / <code>ascendc.py</code>）时，非计算性改动必须保持逐位一致（CPU 单测 + 两配置验收）；计算性改动需在验收之外记录数值证据。</li>
 <li>新增或调整配置（<code>config_registry.py</code> / <code>run_train.sh</code>）时，同步检查本指南的启用方式与相邻的 <a href="../deepseek_v4_tnd/">TND 指南</a>。</li>
 <li>修改实现后，同步更新本指南中受影响的「设计要点」「关键设计决策」条目，避免文档与代码漂移。</li>

@@ -244,7 +244,7 @@
 <ul>
 <li>
 <p>同一 target 有多个同类实现时，在 variant 后增加职责限定，例如
-<code>rope.asc_complex</code>、<code>rope.asc_cossin</code>、<code>sparse_attn.asc_metadata</code>。</p>
+<code>rope.asc_complex</code>、<code>rope.asc_cossin</code>、<code>sparse_attn.asc_li</code>。</p>
 </li>
 <li>
 <p>replacement 类采用「variant + target」命名，并保留标准缩写大小写，例如
@@ -311,16 +311,24 @@
   那一组换成量化 selector 的 QLI schedule 并多出 <code>fwd_sparse</code>（QSLI）与 <code>sparse_length</code>（逐行候选数）；
   候选池的容量与块大小从模型 config 读取，只作为 launch 参数与候选数推导的输入。因此 <code>asc</code> 在这条路径上
   不生效，非量化 entry 的 <code>fwd_sparse</code>/<code>sparse_length</code> 保持为空，等带 candidate 的非量化算子落地后由端口填。</li>
-<li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 生成 CANN <code>*_metadata</code>，
-  <code>sparse_attn.asc</code> 桥接 LightningIndexer/SparseFlashMLA 的正反向；<code>sparse_attn.pypto</code> 用
-  PyPTO 实现 LI/LIG，并复用 AscendC 的其余 attention kernel。（V4 尚未迁移到 backend-owned
-  接缝，仍由 <code>metadata_extension</code> 预计算。）</li>
-<li>MoE token dispatcher 的 <code>npu_moe_token_unpermute</code> 与 <code>npu_moe_re_routing</code> 在
+<li>
+<p>DeepSeek-V4 的 <code>AscCompressedSparseInnerAttention.Config.build_attention_metadata</code> 在
+  <code>CompressedSparseInnerAttention.Config</code> 建好这个几何的 plan（一条 entry 一个 ratio，直接读 <code>metadata.plan</code>）
+  之后，再按自身几何补上四个算子的记录；<code>sparse_attn.asc</code> 桥接
+  LightningIndexer/SparseFlashMLA 的正反向，<code>sparse_attn.pypto</code> 用 PyPTO 实现 LI/LIG，并复用
+  AscendC 的其余 attention kernel 与同一份记录。几何（heads/head dim）是该 config 自己的必填
+  字段、无默认值，由 override 参数一次写入，默认值即 V4-Flash 的发布形状。CP 下由
+  <code>AscV4Metadata.prepare_cp_metadata</code> 调 <code>shard_compressed_varlen_metadata</code>
+  用 rank-local 行重建 plan，再在其上重填记录；参考契约的 hook 直接拒绝 CP。</p>
+</li>
+<li>
+<p>MoE token dispatcher 的 <code>npu_moe_token_unpermute</code> 与 <code>npu_moe_re_routing</code> 在
   <code>torchtitan_npu/ops/ascendc/</code> 中以 <code>torch.library.custom_op</code> 做编译兼容封装，并提供 Fake 和
   Autograd；
   <code>npu_moe_token_permute</code> 直接调用 <code>torch_npu</code>。三者由
   <code>override/common/token_dispatcher.py</code> 的 <code>asc</code> 入口组合，用于替换
-  <code>AllToAllTokenDispatcher</code> 的部分 <code>dispatch/combine</code> 逻辑。</li>
+  <code>AllToAllTokenDispatcher</code> 的部分 <code>dispatch/combine</code> 逻辑。</p>
+</li>
 </ul>
 <h3 id="3-replacement-module-config">3. 实现 replacement Module 和 Config</h3>
 <p>replacement 通常继承上游组件，保留共有配置字段，并只修改实际差异：</p>
@@ -361,12 +369,11 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
   --config deepseek_v4_debugmodel \
   --override.imports \
     torchtitan_npu.override.common.rms_norm.asc \
-    torchtitan_npu.override.deepseek_v4.sparse_attn.asc_metadata \
-    torchtitan_npu.override.deepseek_v4.sparse_attn.asc
+    'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;num_heads&quot;:16,&quot;index_num_heads&quot;:8}'
 </code></pre>
 <p>多个无参数入口可用空格或逗号分隔。带参数的入口必须将 JSON 作为一个 shell 参数，例如：</p>
 <pre><code class="language-bash">--override.imports \
-  'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;indexer_loss_coeff&quot;:2.0}'
+  'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;num_heads&quot;:16,&quot;index_num_heads&quot;:8,&quot;indexer_loss_coeff&quot;:2.0}'
 </code></pre>
 <p>同一模块包含多个 override 入口时，只会启用命令中点名的入口函数。<code>torchtitan</code> 在配置构造完成、组件
 <code>build()</code> 前依次完成「导入注册 → 解析入口 → 遍历原始配置树收集匹配节点 → 检查冲突 →
@@ -382,8 +389,8 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
   （默认值为 V4.1-Flash 形状）。本入口不声明量化：量化 selector 的 metadata 由量化后的 attention
   自己建（另一条 backend，见上文），池的容量与块大小取自模型 config。它与 <code>lightning_indexer.asc</code>
   必须同开（教师边只有两侧都在时才存在），见 <code>torchtitan_npu/override/README.md#deepseek-v41</code>。</li>
-<li>DeepSeek-V4 的 <code>sparse_attn.asc_metadata</code> 必须与 <code>sparse_attn.asc</code> 或 <code>sparse_attn.pypto</code> 配套；
-  <code>sparse_attn.asc</code> 与 <code>sparse_attn.pypto</code> 声明同一 attention target，二者只能选一。</li>
+<li>DeepSeek-V4 的 <code>sparse_attn.asc</code> / <code>sparse_attn.pypto</code> 各自构建自己的 metadata（每个几何一份 entry）；
+  两者声明同一 attention target，只能选一。</li>
 <li>DeepSeek-V4 MHC 的 AscendC 入口声明 <code>HcPre.Config</code>/<code>HcPost.Config</code>，Triton 入口还包含
   <code>HcHead.Config</code>；同一节点只能选择一个实现。</li>
 <li>两个 override 声明同一节点，或一个声明另一个的祖先/后代节点时会冲突；可移除互斥入口，
