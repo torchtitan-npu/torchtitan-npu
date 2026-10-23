@@ -62,6 +62,8 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#_3">最小安装</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#python">Python 类型检查前提</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_4">执行检查</a>
@@ -165,7 +167,7 @@
               
                 <h1 id="lint">Lint 指南</h1>
 <p>本指南只覆盖代码静态检查、格式检查和开源合规检查，不包含模型训练、模型加载、NPU 算子验证或功能测试。
-Lint 可以在 CPU 环境执行，不需要 CANN、HCCL、可用的 Ascend NPU 或完整的运行时依赖。</p>
+Lint 可以在 CPU 环境执行，不需要 CANN、HCCL 或可用的 Ascend NPU。Python 类型检查仍需要固定版本的上游源码和被检查代码导入的类型依赖；安装检查工具并不等于这些前提已经满足。</p>
 <h2 id="_1">检查范围</h2>
 <p>仓库通过 pre-commit 统一执行检查，具体配置见
 <a href="../../.pre-commit-config.yaml"><code>.pre-commit-config.yaml</code></a>。不同文件类型会触发不同的 hook：</p>
@@ -205,15 +207,18 @@ Git Bash，以便执行 OAT hook 使用的 <code>bash scripts/oat_check.sh</code
 <p>修改 Python 文件时，还需要 Pyrefly。可以只安装相关工具：</p>
 <pre><code class="language-bash">python -m pip install pre-commit pyrefly
 </code></pre>
-<p>也可以安装仓库提供的开发依赖。该依赖集合用于 lint 和开发测试，不包含 <code>torch</code>、<code>torch_npu</code>、
-<code>torchtitan</code> 或 Triton 等训练运行时依赖：</p>
+<p>也可以安装仓库提供的开发依赖。该依赖集合提供检查工具和开发测试依赖，未包含 <code>torch</code>、<code>torch_npu</code>、
+<code>torchtitan</code> 或 Triton；Python 类型检查的源码与类型依赖前提见下一节：</p>
 <pre><code class="language-bash">python -m pip install -r requirements-dev.txt
 </code></pre>
 <p><code>scripts/oat_check.sh</code> 在检测到本地没有 <code>oat-py</code> 时会尝试自动安装 <code>oat-py&gt;=1.0.1</code>。
-<code>requirements.txt</code> 只在需要进行模型运行、训练或 NPU 功能验证时安装，本指南不要求安装它。</p>
+<code>requirements.txt</code> 记录配套版本；仅安装检查工具时，并未安装其中的类型依赖。</p>
+<h3 id="python">Python 类型检查前提</h3>
+<p><code>pyproject.toml</code> 的 Pyrefly 配置使用 <code>search-path = ["/tmp/torchtitan"]</code>。执行 Python 或全仓检查前，应先确认该目录是 <code>requirements.txt</code> 所声明版本对应的 TorchTitan checkout；版本/tag 推导与源码准备逻辑见 <a href="../../.ci/setup_torchtitan.sh"><code>.ci/setup_torchtitan.sh</code></a>。仅安装 PyPI 包或把源码放在其他目录，不会创建该 checkout；按根开发规则，还应确认上述固定路径的源码。</p>
+<p>Pyrefly 使用当前 Python 环境查找类型导入。当前配置仅对清单中列出的模块忽略缺失导入，并将 <code>torch_npu</code> 和 <code>torch.npu</code> 替换为 <code>Any</code>；它不会忽略所有运行时模块。出现 <code>missing-import</code> 时，应按仓库配套版本准备相应 Python 类型依赖。不需要为类型检查启动训练或设备，但不能通过屏蔽检查规则来替代这些前提。</p>
 <h2 id="_4">执行检查</h2>
 <h3 id="_5">检查本次修改</h3>
-<p>提交 PR 前，优先对本次修改的文件执行增量检查：</p>
+<p>定位本次修改的格式或局部错误时，可先执行增量检查；仅增量通过不能视为完整 Lint 通过：</p>
 <pre><code class="language-bash">python -m pre_commit run --files &lt;file1&gt; &lt;file2&gt; --show-diff-on-failure
 </code></pre>
 <p>例如：</p>
@@ -221,7 +226,7 @@ Git Bash，以便执行 OAT hook 使用的 <code>bash scripts/oat_check.sh</code
 </code></pre>
 <p>部分 hook（例如 Ruff 和 clang-format）可能会自动修复文件。检查完成后，应查看工作区差异并重新运行命令。</p>
 <h3 id="_6">检查整个仓库</h3>
-<p>需要复现仓库级 lint 时执行：</p>
+<p>按<a href="../../.agents/AGENTS.md">根开发规则</a>，提交前从仓库根目录执行完整 Lint；仅此完整命令通过后，才视为 Lint 通过：</p>
 <pre><code class="language-bash">python -m pre_commit run --all-files --show-diff-on-failure
 </code></pre>
 <p>该命令仍然只进行静态检查，不会启动训练。</p>
