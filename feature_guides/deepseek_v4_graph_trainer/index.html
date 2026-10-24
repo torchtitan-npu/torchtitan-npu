@@ -71,11 +71,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 GraphTrainer 编译路径适配</a>
     <ul class="current">
@@ -238,6 +238,7 @@
     torchtitan_npu.override.common.rms_norm.asc \
     torchtitan_npu.override.common.rope.asc_complex \
     'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;num_heads&quot;:16,&quot;index_num_heads&quot;:8}' \
+    torchtitan_npu.override.deepseek_v4.lightning_indexer.asc \
     torchtitan_npu.override.deepseek_v4.mhc.asc_hc_pre \
     torchtitan_npu.override.deepseek_v4.mhc.asc_hc_post \
     torchtitan_npu.override.common.token_dispatcher.asc \
@@ -285,7 +286,7 @@
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../deepseek_v4_cp/" class="btn btn-neutral float-left" title="DeepSeek-V4 上下文并行（CP）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../deepseek_v4_1_lora/" class="btn btn-neutral float-left" title="DeepSeek-V4.1 LoRA"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../deepseek_v4_graph_trainer_recompute/" class="btn btn-neutral float-right" title="DeepSeek-V4 GraphTrainer 激活重计算">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -309,7 +310,7 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../deepseek_v4_cp/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../deepseek_v4_1_lora/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../deepseek_v4_graph_trainer_recompute/" style="color: #fcfcfc">Next &raquo;</a></span>

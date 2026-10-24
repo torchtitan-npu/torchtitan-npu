@@ -71,11 +71,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
@@ -301,6 +301,11 @@
 </table>
 <p>LI 各模式的实现细节不同：<code>fp8</code> 使用 8 bit E4M3 数据，按 token-head 动态量化，scale 以 FP32 保存；<code>mxfp8</code> 使用 8 bit E4M3 数据和 E8M0 scale；<code>mxfp4</code> 使用 4 bit E2M1 数据和 E8M0 scale；<code>hif8</code> 使用 8 bit HiFloat8 数据，按 tensor 动态量化，scale 以 FP32 保存。CANN 的 <code>quant_mode</code> 由这些数据格式和量化粒度共同决定。</p>
 <p><code>li-quantization</code> 默认值为 <code>None</code>，即不启用 LI 量化。本节表中的四种格式适用于 DeepSeek-V4；DeepSeek-V4.1 当前仅支持 <code>mxfp4</code>，并使用下一节说明的独立 QLI/QSLI 实现。</p>
+<blockquote>
+<p>DeepSeek-V4 的 indexer 训练现在走独立的 <code>sparse_attn.asc</code> + <code>lightning_indexer.asc</code>
+教师边；量化 LI（<code>torchao_npu</code> 的 <code>QuantizedV4SparseAttention</code> 路径）尚未提供这条边的
+量化反向，因此该路径只做选分、不训练 indexer。BF16 融合路径不受影响。</p>
+</blockquote>
 <h3 id="deepseek-v41-li-attention">DeepSeek-V4.1 LI 与稀疏 attention 量化</h3>
 <p>QLI（Quantized Lightning Indexer，量化索引器）与 QSLI（Quantized Sparse Lightning Indexer，量化稀疏索引器）负责为每个 query 选择参与稀疏 attention 的 Top-K key。在当前 V4.1 实现中，两者都将 indexer 的 Q/K 量化为 MXFP4，主要区别是选分的搜索范围及是否生产候选池：</p>
 <table>

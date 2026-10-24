@@ -71,11 +71,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
@@ -196,7 +196,7 @@ config = graph_trainer_deepseek_v4_flash_43layers_16experts
 </code></pre>
 <p>双 chunk 的启用参数由脚本传入：<code>--training.local-batch-size 2</code>、<code>--compile.ep-overlap.enabled</code>、<code>--compile.ep-overlap.chunk-dim batch</code>、<code>--compile.ep-overlap.strategy graph</code>、<code>--compile.ep-overlap.module-fqn 'layers.*'</code> 和 <code>--compile.pass-pipeline cv_parallel</code>。实际调用的 A5 launcher 默认启用 <code>all_block_fp8</code>、LI FP8 和 KV norm MXFP8；GraphTrainer 配置名不会关闭这些 CLI 参数。需要 BF16 训练时，在命令末尾追加 <code>--extension.quantization.no-enable-quantized-training</code>。</p>
 <p>如果通过 CLI 整体替换 <code>--override.imports</code>，须保留以下实验依赖：</p>
-<pre><code class="language-text">torchtitan_npu.override.deepseek_v4.sparse_attn.asc_li
+<pre><code class="language-text">torchtitan_npu.override.deepseek_v4.lightning_indexer.asc
 torchtitan_npu.extensions.experiment.cv_parallel.batch_chunk_token_dispatcher.asc_dispatcher
 </code></pre>
 <p>实验 dispatcher 入口 <code>batch_chunk_token_dispatcher.asc_dispatcher</code> 在启用时注册 <code>cv_parallel</code> pipeline，

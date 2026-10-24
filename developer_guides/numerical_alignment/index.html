@@ -105,11 +105,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../../feature_guides/deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
@@ -296,7 +296,7 @@ Routed expert 在 <code>w2</code> 投影前乘 router score，并回到 BF16；�
 <li>判断两种实现的 <code>logits</code> 和 <code>loss</code> 是否满足对应的精度要求，若被测实现为对小算子路径的修改，需满足 <code>比特一致</code>。</li>
 </ul>
 <p>示例：<a href="../../scripts/numerical_alignment/README.md#数值近似对比">DeepSeek-V4 小算子基线与被测实现训练指标对齐方法</a>，通过 runner 的 <code>USE_GOLDEN</code> 比较参考实现（模型默认 attention）和融合实现的 <code>loss</code>、<code>grad_norm</code>。</p>
-<p>注意：参考组合（模型默认 attention）不训练 <code>r=4</code> 层的 indexer——TopK 选择不可导，KL 蒸馏目标只在融合组合（<code>asc_li</code> / SLIG）中——对比 <code>indexer</code> 相关参数或依赖其梯度的 <code>grad_norm</code> 时不要把参考组合当作训练对照。参考组合因此只能配 AdamW；<code>DistMuon</code> 要求所有参数都有梯度，会报 <code>missing gradients</code>。</p>
+<p>注意：参考组合（模型默认 attention）不训练 <code>r=4</code> 层的 indexer——TopK 选择不可导，KL 蒸馏目标只在融合组合（<code>sparse_attn.asc</code> + <code>lightning_indexer.asc</code>，SMLAG → SLIKG）中——对比 <code>indexer</code> 相关参数或依赖其梯度的 <code>grad_norm</code> 时不要把参考组合当作训练对照。参考组合因此只能配 AdamW；<code>DistMuon</code> 要求所有参数都有梯度，会报 <code>missing gradients</code>。</p>
 <p>训练对比默认使用 <code>seq_len=4096</code>；其他长度通过 <code>--seq-len</code> 统一指定。</p>
 <h3 id="34">3.4 修改前后训练精度对比</h3>
 <p>目的：发现单步指标无法暴露的误差累积、梯度偏移和 optimizer update 异常等。</p>

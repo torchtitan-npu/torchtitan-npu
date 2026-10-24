@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>DeepSeek-V4 系列上下文并行（CP） - torchtitan-npu</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "DeepSeek-V4 \u7cfb\u5217\u4e0a\u4e0b\u6587\u5e76\u884c\uff08CP\uff09";
+        var mkdocs_page_input_path = "feature_guides/context_parallel.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> torchtitan-npu
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../AGENTS/">文档规则</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../architecture/">torchtitan-npu 架构边界</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Community</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../community/governance/">社区治理</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/checkpoint/">Checkpoint 使用指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/config_extensions/">NPU 配置扩展指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/lint_guide/">Lint 指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/low-value-ut-principles/">低价值 UT 原则</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/metrics_and_debugging/">调试支持特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/numerical_alignment/">精度对齐开发指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../developer_guides/unit-test-architecture/">Unit Test 架构与迁移方案</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Feature guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../anticipatory_routing/">Loss spike 检测与路由重放（Anticipatory Routing）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">DeepSeek-V4 系列上下文并行（CP）</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1">1. 共同契约</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#11">1.1 坐标</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#12-plan-exchange">1.2 plan 与 exchange</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#13-frame-metadata">1.3 frame 与 metadata</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2">2. 启用方式</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3">3. 两栈差异总览</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-deepseek-v4">4. DeepSeek-V4</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#41">4.1 数据流</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#42-rank-local">4.2 rank-local 前缀池</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#43-carry-prepend-trim">4.3 压缩器：carry / prepend / trim</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#44">4.4 参考路径</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-deepseek-v41">5. DeepSeek-V4.1</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#51">5.1 数据流</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#52-rank-local-frame">5.2 rank-local frame 重建</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#53-sharding">5.3 压缩器与 sharding</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#54-indexer-teacher">5.4 indexer teacher 的归一化</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#55-cp">5.5 拒绝 CP 的路径</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6">6. 组件</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7">7. 验证</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#8">8. 相关文档</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer_recompute/">DeepSeek-V4 GraphTrainer 激活重计算</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_lora/">DeepSeek-V4 LoRA 微调</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ep_process_group/">EP 通信域分离</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../fused_ops/">融合算子接入指南</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_auto_overlap/">GraphTrainer NPU Auto Overlap</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_cv_parallel/">DeepSeek-V4 batch 双流调度</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../graph_trainer_ep_overlap/">GraphTrainer EP overlap 适配</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../low_precision_training/">低精度训练</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mtp/">DeepSeek-V3.2 / DeepSeek-V4 MTP</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../muon_optimizer/">DeepSeek-V4 Muon 优化器</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../torch_compile/">torch.compile 与 AscendC AutoFuse 特性</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../virtual_optimizer/">Virtual Optimizer - 优化器显存虚拟化特性</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/installation/">软件安装</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/quickstart/">快速上手</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../user-guides/sdc/">静默数据损坏检测（SDC）</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">torchtitan-npu</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Feature guides</li>
+      <li class="breadcrumb-item active">DeepSeek-V4 系列上下文并行（CP）</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="deepseek-v4-cp">DeepSeek-V4 系列上下文并行（CP）</h1>
+<p>DeepSeek-V4（DSV4）与 DeepSeek-V4.1（DSV4.1）共用同一套上下文并行语义：<strong>查询按文档内部分成
+<code>cp</code> 份，KV 与压缩 KV 保持整行</strong>。融合内核在边界处把本地 slab 声明式 all-gather 成整行，再用
+frame 的 <code>seqused = reach</code> 把可见范围限制在本 rank 的 chunk 之前。两栈共用
+<code>models/common/query_exchange.py</code> 的 plan/exchange 与 <code>models/common/metadata.py</code> 的
+<code>KernelFrame</code>；差异集中在压缩器的 CP 处理、内核如何锚定 mask，以及 frame 由哪一层 metadata 携带。</p>
+<p>本文是 V4 与 V4.1 的合并指南（原 V4 CP 指南的内容已并入）。旧的 <code>build_cp_plan</code> /
+<code>CPTokenDispatcher</code> / <code>WindowPlan</code> / <code>ExchangePlan</code> / 容器打包 / borrow-strip 路径均已删除。</p>
+<h2 id="1">1. 共同契约</h2>
+<h3 id="11">1.1 坐标</h3>
+<p>设一行有文档 <code>d</code>、长度 <code>L_d</code>，CP 度 <code>R = cp_size</code>，rank <code>r</code>，slab 宽度 <code>C = N / R</code>
+（<code>N</code> 是整行 token 数），chunk 宽度 <code>Q_d = L_d / R</code>：</p>
+<pre><code class="language-text">rank r 的输入 slab：        [r·C, (r+1)·C)
+查询帧 q：                 每篇文档的第 r 个 chunk（query exchange 搬过去）
+滑窗 KV 帧 swa_k：         整行；seqused = reach_d = (r+1)·Q_d
+压缩 KV 帧 cmp_k：         整行按 ratio 折叠；seqused = reach_d // ratio，residual = reach_d % ratio
+positions_q：              搬过来的查询自己的文档内位置
+</code></pre>
+<p><code>q.cu_seqlens = cu_seq_q // R</code>（每篇文档 chunk 前缀和），<code>q.seqused = Q_d</code>；
+<code>swa_k.cu_seqlens = cu_seq_q</code>，<code>cmp_k.cu_seqlens = cu_seq_k</code>（entry 自己按 ratio 折好的整行网格）。
+因此 <code>seqused_ori_kv - seqused_q = r·Q_d</code> 正好是本 rank 在该文档内的 chunk 偏移，内核的滑窗与
+压缩因果上限都锚在这个偏移上。</p>
+<p><code>cu_seq_q</code> / <code>cu_seq_k</code> 永远是<strong>整行</strong>网格：rank 化只发生在 frame 的 <code>cu_seqlens</code> / <code>seqused</code>
+上，metadata 本身不随 CP 改变形状。</p>
+<h3 id="12-plan-exchange">1.2 plan 与 exchange</h3>
+<p><code>cp_plan(cu_seqlens, cp_size, rank, seq_len)</code>（<code>models/common/query_exchange.py</code>）只从全局文档
+边界与本 rank 推导一次移动，零通信：</p>
+<ul>
+<li><code>send_index</code> / <code>send_split</code>：本 rank slab 里每一行要去的 peer（按 peer 连续、peer 内按槽位升序）；</li>
+<li><code>recv_split</code>：本 rank 从每个 peer 收到的行数；接收 buffer 已经是 held-row 顺序，不需要二次
+  scatter；</li>
+<li><code>positions_q</code>：搬过来的行自己的文档内位置（RoPE 在文档边界重启，不能用原 slab 的位置）。</li>
+</ul>
+<p><code>QueryExchange</code> 是执行这段移动的模块：<code>parallelize</code> 从框架拿到 CP mesh，前向
+<code>permute</code> = <code>all_to_all_single(x[send_index], ...)</code>，<code>unpermute</code> 是它的逆（置换，所以 adjoint
+就是逆，不累加）。没有 plan（<code>metadata.exchange is None</code>）时两者都是恒等，非 CP 路径因此不需要
+分支，也不需要进程组。V4 与 V4.1 的 <code>Attention.parallelize</code> 都通过模块递归把 mesh 接到
+<code>query_exchange</code> 上。</p>
+<h3 id="13-frame-metadata">1.3 frame 与 metadata</h3>
+<p>一行由三个 <code>KernelFrame</code> 描述：<code>q</code>、<code>swa_k</code>、<code>cmp_k</code>（不池化的几何没有 <code>cmp_k</code>）。CP 下由融合
+entry 的 <code>prepare_cp_metadata</code> 用 rank-local chunk 重建这三个 frame 以及按它们算出的 AI_CPU
+记录；参考 entry 的 hook 显式拒绝 CP（它只有一条连续文档流的契约）。frame 的归属两栈不同：</p>
+<table>
+<thead>
+<tr>
+<th>栈</th>
+<th>参考 metadata</th>
+<th>CP 重建</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>V4</td>
+<td><code>DeepSeekV4Metadata</code> 自带 <code>q</code>/<code>swa_k</code>/<code>cmp_k</code>（<code>build_v4_metadata</code> 用整行边界构造）</td>
+<td><code>AscV4Metadata.prepare_cp_metadata</code> → <code>shard_asc_v4_metadata</code></td>
+</tr>
+<tr>
+<td>V4.1</td>
+<td><code>DeepSeekV41Metadata</code> 只有整行边界与位置；frame 由融合 entry <code>AscV41Metadata</code> 携带</td>
+<td><code>AscV41Metadata.prepare_cp_metadata</code> → <code>shard_asc_v41_metadata</code></td>
+</tr>
+</tbody>
+</table>
+<p>两栈的重建都从 <code>cp_shard_context()</code> 读 pre-shard <code>positions</code> 与 CP mesh，都拒绝
+<code>--parallelism.context-parallel-load-balancer</code>（除 <code>None</code> 外的任何取值）：这些 frame 是每篇文档的
+连续 slab，load balancer 的置换需要同时折进 chunk 网格、query exchange 与 engram halo，当前不支持。</p>
+<h2 id="2">2. 启用方式</h2>
+<pre><code class="language-bash"># DeepSeek-V4
+NGPU=2 \
+  bash examples/deepseek_v4/debug/deepseek_v4_mini_1p_cpt_2k_a3.sh \
+  --parallelism.context-parallel-degree 2 \
+  --parallelism.spmd-backend spmd_types \
+  --dataloader.per_doc_alignment 256 \
+  --training.steps 2
+</code></pre>
+<pre><code class="language-bash"># DeepSeek-V4.1
+NGPU=2 \
+  bash examples/deepseek_v4_1/deepseek_v4_1_flash_1p_2k_a5.sh \
+  --parallelism.context-parallel-degree 2 \
+  --parallelism.spmd-backend spmd_types \
+  --dataloader.per_doc_alignment 256
+</code></pre>
+<ul>
+<li><code>--parallelism.context-parallel-degree &gt; 1</code> 启用 CP；必须配合
+  <code>--parallelism.spmd-backend spmd_types</code>（声明式 <code>S(1) -&gt; R</code> all-gather 的前提）。</li>
+<li>只支持连续 slab 切片：<code>--parallelism.context-parallel-load-balancer None</code>（上游默认 <code>headtail</code>
+  会被融合 entry 的 <code>prepare_cp_metadata</code> 拒绝）。</li>
+<li>每篇文档按 <code>lcm(compress_ratios) × cp</code> 填充：V4 为 <code>128 × cp</code>（CP=2 即 256），V4.1 为其
+  <code>compress_ratios</code> 的 lcm × cp。这条约束是<strong>刻意严格</strong>的：CP 把每篇文档切成 <code>cp</code> 个等长
+  chunk，除了 <code>doc % (cp × ratio) == 0</code>，<strong>每个 chunk 自身</strong>也必须是 ratio 的整数倍，否则该
+  rank 的压缩前缀会停在组中间，而部分压缩块不在已验证的内核契约内——因此不放松。例如
+  cp=2、ratio=128、doc=128 会得到 64-token chunk（不是 128 的倍数）并被明确拒绝。
+  <code>--dataloader.per_doc_alignment</code> 必须是对应 lcm × cp 的倍数：<code>Trainer</code> 启动时由
+  <code>require_per_doc_alignment</code> 检查，每个 geometry 的 entry 再由
+  <code>require_document_alignment(cu_seqlens, cp_size=cp, ratio=r)</code> 检查；示例脚本已按 <code>${CP}</code>
+  传入 <code>--dataloader.per_doc_alignment</code>。</li>
+<li>需要完整 NPU 环境（<code>torch_npu</code>、CANN、HCCL、匹配的 <code>cann_ops_transformer</code>）。只有 AscendC 融合
+  路径支持 CP；模型目录的参考 metadata hook 显式拒绝 CP。</li>
+<li>量化后端（V4 的 <code>QuantV4Metadata</code>、V4.1 的 <code>_V41QuantAttentionMetadata</code>）目前不重建 rank-local
+  metadata，<code>prepare_cp_metadata</code> 直接拒绝：量化路径只能跑 <code>context-parallel-degree 1</code>。</li>
+<li><code>local_batch_size == 1</code> 是打包约定；DSA 路径 TP 固定为 1。</li>
+</ul>
+<h2 id="3">3. 两栈差异总览</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>DeepSeek-V4</th>
+<th>DeepSeek-V4.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>压缩器与 CP</td>
+<td>ratio-4 重叠块需要前驱 rank 的 carry：<code>CarryExchange</code>（与压缩器同级的模块）做交换/prepend，调用点压缩后再裁剪</td>
+<td>压缩器 CP-agnostic：文档按 <code>cp × ratio</code> 对齐后，本 rank 的 slab 起点就是组边界，本地池化即可；无 carry</td>
+</tr>
+<tr>
+<td>压缩流取得方式</td>
+<td>本地流（含 carry）池化后，内核边界 <code>S(1) -&gt; R</code> gather 成整行</td>
+<td>本地 slab 池化后同样在核心边界 <code>S(1) -&gt; R</code> gather</td>
+</tr>
+<tr>
+<td>内核锚定</td>
+<td>融合内核把 mask 右对齐到<strong>它拿到的 key frame 末尾</strong>；selector 完全不读 <code>seqused_k</code>，因此非末尾 rank 还要把两路 key 流压成 rank-local 前缀池</td>
+<td>内核读 <code>seqused_q</code> / <code>seqused_ori_kv</code> / <code>seqused_cmp_kv</code>，窗口与压缩因果上限直接锚在 reach 上；不需要前缀池</td>
+</tr>
+<tr>
+<td>rank-local 前缀池</td>
+<td><code>selector_k</code>/<code>selector_k_gather</code>（压缩池）与 <code>swa_k_prefix</code>/<code>swa_k_gather</code>（滑窗）</td>
+<td>无</td>
+</tr>
+<tr>
+<td>frame 归属</td>
+<td>模型 metadata（<code>DeepSeekV4Metadata</code>）</td>
+<td>融合 entry（<code>AscV41Metadata</code>）</td>
+</tr>
+<tr>
+<td>indexer teacher 归一化</td>
+<td><code>_LightningIndexerTND.backward</code> 除以整行 query 数 <code>cu_seq_q[-1]</code></td>
+<td><code>num_global_queries</code>（本 step 全部 query 数，按 DP 求和）</td>
+</tr>
+<tr>
+<td>参考 metadata</td>
+<td><code>DeepSeekV4Metadata.prepare_cp_metadata</code> 拒绝</td>
+<td><code>DeepSeekV41Metadata.prepare_cp_metadata</code> 拒绝</td>
+</tr>
+<tr>
+<td>量化 metadata</td>
+<td><code>QuantV4Metadata</code> 拒绝</td>
+<td><code>_V41QuantAttentionMetadata</code> 拒绝</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-deepseek-v4">4. DeepSeek-V4</h2>
+<h3 id="41">4.1 数据流</h3>
+<pre><code class="language-text">Attention.forward
+  x (本地 slab)
+    ├─ QueryExchange.permute -&gt; x_q (本 rank 的文档 chunk)
+    │     ├─ q 投影 / q_norm / q_head_norm / rope(positions_q)
+    │     ├─ indexer idx_q / idx_w（查询帧）
+    │     └─ wo_b -&gt; QueryExchange.unpermute -&gt; 本地 slab
+    ├─ swa_k 投影 + rope(local positions)              [CP=S(1)]
+    ├─ compressor(x)（见 4.3，ratio 4 带 carry）        [CP=S(1)]
+    └─ indexer compressor(x_keys)                      [CP=S(1)]
+
+inner_attention / lightning_indexer 的 ShardingConfig
+  swa_k, cmp_k（核心）与 idx_k（selector）: cp S(1) -&gt; R（内核边界 all-gather 整行）
+  q, idx_q, idx_w:      保持本 rank 的 chunk（attention 直接调用这两个模块）
+</code></pre>
+<p><code>AscV4Metadata</code> 的 <code>q</code>/<code>swa_k</code>/<code>cmp_k</code> frame 被 SMLA/SMLAG 与独立的 LI override（前向
+<code>lightning_indexer</code>、反向 SLIKG）直接读取；不再有 <code>_assemble_tnd</code>、<code>cmp_k_global_gather_indices</code>、
+<code>compressed_rows</code>、<code>first_indices</code> 或容器网格。</p>
+<h3 id="42-rank-local">4.2 rank-local 前缀池</h3>
+<p>压缩流与滑窗流在 gather 后都是整行，但 V4 的融合内核把 mask 右对齐到<strong>它拿到的 key frame 末尾</strong>：
+selector 完全不读 <code>seqused_k</code>；SMLA/SMLAG 的压缩侧还要求 key 张量、网格与 <code>sparse_indices</code> 在
+同一坐标 frame 里。因此 <code>shard_asc_v4_metadata</code> 为非末尾 rank 构造两个前缀池：</p>
+<ul>
+<li>压缩池 <code>selector_k</code>：<code>seqused = reach // ratio</code>（每篇文档前缀块数）、<code>cu_seqlens =
+  cumsum(prefix)</code>；<code>selector_k_gather</code> 是把整行压缩池压成该布局的 <code>index_select</code>。每个 ratio &gt; 1
+  的几何都有：ratio-4 的选择器按它选（下标仍是文档内编号），更宽 ratio（HCA）层的 full-causal
+  压缩分支直接读它。<code>AscCompressedSparseInnerAttention</code> 用该 <code>index_select</code> 把 <code>cmp_kv</code> 压到池上，
+  SMLA/SMLAG/SLIKG 全部读这个池。</li>
+<li>滑窗池 <code>swa_k_prefix</code>：每篇文档前 <code>reach</code> 个 token，<code>cu_seqlens = cumsum(reach)</code>、
+  <code>seqused = reach</code>；<code>swa_k_gather</code> 是同样的 <code>index_select</code>，SMLA/SMLAG 的 ori 记录按该帧重建。
+  chunk-<code>r</code> 查询的全部窗口 key 都在这个前缀里，右对齐窗口因此落在 chunk <code>r</code> 的末尾。</li>
+</ul>
+<p>两路 gather 都可微：反向经 <code>index_select</code> scatter 回整行，再由 <code>S(1) -&gt; R</code> 的 reduce-scatter 回到
+本 rank 的 chunk。<code>cp=1</code> 与最后一个 rank 的 <code>reach</code> 就是整篇文档，此时两个前缀帧都是 <code>None</code>
+（等同整行帧），行为与之前逐位一致。</p>
+<h3 id="43-carry-prepend-trim">4.3 压缩器：carry / prepend / trim</h3>
+<p>压缩器本身<strong>不感知 CP</strong>：它只看到一条本地流、这条流自己的 <code>positions</code>，以及（仅 ratio-4 重叠）
+这条流的 <code>cu_seqlens</code>；池化是扁平的 <code>ratio</code> 折叠，重叠的左半块在每个 segment 起点被 mask
+（score <code>-inf</code>、kv <code>0</code>）。carry / prepend / trim 都在压缩器外的 <code>CarryExchange</code>
+（<code>models/common/carry_exchange.py</code>）里，CP 的 KV all-gather 仍由 <code>sharding.py</code> 在融合内核边界
+声明式完成。</p>
+<p>ratio-4 的<strong>重叠前驱</strong>由 <code>CarryExchange</code> 处理：</p>
+<ol>
+<li>每篇文档长度按 <code>cp × ratio</code> 对齐，slab 边界落在压缩网格上；但 ratio-4 的块首池化需要前一块的行。</li>
+<li>rank <code>r &gt; 0</code> 把本 rank 最后 <code>ratio</code> 个 token <strong>及其 positions</strong> 通过两次 <code>all_to_all_single</code>
+   （token、positions）发给 rank <code>r+1</code>，同时接收 rank <code>r-1</code> 的。</li>
+<li>把收到的 block prepend 到本地 slab 前面；<code>CarryExchange</code> 用「整行边界裁剪到增强窗口
+   <code>[slab_start-ratio, slab_end)</code> 再 rebase」构造增强 <code>cu_seqlens</code>：若 slab 起点在某文档内部，
+   窗口里没有落在接缝上的边界，carry 自然与该文档的第一段合并；若起点正好是文档边界，整行边界
+   被保留，carry 是前一篇文档的独立 segment。两种情况都只靠「mask 每个 segment 起点」这一条规则，
+   carry 自己的输出块会被裁掉，因此不需要特判。</li>
+<li>用增强后的 <code>cu_seqlens</code> 调压缩器（融合实现 <code>coff=2</code>），输出比本地块多一块；丢掉第一块
+   （carry block），保留本地 slab 的 <code>C/ratio</code> 块。</li>
+<li>RoPE 使用 <code>positions[..., ::ratio]</code>（保留块的文档内位置）。</li>
+<li><code>CarryExchange</code> 只产出增强流（<code>CarryStream</code>：<code>x</code> / <code>positions</code> / <code>cu_seqlens</code> / <code>trim</code>）；
+   融合实现的 <code>_state_inputs</code> 在内部按增强流的形状符号构造全 0 的 kernel tiling 表
+   （<code>state_block_table</code> 不在模型层接口上）。ratio=128 无重叠，不做 carry，压缩器直接用本地
+   <code>cu_seqlens</code>。</li>
+</ol>
+<p>rank 0 只发送、不接收；最后一个 rank 只接收、不发送；其余 rank 两者都做。所有 rank 都进入同两次
+集合通信（空 split 也参与），避免死锁。</p>
+<p>非 CP 路径把整行 <code>cu_seqlens</code> 直接传给压缩器；参考实现与融合实现共用同一接口
+<code>compressor(x, positions, *, cu_seqlens=None)</code>（<code>cu_seqlens</code> 是 keyword-only：带 sharding
+config 的模块走框架的位置参数契约，位置参数个数必须与签名一致）。</p>
+<h3 id="44">4.4 参考路径</h3>
+<p><code>DeepSeekV4Metadata.prepare_cp_metadata</code> 明确拒绝 CP：参考内核（Attention Gym 的 <code>gather_attn</code>）
+只有一条连续文档流的契约。参考<strong>压缩器</strong>本身支持 CP（carry 在 <code>CarryExchange</code> 里，与压缩器
+实现无关），
+所以 debug model（参考压缩器 + 融合注意力）也能跑 CP。V4 的数值验收在融合路径的 CP=1/CP=2
+之间做。</p>
+<h2 id="5-deepseek-v41">5. DeepSeek-V4.1</h2>
+<h3 id="51">5.1 数据流</h3>
+<pre><code class="language-text">Attention.forward
+  x (本地 slab)
+    ├─ QueryExchange.permute -&gt; x_q (本 rank 的文档 chunk)
+    │     ├─ q 投影 / q_norm / rope(positions_q)
+    │     └─ indexer：idx_q / weights 在 chunk 上；idx_k 由本地压缩 latent 投影
+    ├─ swa_k 投影 + rope(local positions)              [CP=S(1)]
+    └─ compressor(x, positions)（本地池化，无 carry）    [CP=S(1)]
+
+Sparse core / selector（sharding 声明）
+  swa_k, cmp_k, idx_k: cp S(1) -&gt; R（整行）
+  q, idx_q, weights:   保持本 rank 的 chunk
+  topk_indices, sink:  replicated
+
+输出：rope(positions_q, inverse) -&gt; wo_a -&gt; wo_b -&gt; QueryExchange.unpermute -&gt; 本地 slab
+</code></pre>
+<p>V4.1 的参考 metadata（<code>DeepSeekV41Metadata</code>）只带整行边界与 <code>positions_q</code>；CP 的 frame 与记录由
+融合 entry 重建，消费者（<code>AscV41SparseAttention</code>、<code>AscSelector</code>）直接读
+<code>attention_metadata.q</code> / <code>.swa_k</code> / <code>.cmp_k</code> 与 <code>aicpu_metadata</code>。</p>
+<h3 id="52-rank-local-frame">5.2 rank-local frame 重建</h3>
+<p><code>AscV41Metadata.prepare_cp_metadata</code>（<code>override/deepseek_v4_1/sparse_attn/ascendc.py</code>）从
+<code>cp_shard_context()</code> 取 pre-shard <code>positions</code> 与 mesh，调用 <code>shard_asc_v41_metadata</code>：</p>
+<pre><code class="language-text">seqused = diff(cu_seq_q)
+alignment = cp_size * max(ratio, 1)          # 每篇文档必须对齐
+chunk = seqused // cp_size                   # Q_d
+reach = (cp_rank + 1) * chunk                # K_d
+exchange = cp_plan(cu_seq_q, cp_size, cp_rank, seq_len)
+q       = Frame(cu_seq_q // cp_size, chunk)
+swa_k   = Frame(cu_seq_q, reach)
+cmp_k   = Frame(cu_seq_k, reach // ratio, residual=reach % ratio)   # ratio &gt; 0
+positions_q = exchange.positions_q.reshape(B, seq_len)
+</code></pre>
+<p>并检查 <code>sum(chunk) == batch_size * seq_len</code>（边界描述的必须是调用方切出来的那条行）。frame 变
+则记录必须重算：entry 用 <code>build_aicpu_metadata(q, swa_k, cmp_k, geometry)</code> 重建
+<code>sparse_attn</code> 与 <code>lightning_indexer</code> 两组 <code>*_metadata</code>。</p>
+<p>V4.1 的 <code>compress_ratio</code> 可以是 0（window-only，没有任何压缩 frame）、1（整分辨率第二路 KV）
+或 2（压缩共享 KV）；<code>cmp_k</code> 只在 <code>ratio &gt; 0</code> 时存在，<code>ratio == 1</code> 的 <code>residual</code> 为 <code>None</code>
+（轴没有折叠，内核对非零值报错）。</p>
+<h3 id="53-sharding">5.3 压缩器与 sharding</h3>
+<p>V4.1 的 <code>Compressor</code>（<code>models/deepseek_v4_1/compressor.py</code>）没有 CP 分支：source layer 在本地
+slab 上做 <code>ratio</code> 折叠（ratio==1 是普通投影），因为文档已按 <code>cp × ratio</code> 对齐，本 rank 的 slab
+起点就是组边界，<code>C/ratio</code> 是整数块。压缩输出（<code>[B, C/ratio, D]</code>）在 sparse core 的边界被声明式
+<code>cp: S(1) -&gt; R</code> gather 成整行；<code>cmp_k.seqused = reach // ratio</code> 让内核只读本 rank 之前的块。
+ratio-4 那种跨 slab 的 carry 在 V4.1 不存在，因此没有 <code>CarryExchange</code>。</p>
+<p><code>models/deepseek_v4_1/sharding.py</code> 声明 CP 的输入/输出放置：</p>
+<ul>
+<li>sparse core：<code>q</code> 保持 <code>S(2)</code>（本 rank chunk），<code>swa_k</code> / <code>cmp_k</code> 在消费侧为整行
+  （<code>in_src_shardings</code> 是 replicated、<code>in_dst_shardings</code> 是行放置，即 <code>S(1) -&gt; R</code>），
+  <code>topk_indices</code> 与 <code>attn_sink</code> replicated；</li>
+<li>selector：<code>idx_q</code> / <code>weights</code> replicated，<code>idx_k</code> 做同样的 <code>S(1) -&gt; R</code>（选择器用整行 index keys
+  给本 rank 的 chunk 打分）。</li>
+</ul>
+<h3 id="54-indexer-teacher">5.4 indexer teacher 的归一化</h3>
+<p>V4.1 的 selector 在反向把 teacher 除以 <code>Selector.num_global_queries</code>：本 step 全部 accumulation
+microbatch 的 query token 数（在 CP 切分之前统计，DP 维再求和）。这与 V4 用
+<code>cu_seq_q[-1]</code>（整行 query 数）是同一个量的两种来源，都是为了避免 CP/DP 下参数梯度被
+rank-local 分母放大。</p>
+<h3 id="55-cp">5.5 拒绝 CP 的路径</h3>
+<p><code>DeepSeekV41Metadata.prepare_cp_metadata</code> 拒绝参考内核；<code>_V41QuantAttentionMetadata</code>
+（<code>extensions/adaptor/torchao/converter.py</code>）拒绝量化 attention。两者都在任何层执行之前报错，
+不会静默地拿着全局 metadata 跑 rank-local 行。</p>
+<h2 id="6">6. 组件</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/common/query_exchange.py</code></td>
+<td><code>ExchangeMetadata</code> / <code>QueryExchange</code> / <code>cp_plan</code>（V4、V4.1 共用）</td>
+</tr>
+<tr>
+<td><code>models/common/metadata.py</code></td>
+<td><code>KernelFrame</code>（两栈共用的 frame 原语）</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4/metadata.py</code></td>
+<td><code>DeepSeekV4Metadata</code>（整行边界、池网格、q/swa_k/cmp_k frame、查询位置）与 <code>build_v4_metadata</code></td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4/attention.py</code></td>
+<td>查询交换、q/idx_q 在 <code>positions_q</code> 上 rope、selector + 内层核心直调（无 wrapper）、输出 <code>unpermute</code>；参考内核读 <code>q</code> / <code>cmp_k</code> frame 与预计算的 HCA 选择</td>
+</tr>
+<tr>
+<td><code>models/common/carry_exchange.py</code></td>
+<td><code>CarryExchange</code> / <code>CarryStream</code>：ratio-4 carry 的 ring（tokens + positions）、增强 <code>cu_seqlens</code> 与 <code>trim</code>；cp=1 为 no-op</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4/compressor.py</code></td>
+<td>参考压缩器（CP-agnostic，CP/非 CP 同一实例）；<code>Indexer</code> 的查询帧与 key slab 分离</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4/sharding.py</code></td>
+<td><code>swa_k</code> / <code>cmp_k</code> / <code>idx_k</code> 的 <code>cp: S(1) -&gt; R</code> 声明</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4/metadata.py</code></td>
+<td><code>AicpuMetadata</code> / <code>AscV4Metadata.prepare_cp_metadata</code>（frame 归模型层，entry 只加记录）</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4/sparse_attn/ascendc.py</code></td>
+<td><code>shard_asc_v4_metadata</code>（q/swa/cmp 帧 + 记录重建）、SMLA/SMLAG 的 frame 参数与 rank-local 前缀池</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4/lightning_indexer/ascendc.py</code></td>
+<td>LI 前向 / SLIKG 反向（选择器自己的 frame，<code>selector_k</code> 前缀池、teacher 边）</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4/lightning_indexer/pypto.py</code></td>
+<td>PyPTO 版 selector：独立实现同一契约（输入准备、排序、teacher 边），只替换 LI/SLIKG kernel 对</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4/compressor/ascendc.py</code></td>
+<td>CANN 融合压缩器（无 carry、无 CP 分支；<code>_state_inputs</code> 按 stream 形状内部构造零 tiling 表）</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4_1/attention.py</code></td>
+<td>V4.1 查询交换、本地 KV/压缩、输出 <code>unpermute</code></td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4_1/compressor.py</code></td>
+<td>V4.1 本地池化压缩器（CP-agnostic，无 carry）</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4_1/sharding.py</code></td>
+<td>V4.1 sparse core / selector 的 <code>S(1) -&gt; R</code> 声明</td>
+</tr>
+<tr>
+<td><code>models/deepseek_v4_1/model.py</code></td>
+<td><code>DeepSeekV41Metadata.prepare_cp_metadata</code> 拒绝 CP；teacher 成对启用检查</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4_1/sparse_attn/ascendc.py</code></td>
+<td><code>AscV41Metadata</code> / <code>shard_asc_v41_metadata</code> / <code>build_fused_metadata</code></td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4_1/lightning_indexer/ascendc.py</code></td>
+<td>V4.1 BF16 selector（整行 index keys × 本 rank chunk）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="7">7. 验证</h2>
+<p>CPU：</p>
+<pre><code class="language-bash">TORCH_DEVICE_BACKEND_AUTOLOAD=0 python3 -m pytest -q \
+  tests/unit_tests/models/deepseek_v4 tests/unit_tests/override/deepseek_v4
+TORCH_DEVICE_BACKEND_AUTOLOAD=0 python3 -m pytest -q \
+  tests/unit_tests/models/deepseek_v4_1 tests/unit_tests/override/deepseek_v4_1
+</code></pre>
+<p>V4 覆盖 <code>test_v4_cp_frames.py</code>（帧坐标、对齐拒绝、<code>CarryExchange</code> + 压缩器对整行 oracle 的
+输出）与 <code>test_compressor.py::test_compressor_cp_carry_trim_matches_the_global_pool</code>（融合压缩器
+经 <code>CarryExchange</code> 的 carry/trim 输出与梯度）。V4.1 覆盖
+<code>tests/unit_tests/models/deepseek_v4_1/test_context_parallel.py</code>（<code>cp_plan</code> 的行移动、闭式接收
+split、frame 不变量）与 <code>tests/unit_tests/override/deepseek_v4_1/test_cp_frames.py</code>
+（<code>shard_asc_v41_metadata</code> 的 rank-local 帧与记录）。</p>
+<p>NPU：加载同一固定初始权重 checkpoint，CP=1 / CP=2 各跑相同步数，比较逐 step <code>loss</code> 与
+<code>grad_norm</code>；每次使用全新 <code>--checkpoint.folder</code>。数值差异按 CANN batch 一致性解释（SMLA 批次
+布局、LI tie、SMLAG kv 部分和），不要求逐位一致。V4 的对齐权重实测：每层 hidden 相对误差
+0.000% / 0.017% / 0.054% / 0.253%，<code>loss</code> 差 1.9e-4。</p>
+<h2 id="8">8. 相关文档</h2>
+<ul>
+<li><a href="../deepseek_v4_tnd/">DeepSeek-V4 TND 适配</a></li>
+<li><a href="../fused_ops/">融合算子使用与开发</a></li>
+<li><a href="../../developer_guides/numerical_alignment/">数值对齐</a></li>
+<li><a href="../mtp/">MTP</a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../aux_loss/" class="btn btn-neutral float-left" title="辅助损失框架（AuxLoss）"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../cpu_offload/" class="btn btn-neutral float-right" title="CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../aux_loss/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../cpu_offload/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -71,11 +71,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
@@ -199,7 +199,7 @@ bash examples/deepseek_v4/deepseek_v4_flash_lora_4k_a3.sh \
 </tr>
 </tbody>
 </table>
-<p>未启用量化时，LoRA 沿用原有基座配置。使用已有 TorchAO-NPU 参数量化方案时，LoRA 配置保留所选量化策略，基座参数沿用原策略选择，适配器保持 BF16。替换整个模块且无法保留适配器前向计算的方案会在配置阶段报错。优化器和并行配置详见 <a href="../muon_optimizer/">Muon 优化器</a>与<a href="../deepseek_v4_cp/">上下文并行</a>。</p>
+<p>未启用量化时，LoRA 沿用原有基座配置。使用已有 TorchAO-NPU 参数量化方案时，LoRA 配置保留所选量化策略，基座参数沿用原策略选择，适配器保持 BF16。替换整个模块且无法保留适配器前向计算的方案会在配置阶段报错。优化器和并行配置详见 <a href="../muon_optimizer/">Muon 优化器</a>与<a href="../context_parallel/">上下文并行</a>。</p>
 <p>模型并行化后、创建优化器前冻结非 LoRA 参数，并关闭 MoE 负载均衡更新，保留基座路由偏置。需要只训练部分适配器时，可在并行化回调返回后冻结对应参数，例如冻结全部 <code>lora_a</code>、仅训练 B。</p>
 <h2 id="_3">检查点与断点续训</h2>
 <p>周期检查点使用原生 DCP 格式。<code>checkpoint.periodic_save_adapter_only=True</code> 时，只保存适配器和路由缓冲区，不重复保存冻结的基座。启用 <code>checkpoint.save_training_state=True</code> 后，还会保存优化器、调度器、数据加载器和训练步数；上述 LoRA 启动脚本已启用此选项。</p>

@@ -71,11 +71,11 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../aux_loss/">辅助损失框架（AuxLoss）</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../context_parallel/">DeepSeek-V4 系列上下文并行（CP）</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../cpu_offload/">CPU Offload - 权重与梯度 CPU 常驻，优化器状态可选 CPU/NPU 驻留面</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_1_lora/">DeepSeek-V4.1 LoRA</a>
-                  </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_cp/">DeepSeek-V4 上下文并行（CP）</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../deepseek_v4_graph_trainer/">DeepSeek-V4 GraphTrainer 编译路径适配</a>
                   </li>
@@ -244,7 +244,7 @@
 <ul>
 <li>
 <p>同一 target 有多个同类实现时，在 variant 后增加职责限定，例如
-<code>rope.asc_complex</code>、<code>rope.asc_cossin</code>、<code>sparse_attn.asc_li</code>。</p>
+<code>rope.asc_complex</code>、<code>rope.asc_cossin</code>、<code>lightning_indexer.asc</code> / <code>lightning_indexer.pypto</code>。</p>
 </li>
 <li>
 <p>replacement 类采用「variant + target」命名，并保留标准缩写大小写，例如
@@ -312,14 +312,15 @@
   候选池的容量与块大小从模型 config 读取，只作为 launch 参数与候选数推导的输入。因此 <code>asc</code> 在这条路径上
   不生效，非量化 entry 的 <code>fwd_sparse</code>/<code>sparse_length</code> 保持为空，等带 candidate 的非量化算子落地后由端口填。</li>
 <li>
-<p>DeepSeek-V4 的 <code>AscCompressedSparseInnerAttention.Config.build_attention_metadata</code> 在
-  <code>CompressedSparseInnerAttention.Config</code> 建好这个几何的 plan（一条 entry 一个 ratio，直接读 <code>metadata.plan</code>）
-  之后，再按自身几何补上四个算子的记录；<code>sparse_attn.asc</code> 桥接
-  LightningIndexer/SparseFlashMLA 的正反向，<code>sparse_attn.pypto</code> 用 PyPTO 实现 LI/LIG，并复用
-  AscendC 的其余 attention kernel 与同一份记录。几何（heads/head dim）是该 config 自己的必填
-  字段、无默认值，由 override 参数一次写入，默认值即 V4-Flash 的发布形状。CP 下由
-  <code>AscV4Metadata.prepare_cp_metadata</code> 调 <code>shard_compressed_varlen_metadata</code>
-  用 rank-local 行重建 plan，再在其上重填记录；参考契约的 hook 直接拒绝 CP。</p>
+<p>DeepSeek-V4 的 <code>CompressedSparseInnerAttention.Config.build_attention_metadata</code> 由模型目录的
+  <code>build_v4_metadata</code> 建好这个几何的 entry（一条 entry 一个 ratio）：整行 document 边界、按自身
+  <code>compress_ratio</code> 折好的池网格，以及三个 kernel frame（<code>q</code>/<code>swa_k</code>/<code>cmp_k</code>）——frame 属于模型
+  metadata（<code>models/common/metadata.py</code>），参考内核和融合端口读同一份。<code>AscCompressedSparseInnerAttention.Config</code>
+  在其上只补四个算子的记录；<code>sparse_attn.asc</code> 桥接 SparseFlashMLA/SMLAG 的正反向，
+  <code>lightning_indexer.asc</code> 桥接 <code>lightning_indexer</code>/<code>sparse_lightning_indexer_kl_loss_grad</code> 的正反向，
+  几何（heads/head dim）是该 config 自己的必填字段、无默认值，由 override 参数一次写入，默认值即
+  V4-Flash 的发布形状。CP 下由 <code>AscV4Metadata.prepare_cp_metadata</code> 调 <code>shard_asc_v4_metadata</code>
+  用 rank-local frames 重建 entry 与记录；参考契约的 hook 直接拒绝 CP。</p>
 </li>
 <li>
 <p>MoE token dispatcher 的 <code>npu_moe_token_unpermute</code> 与 <code>npu_moe_re_routing</code> 在
@@ -373,7 +374,7 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
 </code></pre>
 <p>多个无参数入口可用空格或逗号分隔。带参数的入口必须将 JSON 作为一个 shell 参数，例如：</p>
 <pre><code class="language-bash">--override.imports \
-  'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;num_heads&quot;:16,&quot;index_num_heads&quot;:8,&quot;indexer_loss_coeff&quot;:2.0}'
+  'torchtitan_npu.override.deepseek_v4.sparse_attn.asc={&quot;num_heads&quot;:16,&quot;index_num_heads&quot;:8}'
 </code></pre>
 <p>同一模块包含多个 override 入口时，只会启用命令中点名的入口函数。<code>torchtitan</code> 在配置构造完成、组件
 <code>build()</code> 前依次完成「导入注册 → 解析入口 → 遍历原始配置树收集匹配节点 → 检查冲突 →
@@ -389,8 +390,9 @@ replacement 只支持具体 Config 类型时设置 <code>exact=True</code>；需
   （默认值为 V4.1-Flash 形状）。本入口不声明量化：量化 selector 的 metadata 由量化后的 attention
   自己建（另一条 backend，见上文），池的容量与块大小取自模型 config。它与 <code>lightning_indexer.asc</code>
   必须同开（教师边只有两侧都在时才存在），见 <code>torchtitan_npu/override/README.md#deepseek-v41</code>。</li>
-<li>DeepSeek-V4 的 <code>sparse_attn.asc</code> / <code>sparse_attn.pypto</code> 各自构建自己的 metadata（每个几何一份 entry）；
-  两者声明同一 attention target，只能选一。</li>
+<li>DeepSeek-V4 的 <code>sparse_attn.asc</code> 只有一个 attention 入口，metadata（每个几何一份 entry）由该
+  config 自己构建；训练 indexer 时还必须同时启用 selector：CANN 路径用 <code>lightning_indexer.asc</code>，
+  PyPTO 路径用 <code>lightning_indexer.pypto</code>。前者在 SMLAG 反向产出 teacher，后者消费它。</li>
 <li>DeepSeek-V4 MHC 的 AscendC 入口声明 <code>HcPre.Config</code>/<code>HcPost.Config</code>，Triton 入口还包含
   <code>HcHead.Config</code>；同一节点只能选择一个实现。</li>
 <li>两个 override 声明同一节点，或一个声明另一个的祖先/后代节点时会冲突；可移除互斥入口，
