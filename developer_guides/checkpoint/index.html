@@ -77,6 +77,10 @@
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#hugging-face">加载 Hugging Face 权重</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#hf">加载量化 HF 权重</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#hugging-face_1">保存 Hugging Face 权重</a>
     </li>
@@ -268,7 +272,7 @@ dataloader 和训练状态，适合断点续训以及改变并行切分后的加
 </tr>
 <tr>
 <td><code>initial_load_in_hf_quantized</code></td>
-<td>从 HF 量化权重加载；使用前必须启用 <code>initial_load_in_hf</code>。</td>
+<td>从 HF 量化权重加载；使用前必须启用 <code>initial_load_in_hf</code>。支持的格式与适用范围见下文「加载量化 HF 权重」。</td>
 </tr>
 <tr>
 <td><code>last_save_model_only</code></td>
@@ -401,6 +405,17 @@ bash scripts/run_train.sh \
 <p>如果不传 <code>--checkpoint.initial-load-path</code>，checkpoint 管理器会尝试使用模型配置中的
 <code>hf_assets_path</code>。<code>initial_load_path</code> 优先级高于 <code>hf_assets_path</code>。HF 权重不能加载
 优化器或训练步数。</p>
+<h3 id="hf">加载量化 HF 权重</h3>
+<p><code>initial_load_in_hf_quantized</code> 目前只对 <code>deepseek_v4</code> 生效：其 state-dict adapter 会按目录内容
+自动探测两种 MX 量化格式，无需额外的格式开关：</p>
+<ul>
+<li>固定格式 MX：<code>.weight</code>（mxfp8 为 <code>float8_e4m3fn</code>，mxfp4 为打包的 <code>uint8</code>）与 e8m0 <code>.scale</code>
+  成对存放的目录。</li>
+<li>torchao 协议：<code>torchtitan_npu/tools/checkpoint_conversion/export_quantized_hf.py</code> 导出的目录，
+  量化元数据写在 safetensors 的 <code>__metadata__</code> 中。探测时优先于固定格式 MX。</li>
+</ul>
+<p>其他模型（含 <code>deepseek_v4_1</code>）的 adapter 不会选择这两个 MX reader，对这类目录启用该标志只会
+报出与量化无关的错误；此类模型请先使用反量化后的 bf16 权重。</p>
 <h2 id="hugging-face_1">保存 Hugging Face 权重</h2>
 <p>训练最后一步可以直接保存 HF safetensors。该模式只保存模型权重，不能作为完整训练
 断点使用：</p>

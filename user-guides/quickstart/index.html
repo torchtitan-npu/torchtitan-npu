@@ -302,7 +302,7 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 <tr>
 <td><code>fsdp-prequantize-fqns</code></td>
 <td>FQN 后缀模式列表（默认 <code>None</code>）</td>
-<td>仅在 <code>enable-fsdp-prequantize</code> 下生效。白名单内的权重保留预量化、其余显式关闭；<code>None</code> 用 recipe 默认白名单，显式空表与开关开启冲突会报 <code>ValueError</code>。命中权重的分片若不满足对齐约束，运行时立即报错终止（不静默回退），并给出移除该 FQN 或调整并行度的提示。</td>
+<td>仅在 <code>enable-fsdp-prequantize</code> 下生效。白名单内的权重保留预量化、其余显式关闭；<code>None</code> 用 recipe 默认白名单，显式空表与开关开启冲突会报 <code>ValueError</code>。多个模式写在同一参数内并以英文逗号分隔（如 <code>.attention.wq_b,.attention.wo_a</code>）。命中权重的分片若不满足对齐约束，运行时立即报错终止（不静默回退），并给出移除该 FQN 或调整并行度的提示。</td>
 </tr>
 <tr>
 <td><code>enable-hif8-save-quant-codes</code></td>

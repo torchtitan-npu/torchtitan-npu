@@ -468,7 +468,7 @@ attention 等 dense 权重仍使用 FP8。专家在 <code>[E, N, K]</code> 布�
 <tr>
 <td><code>fsdp-prequantize-fqns</code></td>
 <td><code>None</code></td>
-<td>预量化权重 FQN 后缀白名单；<code>None</code> 用 recipe 默认白名单（全部 Block FP8 投影），显式空表与开关同开报 <code>ValueError</code>，命中但对齐失败的权重启动即报错</td>
+<td>预量化权重 FQN 后缀白名单，多个模式写在同一参数内并以英文逗号分隔（如 <code>.attention.wq_b,.attention.wo_a</code>）；<code>None</code> 用 recipe 默认白名单（全部 Block FP8 投影），显式空表与开关同开报 <code>ValueError</code>，命中但对齐失败的权重启动即报错</td>
 </tr>
 <tr>
 <td><code>kv-norm-quantization.format</code></td>
