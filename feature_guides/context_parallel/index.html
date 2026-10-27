@@ -289,7 +289,7 @@ NGPU=2 \
   路径支持 CP；模型目录的参考 metadata hook 显式拒绝 CP。</li>
 <li>量化后端（V4 的 <code>QuantV4Metadata</code>、V4.1 的 <code>_V41QuantAttentionMetadata</code>）目前不重建 rank-local
   metadata，<code>prepare_cp_metadata</code> 直接拒绝：量化路径只能跑 <code>context-parallel-degree 1</code>。</li>
-<li><code>local_batch_size == 1</code> 是打包约定；DSA 路径 TP 固定为 1。</li>
+<li>DeepSeek-V4 的融合注意力在 CP=1 时支持 <code>local_batch_size &gt; 1</code>，QueryExchange 前把 B/S 展平，交换后恢复 <code>[B, S]</code>。CP&gt;1 暂不支持 <code>local_batch_size &gt; 1</code>，<code>CarryExchange</code> 在交换或边界计算前显式报错；DSA 路径 TP 固定为 1。</li>
 </ul>
 <h2 id="3">3. 两栈差异总览</h2>
 <table>
@@ -407,7 +407,11 @@ selector 完全不读 <code>seqused_k</code>；SMLA/SMLAG 的压缩侧还要求 
 集合通信（空 split 也参与），避免死锁。</p>
 <p>非 CP 路径把整行 <code>cu_seqlens</code> 直接传给压缩器；参考实现与融合实现共用同一接口
 <code>compressor(x, positions, *, cu_seqlens=None)</code>（<code>cu_seqlens</code> 是 keyword-only：带 sharding
-config 的模块走框架的位置参数契约，位置参数个数必须与签名一致）。</p>
+config 的模块走框架的位置参数契约，位置参数个数必须与签名一致）。
+输入 <code>x</code> 为 <code>[B, L, D]</code>，每行 token 数必须是 <code>ratio</code> 的整数倍，positions 为 <code>[B, L]</code>。
+CP=1 时可将整批展平成 <code>[1, B * L, D]</code> 打包流执行压缩，再还原为 <code>[B, L // ratio, D]</code>；
+每行 positions 从 0 开始，上游 <code>create_varlen_metadata_for_document</code> 将这些行首记为文档边界，
+避免 ratio-4 的重叠跨行。CP&gt;1 的 carry/prepend/trim 仍要求 B=1。</p>
 <h3 id="44">4.4 参考路径</h3>
 <p><code>DeepSeekV4Metadata.prepare_cp_metadata</code> 明确拒绝 CP：参考内核（Attention Gym 的 <code>gather_attn</code>）
 只有一条连续文档流的契约。参考<strong>压缩器</strong>本身支持 CP（carry 在 <code>CarryExchange</code> 里，与压缩器

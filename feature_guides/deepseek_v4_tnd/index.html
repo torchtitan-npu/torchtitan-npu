@@ -242,12 +242,13 @@ USE_GOLDEN=0  # wrapper 里的默认测试组合：
 <li><code>cu_seq_q</code>：整行的文档边界（<code>int32</code>，<code>n_documents + 1</code>），是行列坐标的唯一权威来源，CP 下也不变。</li>
 <li><code>cu_seq_k</code>：同一组边界按本 entry 的 ratio 折叠后的 key 网格（<code>ratio == 1</code> 时就是 <code>cu_seq_q</code>）。由知道 ratio 的 backend 预先折叠，consumer 不再逐层做除法。</li>
 <li><code>ratio</code>：这个 entry 的压缩比（1、4、128 之一）；每个 consumer 都按它寻址。</li>
-<li><code>batch_size</code> / <code>seq_len</code>：打包场景使用 <code>local_batch_size == 1</code>，因此 <code>batch_size == 1</code>、<code>seq_len</code> 等于总 token 数（<code>cu_seq_q[-1]</code>），元数据由行推导。</li>
+<li><code>batch_size</code>：从 <code>positions_q</code> 的真实 batch 维推导，<code>S</code> 为每行序列长度；非 CP 时整批 token 数为 <code>B * S</code>（<code>cu_seq_q[-1]</code>）。融合注意力在 CP=1 时支持 <code>local_batch_size &gt; 1</code>，QueryExchange 前先 <code>flatten(0, 1)</code>，交换后 <code>unflatten</code> 回 <code>[B, S]</code>；CP&gt;1 暂不支持多 batch。参考选择器仍仅支持 MBS1。</li>
 <li><code>q</code> / <code>swa_k</code> / <code>cmp_k</code>（<code>AscV4Metadata</code>）：V4.1 形态的三个 frame（<code>cu_seqlens</code> / <code>seqused</code> / <code>residual</code>）。CP 下 <code>q</code> 是本 rank 的文档 chunk，<code>swa_k</code> / <code>cmp_k</code> 是整行，<code>seqused</code> 是本 rank 的 reach；非 CP 下三者都退化为边界差。</li>
 <li><code>positions_q</code> / <code>exchange</code>：查询帧自己的位置与 <code>QueryExchange</code> 计划；CP 下由 <code>cp_plan</code> 生成。</li>
 <li><code>aicpu_metadata</code>（<code>AscV4Metadata</code>）：只有融合 entry 才有，按 kernel 分组保存 <code>sparse_attn.fwd/bwd</code> 与 <code>lightning_indexer.fwd/bwd</code>；模型目录的 <code>DeepSeekV4Metadata</code> 不携带这些张量。</li>
 </ul>
-<p>压缩器没有自己的 metadata 字段：CP 的重叠 carry 在 <code>models/common/carry_exchange.CarryExchange</code> 里，调用点用它拿到增强流（<code>CarryStream</code>：<code>x</code> / <code>positions</code> / <code>cu_seqlens</code> / <code>trim</code>），把增强流以 keyword 参数 <code>cu_seqlens</code> 传给同一个压缩器实例（<code>compressor(x, positions, *, cu_seqlens=None)</code>），最后按 <code>trim</code> 裁掉 carry 输出块；融合实现的 <code>_state_inputs</code> 在内部按流的形状符号构造 kernel 的零 tiling 表。<code>varlen</code> / <code>plan</code> / <code>CompressedBlockLayout</code> / <code>CompressorFrames</code> / <code>window</code> 字段都已删除。</p>
+<p>压缩器没有自己的 metadata 字段：输入为 <code>[B, L, D]</code>，每行 token 数必须是 <code>ratio</code> 的整数倍。公共入口把整批展平成一条 <code>[1, B * L, D]</code> 打包流，完成压缩和 RoPE 后还原为 <code>[B, L // ratio, D]</code>。每行 positions 从 0 开始，<code>create_varlen_metadata_for_document</code> 据此把行首加入整批 <code>cu_seq_q</code>，使 ratio-4 的重叠不会跨行借 token。</p>
+<p>CP 的重叠 carry 在 <code>models/common/carry_exchange.CarryExchange</code> 里，调用点用它拿到增强流（<code>CarryStream</code>：<code>x</code> / <code>positions</code> / <code>cu_seqlens</code> / <code>trim</code>），把增强流以 keyword 参数 <code>cu_seqlens</code> 传给同一个压缩器实例（<code>compressor(x, positions, *, cu_seqlens=None)</code>），最后按 <code>trim</code> 裁掉 carry 输出块；融合实现的 <code>_state_inputs</code> 在内部按流的形状符号构造 kernel 的零 tiling 表。<code>varlen</code> / <code>plan</code> / <code>CompressedBlockLayout</code> / <code>CompressorFrames</code> / <code>window</code> 字段都已删除。</p>
 <p>一个 batch 里可以打包多条序列，所以 <code>B</code> 与序列条数无关。例如：</p>
 <pre><code class="language-text">positions  = [[0, 1, 2, 0, 1]]
 B          = 1

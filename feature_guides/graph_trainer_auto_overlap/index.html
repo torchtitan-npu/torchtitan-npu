@@ -279,7 +279,12 @@ NPU Auto Overlap
 <p>同一 chunk 的 dispatch token 总量也用于 GMM 和 permutation，避免各算子独立固化动态 shape 后得到互相矛盾的 workload。</p>
 <p>CANN 路径会先按 workload 去重和查询缓存，再逐个测量缺失的通信签名。每次样本取通信组内最慢 rank，最后对多次样本取中位数，从而表示一次通信的全局完成时间。</p>
 <h3 id="24-cost-rank">2.4 单算子 cost 的跨 rank 对齐</h3>
-<p>首轮 benchmark 基于尚未调度的 MoE 区域，各 rank 具有相同的可 benchmark 节点数量和 canonical 顺序。因此计算、通信 cost 可以在每个 region 内按位置交换，并对各 rank 的值取中位数。</p>
+<p>首轮 benchmark 基于尚未调度的 MoE 区域。因为非均匀切分可能引入 rank 独有的节点，为此，每个本地节点使用不依赖本地编号的语义 key，信息包含：</p>
+<ul>
+<li>计算节点使用所在 MoE region、前向/反向、chunk、module scope、算子类型、输入/输出 tensor metadata，以及相同签名的出现次序；</li>
+<li>通信节点额外使用逻辑通信组序号、通信类型和 count/dispatch/combine 角色。</li>
+</ul>
+<p>各 rank 在每个 region 内交换「语义 key → cost」映射，同一 key 的 cost 对所有命中的 rank 取中位数。</p>
 <h2 id="3-benchmark">3. 整图 Benchmark</h2>
 <h3 id="31">3.1 为什么需要整图校准</h3>
 <p>单算子 benchmark 提供稳定、可启动调度的初始 cost，但它不能反映训练中算子的上下文和并发环境。</p>
@@ -292,7 +297,7 @@ NPU Auto Overlap
 <p>这些 cost 不是单算子的硬件延迟，而是当前训练 schedule 中的设备侧测量，更适合用来校准下一轮调度。</p>
 <h3 id="32">3.2 校准执行</h3>
 <p>每轮校准复用模型和首个 batch，不额外消耗 dataloader 数据。执行前复制输入 tensor，执行后恢复模型 buffer 和 CPU/NPU RNG 状态；不修改 parameter 或 gradient。</p>
-<p>在整图 profiling 采集前，各卡会对进行同步并 warmup ，之后再执行被测整图。</p>
+<p>在整图 profiling 采集前，各卡会对进行同步并 warmup，之后再执行被测整图。</p>
 <h3 id="33-cann-cost">3.3 CANN cost 获取</h3>
 <p>整图 profiling 不向 FX 图插入逐节点 marker，而是：</p>
 <ol>
@@ -302,12 +307,7 @@ NPU Auto Overlap
 <li>通信节点使用对应 HCOM 活动的完成耗时。</li>
 </ol>
 <h3 id="34-cost-rank">3.4 cost 跨 rank 对齐</h3>
-<p>非均匀切分（例如切分 DeepSeekV4 的 MHC）可能使各 rank 的 FX 图存在差异，无法采用按节点位置顺序对齐。为此，每个本地节点使用不依赖本地编号的语义 key，信息包含：</p>
-<ul>
-<li>计算节点使用所在 MoE region、前向/反向、chunk、module scope、算子类型、输入/输出 tensor metadata，以及相同签名的出现次序；</li>
-<li>通信节点额外使用逻辑通信组序号、通信类型和 count/dispatch/combine 角色。</li>
-</ul>
-<p>各 rank 交换“语义 key -&gt; cost”映射。只有所有 ranks 都存在的 key 才采用本轮整图 cost，并取各 rank 的最小值；仅部分 ranks 测得的节点统一回退到上一轮，避免下一轮调度因 cost 来源不同而分叉。通信执行前还会校验每个逻辑通信组中的通信类型和数量，防止不一致的通信图进入校准执行。</p>
+<p>每个本地节点使用同 <a href="#24-单算子-cost-的跨-rank-对齐">2.4 节</a>的语义信息作为 key，各 rank 交换“语义 key -&gt; cost”映射。只有所有 ranks 都存在的 key 才采用本轮整图 cost，并取各 rank 的最小值；仅部分 ranks 测得的节点统一回退到上一轮，避免下一轮调度因 cost 来源不同而分叉。通信执行前还会校验每个逻辑通信组中的通信类型和数量，防止不一致的通信图进入校准执行。</p>
 <h2 id="4">4. 自动调度</h2>
 <h3 id="41-cost-model">4.1 调度范围与 cost model</h3>
 <p>调度仅针对双 chunk MoE 区域。调度范围包括两个 chunk body，以及同一 MoE 内会影响 overlap 的共享计算，例如未归入任一 chunk 的权重转换。</p>
@@ -318,7 +318,7 @@ NPU Auto Overlap
 <li>通信下发后，后续计算消耗其尚未覆盖的时间；</li>
 <li>执行 wait 时仍未覆盖的通信尾部计为暴露时间。</li>
 </ul>
-<p>当前跨 rank cost 对齐和调度投票使用 WORLD，因此参与调度的图通信组必须覆盖全部 rank，多个 EP subgroup 或 PP stage 暂不支持。</p>
+<p>同一逻辑组槽位对应的通信组须构成 WORLD 的一致划分，允许单组覆盖全部 rank，也允许多个互不相交的 EP 子通信域（EFSDP）；组内成员报告的成员表及顺序必须一致。跨 rank cost 对齐、通信清单校验、交换投票和最终通信顺序校验仍使用 WORLD，调度决策由 WORLD 共同完成。PP stage 子通信域暂不支持。</p>
 <p>模型估算的隐藏时间和暴露时间用于比较候选顺序，不等同于整图实测耗时。copy、AI Core 和 HCCL 之间更细粒度的资源竞争由整图校准间接反馈。</p>
 <h3 id="42">4.2 依赖与安全约束</h3>
 <p>调度前会完成以下处理：</p>
@@ -387,7 +387,7 @@ chunk 1: count1 -&gt; D2H2 async -&gt; D2H3 sync -&gt; dispatch1
 </tr>
 <tr>
 <td style="text-align: right;">6</td>
-<td>下一通个信依赖尚未完成的通信结果</td>
+<td>下一个通信依赖尚未完成的通信结果</td>
 <td>在执行可能阻塞的 wait 前，先用就绪计算掩盖通信尾部</td>
 </tr>
 <tr>
@@ -412,6 +412,7 @@ chunk 1: count1 -&gt; D2H2 async -&gt; D2H3 sync -&gt; dispatch1
 <p>调度器通过以下机制避免 ranks 之间的通信顺序分叉：</p>
 <ul>
 <li>调度前比较各 rank 的通信清单，包括通信组内序号、算子类型与角色，以及所属 MoE；</li>
+<li>按逻辑组槽位校验实际通信组成员及其顺序的一致性；</li>
 <li>通信交换由所有 ranks 共同决策；</li>
 <li>多个节点在依赖和调度优先级上等价时，按首次调度前的 canonical 顺序确定先后；</li>
 <li>调度后按通信组校验最终 launch-order signature。</li>
