@@ -194,9 +194,8 @@
 <code>cp</code> 份，KV 与压缩 KV 保持整行</strong>。融合内核在边界处把本地 slab 声明式 all-gather 成整行，再用
 frame 的 <code>seqused = reach</code> 把可见范围限制在本 rank 的 chunk 之前。两栈共用
 <code>models/common/query_exchange.py</code> 的 plan/exchange 与 <code>models/common/metadata.py</code> 的
-<code>KernelFrame</code>；差异集中在压缩器的 CP 处理、内核如何锚定 mask，以及 frame 由哪一层 metadata 携带。</p>
-<p>本文是 V4 与 V4.1 的合并指南（原 V4 CP 指南的内容已并入）。旧的 <code>build_cp_plan</code> /
-<code>CPTokenDispatcher</code> / <code>WindowPlan</code> / <code>ExchangePlan</code> / 容器打包 / borrow-strip 路径均已删除。</p>
+<code>KernelFrame</code>。两栈的模型 metadata 都自带 <code>q</code>/<code>swa_k</code>/<code>cmp_k</code> 三帧；差异集中在压缩器的 CP
+处理、内核如何锚定 mask，以及由此产生的 rank-local 前缀池。</p>
 <h2 id="1">1. 共同契约</h2>
 <h3 id="11">1.1 坐标</h3>
 <p>设一行有文档 <code>d</code>、长度 <code>L_d</code>，CP 度 <code>R = cp_size</code>，rank <code>r</code>，slab 宽度 <code>C = N / R</code>
@@ -230,7 +229,8 @@ positions_q：              搬过来的查询自己的文档内位置
 <h3 id="13-frame-metadata">1.3 frame 与 metadata</h3>
 <p>一行由三个 <code>KernelFrame</code> 描述：<code>q</code>、<code>swa_k</code>、<code>cmp_k</code>（不池化的几何没有 <code>cmp_k</code>）。CP 下由融合
 entry 的 <code>prepare_cp_metadata</code> 用 rank-local chunk 重建这三个 frame 以及按它们算出的 AI_CPU
-记录；参考 entry 的 hook 显式拒绝 CP（它只有一条连续文档流的契约）。frame 的归属两栈不同：</p>
+记录；参考 entry 的 hook 显式拒绝 CP（它只有一条连续文档流的契约）。两栈的 frame 都由模型
+metadata 携带，CP 下再由融合 entry 重算：</p>
 <table>
 <thead>
 <tr>
@@ -247,7 +247,7 @@ entry 的 <code>prepare_cp_metadata</code> 用 rank-local chunk 重建这三个 
 </tr>
 <tr>
 <td>V4.1</td>
-<td><code>DeepSeekV41Metadata</code> 只有整行边界与位置；frame 由融合 entry <code>AscV41Metadata</code> 携带</td>
+<td><code>DeepSeekV41Metadata</code> 自带 <code>q</code>/<code>swa_k</code>/<code>cmp_k</code>（<code>build_v41_frames</code> 用整行边界构造）</td>
 <td><code>AscV41Metadata.prepare_cp_metadata</code> → <code>shard_asc_v41_metadata</code></td>
 </tr>
 </tbody>
@@ -289,7 +289,8 @@ NGPU=2 \
   路径支持 CP；模型目录的参考 metadata hook 显式拒绝 CP。</li>
 <li>量化后端（V4 的 <code>QuantV4Metadata</code>、V4.1 的 <code>_V41QuantAttentionMetadata</code>）目前不重建 rank-local
   metadata，<code>prepare_cp_metadata</code> 直接拒绝：量化路径只能跑 <code>context-parallel-degree 1</code>。</li>
-<li>DeepSeek-V4 的融合注意力在 CP=1 时支持 <code>local_batch_size &gt; 1</code>，QueryExchange 前把 B/S 展平，交换后恢复 <code>[B, S]</code>。CP&gt;1 暂不支持 <code>local_batch_size &gt; 1</code>，<code>CarryExchange</code> 在交换或边界计算前显式报错；DSA 路径 TP 固定为 1。</li>
+<li>DeepSeek-V4 的融合注意力在 CP=1 时支持 <code>local_batch_size &gt; 1</code>，QueryExchange 前把 B/S 展平，交换后恢复 <code>[B, S]</code>。
+  CP&gt;1 暂不支持 <code>local_batch_size &gt; 1</code>，<code>CarryExchange</code> 在交换或边界计算前显式报错；DSA 路径 TP 固定为 1。</li>
 </ul>
 <h2 id="3">3. 两栈差异总览</h2>
 <table>
@@ -324,7 +325,7 @@ NGPU=2 \
 <tr>
 <td>frame 归属</td>
 <td>模型 metadata（<code>DeepSeekV4Metadata</code>）</td>
-<td>融合 entry（<code>AscV41Metadata</code>）</td>
+<td>模型 metadata（<code>DeepSeekV41Metadata</code>，与 V4 同形）</td>
 </tr>
 <tr>
 <td>indexer teacher 归一化</td>
@@ -360,8 +361,7 @@ inner_attention / lightning_indexer 的 ShardingConfig
   q, idx_q, idx_w:      保持本 rank 的 chunk（attention 直接调用这两个模块）
 </code></pre>
 <p><code>AscV4Metadata</code> 的 <code>q</code>/<code>swa_k</code>/<code>cmp_k</code> frame 被 SMLA/SMLAG 与独立的 LI override（前向
-<code>lightning_indexer</code>、反向 SLIKG）直接读取；不再有 <code>_assemble_tnd</code>、<code>cmp_k_global_gather_indices</code>、
-<code>compressed_rows</code>、<code>first_indices</code> 或容器网格。</p>
+<code>lightning_indexer</code>、反向 SLIKG）直接读取。</p>
 <h3 id="42-rank-local">4.2 rank-local 前缀池</h3>
 <p>压缩流与滑窗流在 gather 后都是整行，但 V4 的融合内核把 mask 右对齐到<strong>它拿到的 key frame 末尾</strong>：
 selector 完全不读 <code>seqused_k</code>；SMLA/SMLAG 的压缩侧还要求 key 张量、网格与 <code>sparse_indices</code> 在
@@ -498,6 +498,10 @@ rank-local 分母放大。</p>
 <td><code>KernelFrame</code>（两栈共用的 frame 原语）</td>
 </tr>
 <tr>
+<td><code>models/common/packing.py</code></td>
+<td><code>require_document_alignment</code> / <code>require_per_doc_alignment</code>：文档长度与 <code>per_doc_alignment</code> 的严格对齐检查</td>
+</tr>
+<tr>
 <td><code>models/deepseek_v4/metadata.py</code></td>
 <td><code>DeepSeekV4Metadata</code>（整行边界、池网格、q/swa_k/cmp_k frame、查询位置）与 <code>build_v4_metadata</code></td>
 </tr>
@@ -551,7 +555,11 @@ rank-local 分母放大。</p>
 </tr>
 <tr>
 <td><code>models/deepseek_v4_1/model.py</code></td>
-<td><code>DeepSeekV41Metadata.prepare_cp_metadata</code> 拒绝 CP；teacher 成对启用检查</td>
+<td><code>DeepSeekV41Metadata</code> 与 <code>build_v41_frames</code>（整行边界与三帧）；<code>prepare_cp_metadata</code> 拒绝 CP；teacher 成对启用检查</td>
+</tr>
+<tr>
+<td><code>override/deepseek_v4_1/metadata.py</code></td>
+<td>V4.1 的 <code>AicpuGeometry</code> / <code>AicpuMetadata</code>：按 kernel 分组的 AI_CPU 记录结构</td>
 </tr>
 <tr>
 <td><code>override/deepseek_v4_1/sparse_attn/ascendc.py</code></td>

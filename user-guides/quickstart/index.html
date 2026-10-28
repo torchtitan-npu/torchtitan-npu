@@ -171,17 +171,12 @@
 ├── tokenizer.json
 └── tokenizer_config.json
 </code></pre>
-<p>如需使用其他 Tokenizer，可通过 <code>HF_ASSETS_PATH</code> 指定：</p>
-<pre><code class="language-bash">export HF_ASSETS_PATH=/path/to/tokenizer
-</code></pre>
+<p>如需使用其他 Tokenizer，修改单卡命令中的 <code>--hf-assets-path</code>。</p>
 <ol>
 <li>准备数据集。</li>
 </ol>
-<p>已在 <code>tests/assets/c4_test/</code> 中预置 <code>c4_test</code> 测试数据集，示例 wrapper 默认使用该目录，无需额外下载。</p>
-<p>使用其他数据集时，需同时指定数据集名称和目录：</p>
-<pre><code class="language-bash">export DATASET=dataset_name
-export DATASET_PATH=/path/to/dataset
-</code></pre>
+<p>已在 <code>tests/assets/c4_test/</code> 中预置 <code>c4_test</code> 测试数据集，单卡命令直接使用该目录，无需额外下载。</p>
+<p>使用其他数据集时，需同时修改单卡命令中的 <code>--dataloader.dataset</code> 和 <code>--dataloader.dataset-path</code>。</p>
 <h2 id="cann">配置 CANN 环境变量</h2>
 <p>当 CANN 安装在其他目录时，推荐通过 <code>ASCEND_SET_ENV_PATH</code> 指定 <code>set_env.sh</code> 的路径，并将其传给脚本：</p>
 <pre><code class="language-bash">ASCEND_SET_ENV_PATH=/path/to/ascend-toolkit/set_env.sh \
@@ -208,13 +203,12 @@ bash scripts/run_train.sh \
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-示例 wrapper / 底层 launcher 配置项说明：
+通用 launcher 配置项说明：
 - <code>ASCEND_SET_ENV_PATH</code>：可选，自定义 CANN <code>set_env.sh</code> 路径；设置后优先加载该文件。
 - <code>MODULE</code>：模型 Python 模块，默认为 <code>torchtitan.models.deepseek_v3</code>。
 - <code>CONFIG</code>：<code>torchtitan/models/deepseek_v3/config_registry.py</code> 中注册的配置函数，默认为 <code>deepseek_v3_debugmodel</code>。
 - <code>NGPU</code>：当前节点参与训练的 NPU 数量，默认为 <code>1</code>。
-- <code>HF_ASSETS_PATH</code>：Tokenizer 目录，默认为仓内 <code>tests/assets/deepseek_v3</code>。
-- <code>DATASET</code> 和 <code>DATASET_PATH</code>：数据集名称和目录，默认使用仓内的 <code>tests/assets/c4_test/</code>。
+- Tokenizer 和数据集由上述命令中的 CLI 参数指定；<code>scripts/run_train.sh</code> 不读取 <code>HF_ASSETS_PATH</code>、<code>DATASET</code> 或 <code>DATASET_PATH</code> 环境变量。
 - 脚本后的其他参数会原样传给 <code>torchtitan_npu.train</code>，可用于覆盖配置函数中的训练和并行参数。</p>
 </blockquote>
 <h3 id="8-ep8">单机 8 卡 EP8 训练任务</h3>
@@ -318,10 +312,10 @@ bash examples/deepseek_v4/deepseek_v4_flash_cpt_4k_a3.sh \
 </table>
 <h3 id="deepseek-v41-torchao-npu">DeepSeek-V4.1 TorchAO-NPU 低精度训练</h3>
 <p>DeepSeek-V4.1 复用上述 TorchAO-NPU 低精度入口，当前面向 A5（Ascend 950）硬件。Lightning Indexer 与稀疏 attention 量化的配置、组合、依赖和限制见<a href="../../feature_guides/low_precision_training/#deepseek-v41-li-与稀疏-attention-量化">低精度训练特性指南</a>。</p>
-<p>DeepSeek-V4.1 使用 <code>li-quantization=mxfp4</code> 启用 Lightning Indexer量化，使用
-<code>enable-sparse-attention-quantization</code> 启用 KV source Compressor 与稀疏 attention 量化。两项可在
-标准 A5 融合路径提供 BF16 fallback 的前提下独立选择；<code>USE_GOLDEN=1</code> 不提供这些
-fallback。启动日志中出现
+<p>DeepSeek-V4.1 使用 <code>li-quantization=mxfp4</code> 启用 Lightning Indexer 量化，使用
+<code>enable-sparse-attention-quantization</code> 启用 KV source Compressor 与稀疏 attention 量化。
+稀疏 attention 量化可单独启用；启用 Lightning Indexer 量化时必须同时启用稀疏 attention
+量化。标准 A5 融合路径提供 BF16 fallback，<code>USE_GOLDEN=1</code> 不提供这些 fallback。启动日志中出现
 <code>Applied TorchAO-NPU recipe=...</code> 表示 recipe 已应用。</p>
 <p>DeepSeek-V4.1 模型做 Block FP8 低精度预训练可运行以下脚本：</p>
 <pre><code class="language-bash">HF_ASSETS_PATH=/path/to/DeepSeek-V41_tokenizer \
