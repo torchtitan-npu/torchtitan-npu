@@ -231,7 +231,7 @@ outputs[k]     第 k 个 MTP 深度的 logits 或 hidden state
 </ol>
 <p>DeepSeek-V4 MTP 保留 mHC 多流状态，但其 attention 使用非压缩形式，不启用主干 DSA 的 compressor 和 indexer。</p>
 <h3 id="14-deepseek-v4-context-parallel">1.4 DeepSeek-V4 Context Parallel</h3>
-<p>MTP 的 future-token shift 不能在 CP rank-local 序列上执行：局部移动会在 rank 边界读到不属于本 rank 的 token。V4 的 CP 只支持连续切片（<code>--parallelism.context-parallel-load-balancer None</code>，见<a href="../context_parallel/">Context Parallel</a>），但实现仍保持在 <code>cp_shard</code> 之前对完整序列统一生成：</p>
+<p>MTP 的 future-token shift 不能在 CP rank-local 序列上执行：局部移动会在 rank 边界读到不属于本 rank 的 token。V4 的 CP 布局由切分施加（<code>--parallelism.context-parallel-load-balancer doc_chunk</code>，见<a href="../context_parallel/">Context Parallel</a>），实现因此保持在 <code>cp_shard</code> 之前对完整序列统一生成：</p>
 <ul>
 <li>每个 MTP 深度的 future token；</li>
 <li>packed sequence 感知的有效位置 mask；</li>

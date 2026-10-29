@@ -408,10 +408,12 @@
 --extension.quantization.fsdp-prequantize-dtype mxfp4
 </code></pre>
 <p><code>enable-fsdp-prequantize</code> 启用参数通信预量化；<code>fsdp-prequantize-dtype mxfp4</code> 只将 routed experts 的通信格式切换为 MXFP4，
-attention 等 dense 权重仍使用 FP8。专家在 <code>[E, N, K]</code> 布局下沿 K 轴量化，通信完成后转换为计算所需的 Block FP8；梯度通信仍使用 FSDP 原有配置。</p>
-<p>该模式要求 routed experts 启用 MXFP4 QAT，并使用均匀的 <code>Shard(0)</code> 分片、2D/3D 权重和 block size 32；不支持非均匀分片或 <code>Shard(1)</code>。
+attention 等 dense 权重仍使用 FP8。专家在 <code>[E, N, K]</code> 布局下沿 K 轴量化；all-gather 返回的 MXFP4 权重直接保留为反分片权重，
+在前向矩阵乘时再转换为 Block FP8，因此计算仍按 FP8 × FP8 执行。梯度通信仍使用 FSDP 原有配置。</p>
+<p>该模式要求 routed experts 启用 MXFP4 QAT，并使用 <code>Shard(0)</code> 分片（不均分时自动 pad 对齐、通信后 trim 还原）、2D/3D 权重和 block size 32；不支持 <code>Shard(1)</code>。
 未显式设置 <code>fsdp-prequantize-fqns</code> 时使用 recipe 默认白名单；若只指定 <code>.moe.routed_experts.inner_experts</code>，则只启用专家预量化通信，attention 的 FP8 预量化通信也会关闭。白名单不影响原有计算量化。</p>
-<p>该功能基于 FSDP2，当前不支持 FSDP1 低精度通信。<code>EFSDP=1</code> 时不会进入专家预量化通信路径。</p>
+<p>该功能基于 FSDP2，当前不支持 FSDP1 低精度通信。<code>EFSDP=1</code> 时不发生 all-gather；开启该开关后，post-all-gather 仍会按
+<code>fsdp-prequantize-dtype</code> 量化反分片权重，使单卡与多卡路径保存相同的权重格式。</p>
 <h2 id="_5">配置与生效检查</h2>
 <p>以下字段均位于 <code>--extension.quantization</code> 下，表中省略公共前缀：</p>
 <table>

@@ -315,12 +315,14 @@
 <p>DeepSeek-V4 的 <code>CompressedSparseInnerAttention.Config.build_attention_metadata</code> 由模型目录的
   <code>build_v4_metadata</code> 建好这个几何的 entry（一条 entry 一个 ratio）：整行 document 边界、按自身
   <code>compress_ratio</code> 折好的池网格，以及三个 kernel frame（<code>q</code>/<code>swa_k</code>/<code>cmp_k</code>）——frame 属于模型
-  metadata（<code>models/common/metadata.py</code>），参考内核和融合端口读同一份。<code>AscCompressedSparseInnerAttention.Config</code>
+  metadata（<code>models/common/metadata.py</code>），参考内核和融合端口读同一份，entry 另带 CP 的 <code>cp</code> 计划
+  （<code>CPDeepSeekMetadata(restore)</code>）。<code>AscCompressedSparseInnerAttention.Config</code>
   在其上只补四个算子的记录；<code>sparse_attn.asc</code> 桥接 SparseFlashMLA/SMLAG 的正反向，
   <code>lightning_indexer.asc</code> 桥接 <code>lightning_indexer</code>/<code>sparse_lightning_indexer_kl_loss_grad</code> 的正反向，
   几何（heads/head dim）是该 config 自己的必填字段、无默认值，由 override 参数一次写入，默认值即
-  V4-Flash 的发布形状。CP 下由 <code>AscV4Metadata.prepare_cp_metadata</code> 调 <code>shard_asc_v4_metadata</code>
-  用 rank-local frames 重建 entry 与记录；参考契约的 hook 直接拒绝 CP。</p>
+  V4-Flash 的发布形状。CP 下由 <code>AscV4Metadata.prepare_cp_metadata</code> 调 <code>doc_chunk_entry</code> 把 entry
+  换成本 rank 的 frames 与 <code>cp</code> 计划（输入已由模型的 <code>preprocess_inputs</code> 搬到 doc-chunk），再用
+  <code>build_aicpu_metadata</code> 按这些 frames 重建记录；参考契约的 hook 直接拒绝 CP。</p>
 </li>
 <li>
 <p>MoE token dispatcher 的 <code>npu_moe_token_unpermute</code> 与 <code>npu_moe_re_routing</code> 在
