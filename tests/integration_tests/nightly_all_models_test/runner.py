@@ -79,8 +79,27 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
     if not 0 <= node_rank < nodes:
         raise RuntimeError(f"invalid NODE_RANK={node_rank} for {nodes} nodes")
     port = os.environ.get("LITE_CI_MASTER_PORT")
-    if not port or not port.isdecimal() or not 1024 <= int(port) <= 65535:
-        raise RuntimeError("missing/invalid dispatcher-issued LITE_CI_MASTER_PORT")
+    if port is not None and (
+            not port.isdecimal() or not 1024 <= int(port) <= 65535):
+        raise RuntimeError("invalid dispatcher-issued LITE_CI_MASTER_PORT")
+    if nodes > 1 and port is None:
+        # Lite Actions currently does not pass a port lease to model entrypoints.
+        # Use a per-job rendezvous port for this isolated smoke only, and fail
+        # closed if either node already has it bound. Lite Actions serializes
+        # hardware jobs globally, while LITE_CI_JOB_ID prevents cross-run reuse.
+        import hashlib
+        import socket
+        stamp = os.environ.get("LITE_CI_JOB_ID", "")
+        if not stamp:
+            raise RuntimeError("missing LITE_CI_JOB_ID for distributed smoke port")
+        port = str(20000 + int(hashlib.sha256(stamp.encode()).hexdigest()[:8], 16) % 20000)
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            probe.bind((node_ips[node_rank], int(port)))
+        except OSError as exc:
+            raise RuntimeError(f"smoke rendezvous port {port} is already in use on node rank {node_rank}") from exc
+        finally:
+            probe.close()
 
     env = os.environ.copy()
     env["LITE_SMOKE_EXPECTED_WORLD"] = str(world)
@@ -98,9 +117,13 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
 
     cmd = [sys.executable, "-m", "torch.distributed.run",
            "--nnodes", str(nodes), "--nproc-per-node", str(test.ngpu),
-           "--node-rank", str(node_rank), "--master-addr", node_ips[0],
-           "--master-port", port,
-           "-m", "tests.integration_tests.tools.lite_actions.dispatch_smoke_worker"]
+           "--node-rank", str(node_rank)]
+    if nodes == 1 and port is None:
+        cmd.append("--standalone")
+    else:
+        assert port is not None
+        cmd.extend(["--master-addr", node_ips[0], "--master-port", port])
+    cmd.extend(["-m", "tests.integration_tests.tools.lite_actions.dispatch_smoke_worker"])
     print("[DISPATCH_SMOKE_LAUNCH] " + " ".join(cmd), flush=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     if any(output_dir.iterdir()):
