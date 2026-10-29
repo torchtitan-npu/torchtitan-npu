@@ -103,8 +103,9 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
 
     env = os.environ.copy()
     env["LITE_SMOKE_EXPECTED_WORLD"] = str(world)
-    env["MASTER_ADDR"] = node_ips[0]
-    env["MASTER_PORT"] = port
+    if port is not None:
+        env["MASTER_ADDR"] = node_ips[0]
+        env["MASTER_PORT"] = port
     if "LITE_CI_HCCL_IF_BASE_PORT" in env:
         env["HCCL_IF_BASE_PORT"] = env["LITE_CI_HCCL_IF_BASE_PORT"]
     for source, target in (
