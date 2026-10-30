@@ -23,6 +23,8 @@ class OverrideDefinitions:
     override_args: Sequence[Sequence[str]] = ((" ",),)
     test_descr: str = "default"
     test_name: str = "default"
+    ci_kind: str = "train"
+    ci_overrides: Mapping[str, str] | None = None
     ngpu: int = 4
     disabled: bool = False
     skip_rocm_test: bool = False

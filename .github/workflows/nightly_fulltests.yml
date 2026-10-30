@@ -3,27 +3,35 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-name: A3-8p-CI-Example
-
+name: Nightly
 on:
   pull_request:
     branches: [master]
   workflow_dispatch:
     inputs:
       test_cases:
-        description: JSON list of test_id or suite selectors
+        description: JSON test_id/suite selectors; empty uses defaults
         type: string
-        required: true
-        default: '[{"suite":"a3_8p_tests"}]'
-
+        required: false
 permissions:
   contents: read
   actions: read
-
 jobs:
   ci:
     uses: ./.github/workflows/lite_actions_common.yml
     with:
-      pipeline: a3-8p
+      workflow: nightly_fulltests.yml
       default_cases: '[{"suite":"a3_8p_tests"}]'
       test_cases: ${{ inputs.test_cases }}
+      default_worker: blue
+      default_target_pool: a3_shared_blue
+      default_docker: cann_master_torchtitan_master_xyj
+  result:
+    name: Lite-Actions-Nightly
+    if: always()
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CI_RESULT: ${{ needs.ci.result }}
+        run: test "$CI_RESULT" = success

@@ -4,19 +4,34 @@
 # LICENSE file in the root directory of this source tree.
 
 name: Dispatcher-Smoke
-
 on:
   pull_request:
     branches: [master]
   workflow_dispatch:
-
+    inputs:
+      test_cases:
+        description: JSON test_id/suite selectors; empty uses defaults
+        type: string
+        required: false
 permissions:
   contents: read
   actions: read
-
 jobs:
   ci:
     uses: ./.github/workflows/lite_actions_common.yml
     with:
-      pipeline: dispatcher-smoke
-      wait_seconds: 4800
+      workflow: lite_actions_dispatcher_smoke.yml
+      default_cases: '[{"suite":"worker_probe_tests"},{"suite":"a3_8p_smoke_tests"},{"suite":"a3_16p_smoke_tests"}]'
+      test_cases: ${{ inputs.test_cases }}
+      default_worker: blue
+      default_target_pool: a3_shared_blue
+      default_docker: cann_master_torchtitan_master_xyj
+  result:
+    name: Lite-Actions-Smoke
+    if: always()
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CI_RESULT: ${{ needs.ci.result }}
+        run: test "$CI_RESULT" = success
