@@ -24,7 +24,7 @@ on:
         default: a3_shared_blue
       default_docker:
         type: string
-        default: dsv4.1_train_torchtitan_a3:cann_master_newest_0916
+        default: cann_master_torchtitan_master_xyj
 permissions:
   contents: read
   actions: read

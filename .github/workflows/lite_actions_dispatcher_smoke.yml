@@ -25,7 +25,7 @@ jobs:
       test_cases: ${{ inputs.test_cases }}
       default_worker: blue
       default_target_pool: a3_shared_blue
-      default_docker: dsv4.1_train_torchtitan_a3:cann_master_newest_0916
+      default_docker: cann_master_torchtitan_master_xyj
   result:
     name: Lite-Actions-Smoke
     if: always()
