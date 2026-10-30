@@ -6,6 +6,7 @@
 
 """Consume only identity-matched schema-3 results; never upload training logs."""
 
+import datetime as dt
 import json
 import os
 import time
@@ -87,6 +88,14 @@ def find_progress(comments, run_id, attempt, item, digest, author):
     return None
 
 
+BEIJING = dt.timezone(dt.timedelta(hours=8))
+
+
+def heartbeat_line(*, status, current_case):
+    timestamp = dt.datetime.now(dt.UTC).astimezone(BEIJING)
+    return f"{timestamp:%Y/%m/%d %H:%M:%S} {current_case} CI {status.lower()}."
+
+
 HTTP_CACHE = {}
 
 
@@ -156,7 +165,7 @@ def main():
             else:
                 raise ValueError("comment listing exceeds correlation budget")
         except RetryableAPIError:
-            print("WAITING_GITHUB_API", flush=True)
+            print(heartbeat_line(status="WAITING_GITHUB_API", current_case=item["test_id"]), flush=True)
             time.sleep(60)
             continue
         phase = find_progress(comments, run_id, attempt, item, digest, author)
@@ -172,6 +181,7 @@ def main():
             author=author,
         )
         if result:
+            print(heartbeat_line(status=result["status"], current_case=item["test_id"]), flush=True)
             print(f"CASE {item['test_id']}: {result['status']} rc={result['exit_code']}")
             for line in result["last_20_lines"]:
                 print(line)
@@ -185,7 +195,7 @@ def main():
         if not accepted and time.monotonic() - start > 300:
             raise TimeoutError("INFRA_ERROR: assigned worker did not acknowledge within 300 seconds")
         if time.monotonic() >= heartbeat:
-            print(f"{item['test_id']} {phase or 'WAITING_WORKER'}", flush=True)
+            print(heartbeat_line(status=phase or "WAITING_WORKER", current_case=item["test_id"]), flush=True)
             heartbeat = time.monotonic() + 60
         time.sleep(60)
     raise TimeoutError("TIMED_OUT waiting for assigned worker")
