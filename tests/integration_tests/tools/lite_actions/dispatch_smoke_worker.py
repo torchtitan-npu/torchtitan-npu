@@ -23,9 +23,13 @@ def main() -> None:
     if world_size != expected_world:
         raise RuntimeError(f"expected world_size={expected_world}, got {world_size}")
 
+    timeout_seconds = int(os.environ.get("LITE_SMOKE_INIT_TIMEOUT", "45"))
+    if not 1 <= timeout_seconds <= 120:
+        raise ValueError("LITE_SMOKE_INIT_TIMEOUT must be between 1 and 120 seconds")
+
     torch.npu.set_device(local_rank)
     dist.init_process_group(backend="hccl", init_method="env://", timeout=__import__(
-        "datetime").timedelta(seconds=45))
+        "datetime").timedelta(seconds=timeout_seconds))
     try:
         # Explicitly construct the DP domain over all launched ranks.
         dp_ranks = list(range(world_size))

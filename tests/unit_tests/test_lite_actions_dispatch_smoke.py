@@ -37,6 +37,72 @@ class LiteActionsDispatchSmokeTests(unittest.TestCase):
             self.assertFalse(case.check_loss)
             self.assertTrue(is_dispatch_smoke(case))
 
+    def _capture_smoke_launch_env(self, *, test_id, network_env):
+        import os
+        import socket
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tests.integration_tests.nightly_all_models_test.runner import run_dispatch_smoke
+
+        case = select(catalog(), test_id=test_id)[0]
+        node_ips = ["127.0.0.1"] * case.nnodes
+        if case.nnodes > 1:
+            node_ips = [f"127.0.0.{i + 1}" for i in range(case.nnodes)]
+        env = {
+            "NNODES": str(case.nnodes),
+            "NGPU": str(case.ngpu),
+            "NODE_IPS": ",".join(node_ips),
+            "LITE_CI_MASTER_PORT": "31001",
+            **network_env,
+        }
+        with tempfile.TemporaryDirectory() as folder, (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(socket, "getaddrinfo", return_value=[
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", (node_ips[0], 0)),
+            ]),
+            patch("subprocess.check_output", return_value=node_ips[0]),
+            patch("subprocess.run") as launch,
+        ):
+            run_dispatch_smoke(case, output_dir=Path(folder) / "smoke")
+            launch.assert_called_once()
+            self.assertEqual(launch.call_args.kwargs["timeout"], case.timeout)
+            return launch.call_args.kwargs["env"]
+
+    def test_multinode_smoke_uses_trusted_interface_fallbacks(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_32p",
+            network_env={"Network_Interface": "enp34s0f1"},
+        )
+        self.assertEqual(env["GLOO_SOCKET_IFNAME"], "enp34s0f1")
+        self.assertEqual(env["HCCL_SOCKET_IFNAME"], "enp34s0f1")
+        self.assertEqual(env["HCCL_IF_BASE_PORT"], "30000")
+        self.assertEqual(env["LITE_SMOKE_INIT_TIMEOUT"], "90")
+
+    def test_multinode_smoke_preserves_explicit_network_settings(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_32p",
+            network_env={
+                "Network_Interface": "enp34s0f1",
+                "GLOO_SOCKET_IFNAME": "bond0",
+                "HCCL_SOCKET_IFNAME": "eth2",
+                "HCCL_IF_BASE_PORT": "31000",
+            },
+        )
+        self.assertEqual(env["GLOO_SOCKET_IFNAME"], "bond0")
+        self.assertEqual(env["HCCL_SOCKET_IFNAME"], "eth2")
+        self.assertEqual(env["HCCL_IF_BASE_PORT"], "31000")
+        self.assertEqual(env["LITE_SMOKE_INIT_TIMEOUT"], "90")
+
+    def test_single_node_smoke_keeps_default_init_timeout(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_a5_8p",
+            network_env={"Network_Interface": "enp34s0f1"},
+        )
+        self.assertNotIn("LITE_SMOKE_INIT_TIMEOUT", env)
+        self.assertEqual(env["GLOO_SOCKET_IFNAME"], "enp34s0f1")
+        self.assertEqual(env["HCCL_SOCKET_IFNAME"], "enp34s0f1")
+
     def test_smoke_cases_do_not_enable_loss_or_training_steps(self):
         cases = catalog()
         for test_id in ("dispatch_smoke_8p", "dispatch_smoke_16p"):

@@ -114,6 +114,16 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
     ):
         if source in env:
             env[target] = env[source]
+    # Match scripts/run_train_multinodes.sh: honor an explicitly selected
+    # network interface without overriding caller-specified HCCL/Gloo values.
+    # Dispatcher-issued port overrides above retain their existing precedence.
+    network_interface = env.get("Network_Interface")
+    if network_interface:
+        env.setdefault("GLOO_SOCKET_IFNAME", network_interface)
+        env.setdefault("HCCL_SOCKET_IFNAME", network_interface)
+        env.setdefault("HCCL_IF_BASE_PORT", "30000")
+    if nodes > 1:
+        env["LITE_SMOKE_INIT_TIMEOUT"] = "90"
     env["OMP_NUM_THREADS"] = "1"
 
     cmd = [sys.executable, "-m", "torch.distributed.run",
