@@ -80,6 +80,30 @@ class LiteActionsDispatchSmokeTests(unittest.TestCase):
         self.assertEqual(env["HCCL_IF_BASE_PORT"], "30000")
         self.assertEqual(env["LITE_SMOKE_INIT_TIMEOUT"], "90")
 
+    def test_a5_32p_hccl_if_ip_matches_local_node_ip(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_32p",
+            network_env={"Network_Interface": "enp34s0f1"},
+        )
+        self.assertEqual(env["HCCL_IF_IP"], "127.0.0.1")
+
+    def test_a5_32p_hccl_if_ip_does_not_override_explicit_value(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_32p",
+            network_env={
+                "Network_Interface": "enp34s0f1",
+                "HCCL_IF_IP": "192.0.2.10",
+            },
+        )
+        self.assertEqual(env["HCCL_IF_IP"], "192.0.2.10")
+
+    def test_a3_16p_hccl_if_ip_semantics_unchanged(self):
+        env = self._capture_smoke_launch_env(
+            test_id="dispatch_smoke_16p",
+            network_env={"Network_Interface": "enp34s0f1"},
+        )
+        self.assertNotIn("HCCL_IF_IP", env)
+
     def test_multinode_smoke_preserves_explicit_network_settings(self):
         env = self._capture_smoke_launch_env(
             test_id="dispatch_smoke_32p",

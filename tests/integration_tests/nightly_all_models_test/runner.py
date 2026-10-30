@@ -124,6 +124,20 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
         env.setdefault("HCCL_IF_BASE_PORT", "30000")
     if nodes > 1:
         env["LITE_SMOKE_INIT_TIMEOUT"] = "90"
+    # Only A5 multi-node smoke: bind each HCCL agent to its own verified
+    # NODE_IPS entry. This is the host control plane, not an NPU/UB EID.
+    if test.test_name == "dispatch_smoke_32p" and nodes > 1:
+        env.setdefault("HCCL_IF_IP", node_ips[node_rank])
+        print("[DISPATCH_SMOKE_NETWORK] " + json.dumps({
+            "node_rank": node_rank,
+            "node_ip": node_ips[node_rank],
+            "Network_Interface": env.get("Network_Interface"),
+            "GLOO_SOCKET_IFNAME": env.get("GLOO_SOCKET_IFNAME"),
+            "HCCL_SOCKET_IFNAME": env.get("HCCL_SOCKET_IFNAME"),
+            "HCCL_IF_IP": env.get("HCCL_IF_IP"),
+            "HCCL_IF_BASE_PORT": env.get("HCCL_IF_BASE_PORT"),
+            "LITE_SMOKE_INIT_TIMEOUT": env.get("LITE_SMOKE_INIT_TIMEOUT"),
+        }, sort_keys=True), flush=True)
     env["OMP_NUM_THREADS"] = "1"
 
     cmd = [sys.executable, "-m", "torch.distributed.run",
