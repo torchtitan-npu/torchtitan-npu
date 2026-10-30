@@ -15,9 +15,7 @@ def build_test_list() -> list[OverrideDefinitions]:
         ngpu=8,
         nnodes=1,
         env_vars={
-            "ASCEND_SET_ENV_PATH": "/mnt/share/Ascend/20260805101249091/ascend-toolkit/latest/set_env.sh",
-            "HF_ASSETS_PATH": "/mnt/share/models/DeepSeek-V4-Flash-bf16",
-            "CKPT_INIT_LOAD_PATH": "/mnt/share/dsv4_ckpt_8rank",
+            "ASCEND_SET_ENV_PATH": "/usr/local/Ascend/ascend-toolkit/set_env.sh",
         },
         check_loss=False,
         timeout=75,
