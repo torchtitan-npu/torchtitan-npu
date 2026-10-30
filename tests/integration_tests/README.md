@@ -300,4 +300,6 @@ ci_overrides={"worker": "yellow", "target_pool": "a3_shared_yellow", "docker": "
 
 现有 A3 只由 blue (`ssh ycy`) 管理：`113.46.17.205:153`、`113.46.17.205:154`。默认环境为 `cann_master_torchtitan_master_xyj`，由部署配置绑定已有容器。yellow (`ssh hwy`) 首版只验收系统探测，`a3_shared_yellow` 和 `a5_shared_yellow` 保持禁用。
 
+夜间用例与通信 smoke 使用所选容器内的标准 CANN 入口 `/usr/local/Ascend/ascend-toolkit/set_env.sh`。
+
 每个 case 回传日志最多 20 行、每行最多 180 字符；继续限制 Comment 正文和序列化请求体大小。Summary 只显示配置与状态，不追加训练日志、TensorBoard 或训练产物。

@@ -23,7 +23,7 @@ def build_test_list() -> list[OverrideDefinitions]:
             test_descr="DeepSeek-V4 Flash A3 8P Muon Eager, 5 steps",
             override_args=[("--training.steps", "5", "--compile.no-enable")],
             env_vars={
-                "ASCEND_SET_ENV_PATH": "/mnt/share/Ascend/20260805101249091/ascend-toolkit/latest/set_env.sh",
+                "ASCEND_SET_ENV_PATH": "/usr/local/Ascend/ascend-toolkit/set_env.sh",
                 "HF_ASSETS_PATH": "/mnt/share/models/DeepSeek-V4-Flash-bf16",
             # /data hosts the Docker overlay on A3 and can be 100% full.
             # Put CI-only Hugging Face caches on the writable NFS volume.
@@ -42,7 +42,7 @@ def build_test_list() -> list[OverrideDefinitions]:
             override_args=[("--training.steps", "5", "--compile.no-enable",
                             "--optimizer.name", "AdamW")],
             env_vars={
-                "ASCEND_SET_ENV_PATH": "/mnt/share/Ascend/20260805101249091/ascend-toolkit/latest/set_env.sh",
+                "ASCEND_SET_ENV_PATH": "/usr/local/Ascend/ascend-toolkit/set_env.sh",
                 "HF_ASSETS_PATH": "/mnt/share/models/DeepSeek-V4-Flash-bf16",
             # /data hosts the Docker overlay on A3 and can be 100% full.
             # Put CI-only Hugging Face caches on the writable NFS volume.
