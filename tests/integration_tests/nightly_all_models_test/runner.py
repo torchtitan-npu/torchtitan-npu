@@ -39,7 +39,7 @@ def dispatcher_port_env() -> dict[str, str]:
     return overrides
 
 
-SMOKE_WORLD = {"dispatch_smoke_8p": 8, "dispatch_smoke_16p": 16}
+SMOKE_WORLD = {"dispatch_smoke_8p": 8, "dispatch_smoke_16p": 16, "dispatch_smoke_a5_8p": 8, "dispatch_smoke_32p": 32}
 
 
 def is_dispatch_smoke(test: OverrideDefinitions) -> bool:
@@ -131,9 +131,9 @@ def run_dispatch_smoke(test: OverrideDefinitions, *, output_dir: Path) -> None:
         raise RuntimeError("smoke output_dir must be empty")
     import subprocess
     try:
-        subprocess.run(cmd, env=env, check=True, timeout=75)
+        subprocess.run(cmd, env=env, check=True, timeout=test.timeout)
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError("dispatch smoke exceeded 75-second execution budget") from exc
+        raise RuntimeError(f"dispatch smoke exceeded {test.timeout}-second execution budget") from exc
     result = {"status": "PASS", "test_id": test.test_name,
               "world_size": world, "nodes": nodes, "devices_per_node": test.ngpu}
     (output_dir / "dispatch_smoke_result.json").write_text(
