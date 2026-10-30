@@ -29,7 +29,7 @@ def catalog() -> dict[str,list]:
         for test in tests:
             if not SAFE.fullmatch(test.test_name) or test.test_name in names or test.disabled:
                 raise ValueError('duplicate/invalid/disabled CI case')
-            if not isinstance(test.nnodes,int) or test.nnodes<1 or not isinstance(test.ngpu,int) or test.ngpu<1:
+            if test.ci_kind != 'worker_probe' and (type(test.nnodes) is not int or test.nnodes<1 or type(test.ngpu) is not int or test.ngpu<1):
                 raise ValueError('invalid topology')
             names.add(test.test_name)
         found[info.name]=tests
@@ -57,10 +57,13 @@ def main():
     except ValueError as exc:p.error(str(exc))
     if a.phase=='inspect':
         print(json.dumps([{'test_id': t.test_name, 'ngpu': t.ngpu,
-           'nnodes': t.nnodes, 'env_vars': dict(t.env_vars or {})} for t in selected],
+           'nnodes': t.nnodes, 'env_vars': dict(t.env_vars or {}),
+           'kind': t.ci_kind, 'ci_overrides': dict(t.ci_overrides or {}), 'label': t.test_descr, 'timeout': t.timeout} for t in selected],
            separators=(',', ':')))
         return
     test=selected[0]
+    if test.ci_kind == 'worker_probe':
+        p.error('worker probes execute only in the trusted Lite Actions worker')
     # Also support direct, manual invocation of the fixed model-owned entrypoint.
     # Remote SSH has already sourced the case's toolkit before Python starts.
     os.environ.update(test.env_vars or {})

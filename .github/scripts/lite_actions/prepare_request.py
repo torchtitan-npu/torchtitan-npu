@@ -11,7 +11,6 @@ GitHub prepares one immutable, SHA-bound case plan. The dispatcher owns training
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -41,78 +40,42 @@ def parse_cases(value: str) -> list[dict]:
     return cases
 
 
-def expand_cases(selectors: list[dict]) -> list[dict]:
-    """Use model-owned definitions; imports are trusted from validated master."""
+from tests.integration_tests.tools.lite_actions.contract import create_plan, normalize
+
+
+def expand_cases(selectors, defaults):
     from tests.integration_tests.tools.lite_actions.entrypoint import catalog, select
 
     catalogue = catalog()
-    expanded, seen = [], set()
+    expanded = []
+    seen = set()
     for selector in selectors:
         for test in select(catalogue, **selector):
             if test.test_name in seen:
                 raise ValueError("duplicate expanded Test Case")
-            if not isinstance(test.ngpu, int) or not isinstance(test.nnodes, int):
-                raise ValueError("invalid resource requirements")
-            if test.ngpu < 1 or test.nnodes < 1:
-                raise ValueError("invalid resource requirements")
-            label = test.test_descr.strip()
-            if not label or len(label) > 115 or any(ord(x) < 32 for x in label):
-                raise ValueError("invalid Test Case description")
-            expanded.append({"test_id": test.test_name, "nnodes": test.nnodes, "ngpu": test.ngpu, "label": label})
             seen.add(test.test_name)
+            expanded.append(normalize(test, defaults, len(expanded)))
     return expanded
 
 
-def digest_plan(plan: dict) -> str:
-    canon = json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
-
-
-def create_plan(*, cases: list[dict], run_id: int, attempt: int, sha: str, repo: str, pipeline: str) -> dict:
-    if repo != REPO or pipeline not in PIPELINES:
-        raise ValueError("untrusted repository/pipeline")
-    if run_id < 1 or attempt < 1 or not SHA.fullmatch(sha):
-        raise ValueError("invalid GitHub identity")
-    plan = {
-        "schema": 2,
-        "repo": repo,
-        "run_id": run_id,
-        "attempt": attempt,
-        "sha": sha,
-        "pipeline": pipeline,
-        "cases": cases,
-    }
-    return {**plan, "plan_digest": digest_plan(plan)}
-
-
-def main() -> None:
-    selectors = parse_cases(os.environ["CI_TEST_CASES"])
-    request_dir = Path(".ci-request")
-    request_dir.mkdir(exist_ok=True)
-    cases = expand_cases(selectors)
-    # GitHub Actions supports up to 256 Matrix combinations; never truncate.
-    if not cases or len(cases) > 256:
-        raise ValueError("GitHub Matrix supports 1..256 test cases per workflow run")
-    result = create_plan(
-        cases=cases,
+def main():
+    defaults = {k: os.environ["CI_DEFAULT_" + k.upper()] for k in ("worker", "target_pool", "docker")}
+    cases = expand_cases(parse_cases(os.environ["CI_TEST_CASES"]), defaults)
+    plan = create_plan(
+        cases,
         run_id=int(os.environ["GITHUB_RUN_ID"]),
         attempt=int(os.environ["GITHUB_RUN_ATTEMPT"]),
-        sha=os.environ.get("CI_SOURCE_SHA") or os.environ["GITHUB_SHA"],
+        sha=os.environ["CI_SOURCE_SHA"],
         repo=os.environ["GITHUB_REPOSITORY"],
-        pipeline=os.environ["CI_PIPELINE"],
+        workflow=os.environ["CI_WORKFLOW"],
+        defaults=defaults,
     )
-    matrix = {"include": [{"test_id": case["test_id"], "label": case["label"]} for case in cases]}
-    output = os.environ.get("GITHUB_OUTPUT")
-    if not output:
-        raise ValueError("GITHUB_OUTPUT required for Matrix")
-    with open(output, "a", encoding="utf-8") as handle:
-        handle.write("matrix=" + json.dumps(matrix, ensure_ascii=False, separators=(",", ":")) + "\n")
-        handle.write("plan_digest=" + result["plan_digest"] + "\n")
-    print("Prepared CI Matrix:", [case["test_id"] for case in cases])
-    (request_dir / "ci-request.json").write_text(
-        json.dumps(result, separators=(",", ":"), ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    out = Path(".ci-request")
+    out.mkdir(exist_ok=True)
+    (out / "ci-request.json").write_text(json.dumps(plan, ensure_ascii=False, separators=(",", ":")) + "\n")
+    with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+        f.write("matrix=" + json.dumps({"include": cases}, ensure_ascii=False, separators=(",", ":")) + "\n")
+        f.write("plan_digest=" + plan["plan_digest"] + "\n")
 
 
 if __name__ == "__main__":
