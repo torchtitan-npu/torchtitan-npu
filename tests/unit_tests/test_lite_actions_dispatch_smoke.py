@@ -56,7 +56,8 @@ class LiteActionsDispatchSmokeTests(unittest.TestCase):
             "LITE_CI_MASTER_PORT": "31001",
             **network_env,
         }
-        with tempfile.TemporaryDirectory() as folder, (
+        with (
+            tempfile.TemporaryDirectory() as folder,
             patch.dict(os.environ, env, clear=True),
             patch.object(socket, "getaddrinfo", return_value=[
                 (socket.AF_INET, socket.SOCK_STREAM, 0, "", (node_ips[0], 0)),
